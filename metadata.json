@@ -1,6 +1,6 @@
 {
-  "name": "Web Workspace",
-  "description": "A versatile web productivity suite featuring task tracking, interactive notes, focus timer, and creative tools.",
+  "name": "K-BuildScrutiny Kerala Building Rules Compliance",
+  "description": "Comprehensive engineering scrutiny system for Kerala Municipality Building Rules (KMBR) & Kerala Panchayat Building Rules (KPBR) with drawing verification, area statement calculation, detailed rule checklists, and bilingual PDF reports.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

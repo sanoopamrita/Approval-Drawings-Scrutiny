@@ -1,207 +1,219 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
-import { TaskBoard } from './components/TaskBoard';
-import { NotesPad } from './components/NotesPad';
-import { FocusTimer } from './components/FocusTimer';
-import { QuickTools } from './components/QuickTools';
-import { Blueprints } from './components/Blueprints';
-import { TabType, Task, Note, TaskStatus } from './types';
+import { AuthoritySelector } from './components/AuthoritySelector';
+import { DrawingUploader } from './components/DrawingUploader';
+import { AreaStatementForm } from './components/AreaStatementForm';
+import { ScrutinyResults } from './components/ScrutinyResults';
+import { ReportGenerator } from './components/ReportGenerator';
+import { RulesExplorer } from './components/RulesExplorer';
+import {
+  AreaStatementData,
+  JurisdictionType,
+  Language,
+  ScrutinyCheckResult,
+  ScrutinyReportSummary,
+  UploadedDrawing,
+} from './types';
+import { runKeralaBuildingRulesScrutiny } from './services/ruleEngine';
+import { SAMPLE_PROJECT_PRESETS } from './utils/presets';
 
-const INITIAL_TASKS: Task[] = [
-  {
-    id: 't-1',
-    title: 'Explore Web Workspace features',
-    description: 'Check out the task board, markdown notes, focus timer, and calculation utilities.',
-    status: 'in-progress',
-    priority: 'high',
-    category: 'Productivity',
-    dueDate: '2026-08-30',
-    createdAt: Date.now() - 3600000,
-  },
-  {
-    id: 't-2',
-    title: 'Customize notes with markdown',
-    description: 'Write quick memos, checklists, code blocks, or draft project documentation.',
-    status: 'todo',
-    priority: 'medium',
-    category: 'Docs',
-    createdAt: Date.now() - 7200000,
-  },
-  {
-    id: 't-3',
-    title: 'Complete a 25-minute Pomodoro focus session',
-    description: 'Use the built-in timer with acoustic chimes to maintain deep focus.',
-    status: 'done',
-    priority: 'low',
-    category: 'Wellness',
-    createdAt: Date.now() - 10800000,
-  },
-];
+export function App() {
+  const [language, setLanguage] = useState<Language>('ml');
+  const [activeTab, setActiveTab] = useState<string>('authority');
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-const INITIAL_NOTES: Note[] = [
-  {
-    id: 'n-1',
-    title: 'Welcome to your Web Workspace',
-    content: `## Quick Start Guide
+  // Initialize with Preset 0 (Panchayat 2-Storey House)
+  const defaultPreset = SAMPLE_PROJECT_PRESETS[0];
+  const [formData, setFormData] = useState<AreaStatementData>(defaultPreset.data);
+  const [drawings, setDrawings] = useState<UploadedDrawing[]>(defaultPreset.mockDrawings);
 
-This workspace is designed to be your instant all-in-one productivity hub:
+  // Scrutiny result state
+  const [summary, setSummary] = useState<ScrutinyReportSummary | null>(null);
+  const [checks, setChecks] = useState<ScrutinyCheckResult[]>([]);
 
-- **Task Board**: Organize tasks by status (To Do, In Progress, Done), filter by category, and assign priorities.
-- **Notes & Memos**: Write quick markdown thoughts, tag them, pin important items, and export as \`.md\`.
-- **Focus Timer**: Boost concentration with customizable Pomodoro intervals and gentle chimes.
-- **Quick Utilities**: Math scratchpad, unit conversions, JSON validator, and word counters.
-- **App Blueprints**: Explore architectures and copy tailored prompts to build any web app idea next.
-
-Everything is stored locally on your device!`,
-    tags: ['welcome', 'guide'],
-    color: '#ffffff',
-    isPinned: true,
-    updatedAt: Date.now(),
-  },
-  {
-    id: 'n-2',
-    title: 'Project Ideas & Inspiration',
-    content: `Ideas to build or explore:
-- Real-time collaborative canvas
-- AI-assisted resume builder
-- Fitness routine generator
-- Interactive SQL playground`,
-    tags: ['ideas', 'brainstorm'],
-    color: '#ffffff',
-    isPinned: false,
-    updatedAt: Date.now() - 1800000,
-  },
-];
-
-export default function App() {
-  const [activeTab, setActiveTab] = useState<TabType>('tasks');
-  const [tasks, setTasks] = useState<Task[]>(() => {
-    try {
-      const saved = localStorage.getItem('web_workspace_tasks');
-      return saved ? JSON.parse(saved) : INITIAL_TASKS;
-    } catch {
-      return INITIAL_TASKS;
-    }
-  });
-
-  const [notes, setNotes] = useState<Note[]>(() => {
-    try {
-      const saved = localStorage.getItem('web_workspace_notes');
-      return saved ? JSON.parse(saved) : INITIAL_NOTES;
-    } catch {
-      return INITIAL_NOTES;
-    }
-  });
-
-  // Local storage persistence
+  // Run scrutiny on initial mount and when requested
   useEffect(() => {
-    try {
-      localStorage.setItem('web_workspace_tasks', JSON.stringify(tasks));
-    } catch {
-      // ignore storage errors
+    executeScrutiny();
+  }, []);
+
+  const executeScrutiny = () => {
+    const result = runKeralaBuildingRulesScrutiny(formData, drawings);
+    setSummary(result.summary);
+    setChecks(result.checks);
+  };
+
+  const handleFormDataChange = (partial: Partial<AreaStatementData>) => {
+    const updated = { ...formData, ...partial };
+    setFormData(updated);
+    // Realtime background scrutiny recalculation
+    const result = runKeralaBuildingRulesScrutiny(updated, drawings);
+    setSummary(result.summary);
+    setChecks(result.checks);
+  };
+
+  const handleAddDrawing = (drawing: UploadedDrawing) => {
+    const updated = [...drawings, drawing];
+    setDrawings(updated);
+    const result = runKeralaBuildingRulesScrutiny(formData, updated);
+    setSummary(result.summary);
+    setChecks(result.checks);
+    showToast(language === 'ml' ? 'ഡ്രോയിംഗ് അപ്‌ലോഡ് ചെയ്തു' : 'Drawing uploaded successfully');
+  };
+
+  const handleRemoveDrawing = (id: string) => {
+    const updated = drawings.filter((d) => d.id !== id);
+    setDrawings(updated);
+    const result = runKeralaBuildingRulesScrutiny(formData, updated);
+    setSummary(result.summary);
+    setChecks(result.checks);
+  };
+
+  const handleUpdateDrawing = (id: string, partial: Partial<UploadedDrawing>) => {
+    const updated = drawings.map((d) => (d.id === id ? { ...d, ...partial } : d));
+    setDrawings(updated);
+    const result = runKeralaBuildingRulesScrutiny(formData, updated);
+    setSummary(result.summary);
+    setChecks(result.checks);
+  };
+
+  const handleLoadPreset = (presetId: string) => {
+    const preset = SAMPLE_PROJECT_PRESETS.find((p) => p.id === presetId);
+    if (preset) {
+      setFormData(preset.data);
+      setDrawings(preset.mockDrawings);
+      const result = runKeralaBuildingRulesScrutiny(preset.data, preset.mockDrawings);
+      setSummary(result.summary);
+      setChecks(result.checks);
+      showToast(
+        language === 'ml'
+          ? `മാതൃകാ പ്രോജക്റ്റ് ലോഡ് ചെയ്തു: ${preset.nameMl}`
+          : `Loaded preset: ${preset.nameEn}`
+      );
     }
-  }, [tasks]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('web_workspace_notes', JSON.stringify(notes));
-    } catch {
-      // ignore storage errors
-    }
-  }, [notes]);
-
-  // Task Handlers
-  const handleAddTask = (newTask: Omit<Task, 'id' | 'createdAt'>) => {
-    const task: Task = {
-      ...newTask,
-      id: 't-' + Date.now(),
-      createdAt: Date.now(),
-    };
-    setTasks((prev) => [task, ...prev]);
   };
 
-  const handleUpdateStatus = (id: string, status: TaskStatus) => {
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t)));
+  const handleReset = () => {
+    setFormData(defaultPreset.data);
+    setDrawings(defaultPreset.mockDrawings);
+    const result = runKeralaBuildingRulesScrutiny(defaultPreset.data, defaultPreset.mockDrawings);
+    setSummary(result.summary);
+    setChecks(result.checks);
+    setActiveTab('authority');
+    showToast(language === 'ml' ? 'ഫോം പുനഃക്രമീകരിച്ചു' : 'Form reset to default');
   };
 
-  const handleDeleteTask = (id: string) => {
-    setTasks((prev) => prev.filter((t) => t.id !== id));
-  };
-
-  // Note Handlers
-  const handleAddNote = (newNote: Omit<Note, 'id' | 'updatedAt'>) => {
-    const note: Note = {
-      ...newNote,
-      id: 'n-' + Date.now(),
-      updatedAt: Date.now(),
-    };
-    setNotes((prev) => [note, ...prev]);
-  };
-
-  const handleUpdateNote = (id: string, updates: Partial<Note>) => {
-    setNotes((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, ...updates, updatedAt: Date.now() } : n))
+  const handleManualRunScrutiny = () => {
+    executeScrutiny();
+    setActiveTab('scrutiny');
+    showToast(
+      language === 'ml'
+        ? 'ചട്ട പരിശോധന പൂർത്തിയായി! ഫലങ്ങൾ താഴെ നൽകിയിരിക്കുന്നു.'
+        : 'Rule Scrutiny Complete! Results updated.'
     );
   };
 
-  const handleDeleteNote = (id: string) => {
-    setNotes((prev) => prev.filter((n) => n.id !== id));
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 3500);
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
-      {/* Navigation */}
+    <div className="min-h-screen flex flex-col bg-slate-100 font-sans selection:bg-emerald-500 selection:text-white">
+      {/* Top Navigation */}
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        taskCount={tasks.filter((t) => t.status !== 'done').length}
-        noteCount={notes.length}
+        language={language}
+        setLanguage={setLanguage}
+        jurisdiction={formData.jurisdiction}
+        setJurisdiction={(j: JurisdictionType) => handleFormDataChange({ jurisdiction: j })}
+        summary={summary}
+        onRunScrutiny={handleManualRunScrutiny}
+        onLoadPreset={handleLoadPreset}
+        onReset={handleReset}
       />
 
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-xl border border-slate-700 text-xs font-semibold flex items-center gap-2 animate-bounce">
+          <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.18, ease: 'easeOut' }}
-          >
-            {activeTab === 'tasks' && (
-              <TaskBoard
-                tasks={tasks}
-                onAddTask={handleAddTask}
-                onUpdateStatus={handleUpdateStatus}
-                onDeleteTask={handleDeleteTask}
-              />
-            )}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
+        {activeTab === 'authority' && (
+          <AuthoritySelector
+            data={formData}
+            onChange={handleFormDataChange}
+            language={language}
+            onNext={() => setActiveTab('drawings')}
+          />
+        )}
 
-            {activeTab === 'notes' && (
-              <NotesPad
-                notes={notes}
-                onAddNote={handleAddNote}
-                onUpdateNote={handleUpdateNote}
-                onDeleteNote={handleDeleteNote}
-              />
-            )}
+        {activeTab === 'drawings' && (
+          <DrawingUploader
+            drawings={drawings}
+            onAddDrawing={handleAddDrawing}
+            onRemoveDrawing={handleRemoveDrawing}
+            onUpdateDrawing={handleUpdateDrawing}
+            language={language}
+            onNext={() => setActiveTab('areastatement')}
+            onPrev={() => setActiveTab('authority')}
+          />
+        )}
 
-            {activeTab === 'timer' && <FocusTimer />}
+        {activeTab === 'areastatement' && (
+          <AreaStatementForm
+            data={formData}
+            onChange={handleFormDataChange}
+            language={language}
+            onNext={() => {
+              executeScrutiny();
+              setActiveTab('scrutiny');
+            }}
+            onPrev={() => setActiveTab('drawings')}
+          />
+        )}
 
-            {activeTab === 'tools' && <QuickTools />}
+        {activeTab === 'scrutiny' && summary && (
+          <ScrutinyResults
+            summary={summary}
+            checks={checks}
+            language={language}
+            onGoToReport={() => setActiveTab('report')}
+          />
+        )}
 
-            {activeTab === 'blueprints' && (
-              <Blueprints />
-            )}
-          </motion.div>
-        </AnimatePresence>
+        {activeTab === 'report' && summary && (
+          <ReportGenerator
+            data={formData}
+            summary={summary}
+            checks={checks}
+            drawings={drawings}
+            language={language}
+          />
+        )}
+
+        {activeTab === 'rulebook' && <RulesExplorer language={language} />}
       </main>
 
-      {/* Subtle Footer */}
-      <footer className="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-400">
-        <p>Web Workspace · Built with React, Tailwind CSS & Motion</p>
+      {/* Footer */}
+      <footer className="bg-slate-900 text-slate-400 text-xs py-4 border-t border-slate-800 mt-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
+          <div>
+            <span className="font-semibold text-slate-300">K-BuildScrutiny</span> · Kerala Municipality Building Rules (KMBR) & Kerala Panchayat Building Rules (KPBR) Compliance Verification Engine
+          </div>
+          <div className="text-[11px] text-slate-500">
+            Compliant with LSGD Kerala Gazette Notifications & GOs (2019-2026)
+          </div>
+        </div>
       </footer>
     </div>
   );
 }
+
+export default App;
