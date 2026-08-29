@@ -1,0 +1,6 @@
+{
+  "name": "Web Workspace",
+  "description": "A versatile web productivity suite featuring task tracking, interactive notes, focus timer, and creative tools.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
