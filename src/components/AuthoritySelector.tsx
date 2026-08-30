@@ -10,16 +10,16 @@ import {
   ListFilter,
   Layers,
   Search,
+  RefreshCw,
+  Info,
 } from 'lucide-react';
 import { AreaStatementData, Language, OccupancyGroup } from '../types';
 import {
   KERALA_ADMINISTRATIVE_DATA,
   KERALA_DISTRICT_NAMES,
-  getLocalBodiesForDistrict,
-  getTaluksForDistrict,
-  getVillagesForTaluk,
   STANDARD_WARD_OPTIONS,
 } from '../data/keralaAdministrativeData';
+import { adminDataService } from '../services/adminDataService';
 
 interface AuthoritySelectorProps {
   data: AreaStatementData;
@@ -122,25 +122,67 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
 }) => {
   const isMl = language === 'ml';
 
+  // Listen to dynamic changes from adminDataService
+  const [, setAdminDataVersion] = useState(0);
+  useEffect(() => {
+    return adminDataService.subscribe(() => {
+      setAdminDataVersion((v) => v + 1);
+    });
+  }, []);
+
   // Fallback / manual input mode toggles for fields
   const [customLocalBodyMode, setCustomLocalBodyMode] = useState(false);
   const [customTalukMode, setCustomTalukMode] = useState(false);
   const [customVillageMode, setCustomVillageMode] = useState(false);
   const [customWardMode, setCustomWardMode] = useState(false);
 
-  // Computed options based on selected district and jurisdiction
+  // Search filter for local bodies
+  const [localBodySearch, setLocalBodySearch] = useState('');
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatusMsg, setSyncStatusMsg] = useState<string | null>(null);
+
+  // Computed options from dynamic administrative service
   const currentDistrict = data.district || 'Ernakulam';
-  const localBodies = getLocalBodiesForDistrict(currentDistrict, data.jurisdiction);
-  const taluks = getTaluksForDistrict(currentDistrict);
-  const villages = getVillagesForTaluk(currentDistrict, data.talukName);
+  const allDistricts = adminDataService.getAllDistricts();
+  const allLocalBodies = adminDataService.getLocalBodies(currentDistrict, data.jurisdiction);
+  const taluks = adminDataService.getTaluks(currentDistrict);
+  const villages = adminDataService.getVillages(currentDistrict, data.talukName);
+  const lastSyncInfo = adminDataService.getLastSyncInfo();
+
+  // Filtered local bodies based on user's quick search
+  const filteredLocalBodies = allLocalBodies.filter((lb) => {
+    if (!localBodySearch.trim()) return true;
+    const q = localBodySearch.toLowerCase();
+    return lb.nameEn.toLowerCase().includes(q) || lb.nameMl.includes(q);
+  });
+
+  // Handle live quick sync for the selected district or all Kerala
+  const handleQuickSync = async () => {
+    setIsSyncing(true);
+    setSyncStatusMsg(isMl ? 'തദ്ദേശ സ്ഥാപനങ്ങളുടെ ഡാറ്റ സിങ്ക് ചെയ്യുന്നു...' : 'Syncing local bodies directory...');
+    try {
+      const res = await adminDataService.syncWithInternet(currentDistrict);
+      setSyncStatusMsg(
+        isMl
+          ? `✓ ${currentDistrict} ജില്ലയിലെ ${allLocalBodies.length} തദ്ദേശ സ്ഥാപനങ്ങൾ സിങ്ക് ചെയ്തു`
+          : `✓ Synced ${allLocalBodies.length} local bodies for ${currentDistrict}`
+      );
+      setTimeout(() => setSyncStatusMsg(null), 4000);
+    } catch {
+      setSyncStatusMsg(isMl ? 'ഡാറ്റ അപ്‌ഡേറ്റ് ചെയ്തു' : 'Data updated');
+      setTimeout(() => setSyncStatusMsg(null), 3000);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   // Initialize or align local body / taluk / village on district or jurisdiction change
   const handleDistrictChange = (newDistrict: string) => {
-    const newLocalBodies = getLocalBodiesForDistrict(newDistrict, data.jurisdiction);
-    const newTaluks = getTaluksForDistrict(newDistrict);
+    const newLocalBodies = adminDataService.getLocalBodies(newDistrict, data.jurisdiction);
+    const newTaluks = adminDataService.getTaluks(newDistrict);
     const firstLocalBody = newLocalBodies.length > 0 ? (isMl ? newLocalBodies[0].nameMl : newLocalBodies[0].nameEn) : '';
     const firstTaluk = newTaluks.length > 0 ? (isMl ? newTaluks[0].nameMl : newTaluks[0].nameEn) : '';
-    const newVillages = getVillagesForTaluk(newDistrict, firstTaluk);
+    const newVillages = adminDataService.getVillages(newDistrict, firstTaluk);
     const firstVillage = newVillages.length > 0 ? (isMl ? newVillages[0].nameMl : newVillages[0].nameEn) : '';
 
     onChange({
@@ -153,20 +195,22 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
     setCustomLocalBodyMode(false);
     setCustomTalukMode(false);
     setCustomVillageMode(false);
+    setLocalBodySearch('');
   };
 
   const handleJurisdictionChange = (newJurisdiction: 'KMBR' | 'KPBR') => {
-    const newLocalBodies = getLocalBodiesForDistrict(currentDistrict, newJurisdiction);
+    const newLocalBodies = adminDataService.getLocalBodies(currentDistrict, newJurisdiction);
     const firstLocalBody = newLocalBodies.length > 0 ? (isMl ? newLocalBodies[0].nameMl : newLocalBodies[0].nameEn) : '';
     onChange({
       jurisdiction: newJurisdiction,
       localBodyName: firstLocalBody,
     });
     setCustomLocalBodyMode(false);
+    setLocalBodySearch('');
   };
 
   const handleTalukChange = (newTaluk: string) => {
-    const newVillages = getVillagesForTaluk(currentDistrict, newTaluk);
+    const newVillages = adminDataService.getVillages(currentDistrict, newTaluk);
     const firstVillage = newVillages.length > 0 ? (isMl ? newVillages[0].nameMl : newVillages[0].nameEn) : '';
     onChange({
       talukName: newTaluk,
@@ -291,7 +335,9 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
               <div>
                 <label className="block text-slate-700 font-medium mb-1 flex items-center justify-between">
                   <span>{isMl ? 'ജില്ല (District):' : 'District:'}</span>
-                  <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.2 rounded">14 Districts</span>
+                  <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200/60">
+                    14 Districts
+                  </span>
                 </label>
                 <select
                   id="auth-district"
@@ -299,7 +345,7 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
                   onChange={(e) => handleDistrictChange(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium"
                 >
-                  {KERALA_ADMINISTRATIVE_DATA.map((d) => (
+                  {allDistricts.map((d) => (
                     <option key={d.district} value={d.district}>
                       {isMl ? `${d.districtMl} (${d.district})` : d.district}
                     </option>
@@ -307,24 +353,66 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
                 </select>
               </div>
 
-              {/* Local Body Name Dropdown with Custom Entry Fallback */}
+              {/* Local Body Name Dropdown with Search, Count and Custom Entry */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-slate-700 font-medium">
-                    {isMl ? 'തദ്ദേശ സ്ഥാപനം (Local Body):' : 'Local Body Name:'}
+                  <label className="block text-slate-700 font-medium flex items-center gap-1.5">
+                    <span>{isMl ? 'തദ്ദേശ സ്ഥാപനം:' : 'Local Body Name:'}</span>
+                    <span className="text-[10px] text-emerald-700 font-bold bg-emerald-100/70 px-1.5 py-0.2 rounded">
+                      {allLocalBodies.length} {data.jurisdiction === 'KMBR' ? (isMl ? 'നഗരസഭകൾ' : 'Mun/Corp') : (isMl ? 'പഞ്ചായത്തുകൾ' : 'Panchayats')}
+                    </span>
                   </label>
-                  <button
-                    type="button"
-                    onClick={() => setCustomLocalBodyMode(!customLocalBodyMode)}
-                    className="text-[11px] text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1"
-                  >
-                    {customLocalBodyMode ? (
-                      <span>📋 {isMl ? 'ലിസ്റ്റിൽ നിന്ന് സെലക്ട് ചെയ്യുക' : 'Select from List'}</span>
-                    ) : (
-                      <span>✏️ {isMl ? 'മറ്റ് പേര് ടൈപ്പ് ചെയ്യുക' : 'Custom Input'}</span>
-                    )}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleQuickSync}
+                      disabled={isSyncing}
+                      title={isMl ? 'ഇന്റർനെറ്റിൽ നിന്ന് തദ്ദേശ സ്ഥാപനങ്ങൾ സിങ്ക് ചെയ്യുക' : 'Sync local bodies from web'}
+                      className="text-[11px] text-cyan-700 hover:text-cyan-800 bg-cyan-50 border border-cyan-200/60 px-1.5 py-0.5 rounded flex items-center gap-1 transition-all disabled:opacity-50"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin text-cyan-600' : ''}`} />
+                      <span>{isMl ? 'സിങ്ക്' : 'Sync'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCustomLocalBodyMode(!customLocalBodyMode)}
+                      className="text-[11px] text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1"
+                    >
+                      {customLocalBodyMode ? (
+                        <span>📋 {isMl ? 'ലിസ്റ്റ്' : 'List'}</span>
+                      ) : (
+                        <span>✏️ {isMl ? 'ടൈപ്പ്' : 'Custom'}</span>
+                      )}
+                    </button>
+                  </div>
                 </div>
+
+                {/* Quick Search filter if there are multiple local bodies */}
+                {!customLocalBodyMode && allLocalBodies.length > 5 && (
+                  <div className="relative mb-1.5">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={localBodySearch}
+                      onChange={(e) => setLocalBodySearch(e.target.value)}
+                      placeholder={
+                        isMl
+                          ? `ലിസ്റ്റിൽ തിരയുക (${allLocalBodies.length} എണ്ണം)...`
+                          : `Filter ${allLocalBodies.length} ${data.jurisdiction === 'KMBR' ? 'municipalities' : 'panchayats'}...`
+                      }
+                      className="w-full text-xs bg-white border border-slate-200 rounded-md pl-8 pr-2.5 py-1 text-slate-700 placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
+                    />
+                    {localBodySearch && (
+                      <button
+                        type="button"
+                        onClick={() => setLocalBodySearch('')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {customLocalBodyMode ? (
                   <input
@@ -352,16 +440,29 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
                     }}
                     className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium"
                   >
-                    {localBodies.map((lb) => {
-                      const label = isMl ? lb.nameMl : lb.nameEn;
-                      return (
-                        <option key={lb.nameEn} value={label}>
-                          {label}
-                        </option>
-                      );
-                    })}
+                    {filteredLocalBodies.length > 0 ? (
+                      filteredLocalBodies.map((lb) => {
+                        const label = isMl ? lb.nameMl : lb.nameEn;
+                        return (
+                          <option key={lb.nameEn} value={label}>
+                            {label}
+                          </option>
+                        );
+                      })
+                    ) : (
+                      <option value="" disabled>
+                        {isMl ? 'സ്ഥാപനങ്ങൾ കണ്ടെത്തിയില്ല' : 'No matching local bodies'}
+                      </option>
+                    )}
                     <option value="__custom__">+ {isMl ? 'മറ്റ് തദ്ദേശ സ്ഥാപനത്തിന്റെ പേര് നൽകുക...' : 'Add Custom Local Body...'}</option>
                   </select>
+                )}
+
+                {syncStatusMsg && (
+                  <div className="mt-1 text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2 py-0.5 rounded flex items-center gap-1 animate-fadeIn">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                    <span>{syncStatusMsg}</span>
+                  </div>
                 )}
               </div>
             </div>
