@@ -369,22 +369,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span>{isMl ? '6. ചട്ട പുസ്തകം' : '6. Rulebook & Amendments'}</span>
             </button>
 
-            <button
-              id="nav-tab-chatbot"
-              onClick={() => setActiveTab('chatbot')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all cursor-pointer ${
-                activeTab === 'chatbot'
-                  ? 'bg-gradient-to-r from-cyan-950 to-blue-950 text-cyan-300 border border-cyan-500/50 shadow-[0_0_12px_rgba(0,229,255,0.25)] font-semibold'
-                  : 'text-cyan-400 hover:text-cyan-300 hover:bg-slate-900/80'
-              }`}
-            >
-              <Bot className="w-4 h-4 text-cyan-400" />
-              <span>{isMl ? '7. AI അസിസ്റ്റന്റ് (Gemini)' : '7. Gemini AI Advisor'}</span>
-              <span className="text-[9px] px-1 py-0.2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-mono">
-                AI
-              </span>
-            </button>
-
             {/* Exclusive Super Admin Tab (sanoop.amrita@gmail.com) */}
             {isSuper && (
               <button

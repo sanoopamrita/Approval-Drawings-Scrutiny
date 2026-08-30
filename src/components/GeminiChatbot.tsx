@@ -212,88 +212,110 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
 
   const activeQuickPrompts = isMl ? QUICK_PROMPTS_ML : QUICK_PROMPTS_EN;
 
+  // Close on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && onClose) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   return (
-    <div
-      className={`flex flex-col bg-slate-900 border border-slate-800 text-slate-100 rounded-xl overflow-hidden shadow-2xl transition-all ${
-        mode === 'floating'
-          ? isExpanded
-            ? 'fixed inset-4 z-50 md:inset-x-auto md:right-6 md:bottom-6 md:top-16 md:w-[650px] md:h-[80vh]'
-            : 'fixed bottom-4 right-4 z-50 w-[92vw] sm:w-[460px] h-[580px]'
-          : 'w-full h-full min-h-[650px]'
-      }`}
-    >
-      {/* Header */}
-      <div className="bg-slate-950 px-4 py-3 border-b border-slate-800 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
-            <Bot className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-sm text-white flex items-center gap-1.5">
-                {isMl ? 'KMBR & KPBR AI അസിസ്റ്റന്റ്' : 'KMBR & KPBR AI Advisor'}
-                <span className="text-[10px] px-1.5 py-0.2 rounded font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  Gemini 2.5
-                </span>
-              </h3>
+    <>
+      {/* Dimmed backdrop for floating mode on mobile/expanded */}
+      {mode === 'floating' && isExpanded && (
+        <div
+          onClick={onClose}
+          className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-40 animate-fadeIn"
+          aria-hidden="true"
+        />
+      )}
+
+      <div
+        className={`flex flex-col bg-slate-900 border border-cyan-800/60 text-slate-100 rounded-2xl overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.8)] transition-all ${
+          mode === 'floating'
+            ? isExpanded
+              ? 'fixed inset-4 z-50 md:inset-x-auto md:right-6 md:bottom-6 md:top-16 md:w-[680px] md:h-[82vh]'
+              : 'fixed bottom-4 right-4 z-50 w-[94vw] sm:w-[480px] h-[600px] max-h-[90vh]'
+            : 'w-full h-full min-h-[650px]'
+        }`}
+      >
+        {/* Header */}
+        <div className="bg-[#060D1F] px-4 py-3 border-b border-slate-800 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-600 to-blue-600 border border-cyan-400/40 flex items-center justify-center text-slate-950 font-bold shadow-[0_0_12px_rgba(0,229,255,0.3)]">
+              <Bot className="w-5 h-5 text-slate-950" />
             </div>
-            <p className="text-[11px] text-slate-400 truncate max-w-[220px] sm:max-w-xs">
-              {isMl
-                ? `${jurisdiction} ചട്ടങ്ങൾ, സെറ്റ്ബാക്ക്, പ്ലാൻ അപാകതകൾ`
-                : `${jurisdiction} Rules, Setbacks & Defect Remediation`}
-            </p>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-sm text-white flex items-center gap-1.5 font-['Outfit',sans-serif]">
+                  {isMl ? 'വിന്യാസ AI ചട്ട ഉപദേശകൻ' : 'VINYASA AI Rules Advisor'}
+                  <span className="text-[10px] px-1.5 py-0.2 rounded font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                    Gemini 2.5
+                  </span>
+                </h3>
+              </div>
+              <p className="text-[11px] text-slate-400 truncate max-w-[200px] sm:max-w-xs">
+                {isMl
+                  ? `${jurisdiction} ചട്ടങ്ങൾ, സെറ്റ്ബാക്ക്, പ്ലാൻ അപാകതകൾ`
+                  : `${jurisdiction} Rules, Setbacks & Defect Remediation`}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            {projectData && (
+              <span className="hidden sm:inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                <Building2 className="w-3 h-3 text-cyan-400" />
+                <span className="truncate max-w-[90px]">{projectData.projectName || 'Project'}</span>
+              </span>
+            )}
+
+            <button
+              id="chat-export-btn"
+              onClick={handleExportChat}
+              className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-md transition-colors"
+              title="Export Consultation / സേവ് ചെയ്യുക"
+            >
+              <Download className="w-4 h-4" />
+            </button>
+
+            <button
+              id="chat-reset-btn"
+              onClick={handleResetChat}
+              className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-md transition-colors"
+              title="Reset Chat / പുനരാരംഭിക്കുക"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+
+            {/* Expand/Minimize Control */}
+            <button
+              id="chat-expand-btn"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-md transition-colors hidden sm:inline-flex"
+              title={isExpanded ? 'Minimize' : 'Maximize'}
+            >
+              {isExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            </button>
+
+            {/* Prominent Close Control */}
+            {onClose && (
+              <button
+                id="chat-close-btn"
+                onClick={onClose}
+                className="flex items-center gap-1 bg-rose-500/20 hover:bg-rose-600 text-rose-300 hover:text-white px-2.5 py-1 rounded-lg border border-rose-500/40 text-xs font-bold transition-all ml-1 cursor-pointer shadow-xs"
+                title={isMl ? 'ചാറ്റ് ക്ലോസ് ചെയ്യുക (Esc)' : 'Close Chat (Esc)'}
+              >
+                <X className="w-4 h-4" />
+                <span className="text-[11px]">{isMl ? 'ക്ലോസ്' : 'Close'}</span>
+              </button>
+            )}
           </div>
         </div>
-
-        <div className="flex items-center gap-1">
-          {projectData && (
-            <span className="hidden sm:inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
-              <Building2 className="w-3 h-3 text-emerald-400" />
-              <span className="truncate max-w-[100px]">{projectData.projectName || 'Project'}</span>
-            </span>
-          )}
-
-          <button
-            id="chat-export-btn"
-            onClick={handleExportChat}
-            className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-md transition-colors"
-            title="Export Consultation / സേവ് ചെയ്യുക"
-          >
-            <Download className="w-4 h-4" />
-          </button>
-
-          <button
-            id="chat-reset-btn"
-            onClick={handleResetChat}
-            className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-md transition-colors"
-            title="Reset Chat / പുനരാരംഭിക്കുക"
-          >
-            <RotateCcw className="w-4 h-4" />
-          </button>
-
-          {/* Expand/Minimize Control */}
-          <button
-            id="chat-expand-btn"
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-md transition-colors"
-            title={isExpanded ? 'Minimize' : 'Maximize'}
-          >
-            {isExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-          </button>
-
-          {/* Close Control */}
-          {onClose && (
-            <button
-              id="chat-close-btn"
-              onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-rose-300 hover:bg-rose-950/40 rounded-md transition-colors"
-              title={isMl ? 'ചാറ്റ് ക്ലോസ് ചെയ്യുക' : 'Close Chat'}
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-      </div>
 
       {/* Project Context Badge */}
       {projectData && (
@@ -523,5 +545,6 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
         </form>
       </div>
     </div>
+    </>
   );
 };

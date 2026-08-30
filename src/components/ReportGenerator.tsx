@@ -244,8 +244,8 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
             {isMl ? '1. പ്രോജക്റ്റും പ്ലോട്ട് വിവരങ്ങളും' : '1. Project & Site Particulars'}
           </h3>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-            <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 text-xs">
+            <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 col-span-2">
               <span className="text-slate-500 block text-[10px]">Project Name:</span>
               <span className="font-bold text-slate-900 truncate block">{data.projectName || 'Proposed Building'}</span>
             </div>
@@ -260,6 +260,12 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
             <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
               <span className="text-slate-500 block text-[10px]">Occupancy:</span>
               <span className="font-bold text-slate-900 block">Group {data.occupancyGroup}</span>
+            </div>
+            <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+              <span className="text-slate-500 block text-[10px]">Prepared By:</span>
+              <span className="font-semibold text-slate-900 truncate block" title={data.preparedByName ? `${data.preparedByName} (${data.preparedByDesignation || ''})` : '-'}>
+                {data.preparedByName ? `${data.preparedByName}${data.preparedByDesignation ? ` (${data.preparedByDesignation})` : ''}` : '-'}
+              </span>
             </div>
           </div>
         </div>

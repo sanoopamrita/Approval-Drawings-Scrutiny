@@ -150,8 +150,10 @@ export interface AreaStatementData {
   // Project & Authority Identification
   projectName: string;
   applicantName: string;
-  architectEngineerName: string;
-  licenseNumber: string;
+  preparedByName: string; // Prepared by (Name)
+  preparedByDesignation: string; // Prepared by (Designation)
+  architectEngineerName?: string; // Optional backwards compatibility
+  licenseNumber?: string; // Optional backwards compatibility
   localBodyName: string;
   wardNumber: string;
   surveyNumber: string;

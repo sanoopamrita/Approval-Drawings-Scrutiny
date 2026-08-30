@@ -144,6 +144,61 @@ export async function syncRulesWithWeb(): Promise<SyncRulesResult> {
   };
 }
 
+export interface StatutorySearchResult {
+  result: string;
+  query: string;
+  timestamp: number;
+  grounded: boolean;
+}
+
+export async function searchStatutoryRulesOnline(
+  query: string,
+  jurisdiction: 'KMBR' | 'KPBR' | 'BOTH' = 'BOTH',
+  language: Language = 'ml'
+): Promise<StatutorySearchResult> {
+  const endpoints = ['/api/search-statutory-rules', '/api/gemini/search-statutory-rules'];
+
+  for (const endpoint of endpoints) {
+    try {
+      const res = await fetchWithRetry(
+        endpoint,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query,
+            jurisdiction,
+            language,
+          }),
+        },
+        1,
+        25000
+      );
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.result) {
+          return data;
+        }
+      }
+    } catch {
+      // Continue to next endpoint or fallback
+    }
+  }
+
+  const isMl = language === 'ml';
+  return {
+    result: isMl
+      ? `**കേരള കെട്ടിട നിർമ്മാണ ചട്ട വിവരങ്ങൾ (${jurisdiction}):**\n\n"${query}" എന്നതുമായി ബന്ധപ്പെട്ട പ്രധാന വിവരങ്ങൾ:\n\n- **സെറ്റ്ബാക്കുകൾ (Rule 27 / 25):** 10 മീറ്റർ വരെയുള്ള വീടുകൾക്ക് മുൻവശം 3.0 മീറ്റർ, പിൻവശം 1.5-2.0 മീറ്റർ, വശങ്ങളിൽ 1.20 മീ / 1.00 മീറ്റർ.\n- **കിണർ അകലം (Rule 47):** കുടിവെള്ള കിണറും സെപ്റ്റിക് ടാങ്കും തമ്മിൽ 7.50 മീറ്റർ അകലം വേണം.\n- **ചെറിയ പ്ലോട്ട് (Rule 60 / 62):** 125 ച.മീ (3 സെന്റിൽ) താഴെയുള്ള പ്ലോട്ടുകൾക്ക് ഇളവ് ലഭ്യമാണ്.`
+      : `**Statutory Information (${jurisdiction}):**\n\n- **Setbacks (Rule 27/25):** Front min 3.0m, Rear min 1.5-2.0m, Sides min 1.2m & 1.0m.\n- **Well Distance (Rule 47):** Min 7.50m from drinking well to septic tank.\n- **Small Plots (Rule 60/62):** Plots <=125 sq.m (3 Cents) enjoy concessional setbacks.`,
+    query,
+    timestamp: Date.now(),
+    grounded: false,
+  };
+}
+
 export async function analyzeDrawingWithGemini(
   imageBase64: string,
   category: string,

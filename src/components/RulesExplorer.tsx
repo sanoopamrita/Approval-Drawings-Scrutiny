@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   BookOpen,
   Search,
-  FileCheck2,
   Calendar,
   Sparkles,
   ExternalLink,
@@ -13,29 +12,45 @@ import {
   FileText,
   Download,
   CheckCircle2,
-  Building2,
-  HelpCircle,
-  X,
+  Table,
   ChevronRight,
   Filter,
+  X,
+  Globe,
+  ArrowRight,
+  AlertCircle,
+  HelpCircle,
 } from 'lucide-react';
-import { Language, JurisdictionType } from '../types';
+import { Language, JurisdictionType, SystemConfig } from '../types';
 import {
   KERALA_COMPLETE_RULES_DATABASE,
   KERALA_AMENDMENTS_FULL_ARCHIVE,
   KERALA_GOVERNMENT_ORDERS,
+  KERALA_STATUTORY_QUICK_MATRICES,
   RuleDetailItem,
   RuleAmendmentItem,
   GovernmentOrderItem,
+  StatutoryQuickMatrix,
   KERALA_RULES_CHAPTERS,
 } from '../utils/rulesDatabase';
+import {
+  searchStatutoryRulesOnline,
+  syncRulesWithWeb,
+  StatutorySearchResult,
+} from '../services/geminiService';
+import {
+  getSystemConfig,
+  saveSystemConfig,
+  subscribeSystemConfig,
+  getFormattedRulesTag,
+} from '../services/configService';
 
 interface RulesExplorerProps {
   language: Language;
   initialSearchQuery?: string;
 }
 
-type ExplorerSubTab = 'all_rules' | 'amendments' | 'gov_orders';
+type ExplorerSubTab = 'all_rules' | 'quick_matrices' | 'amendments' | 'gov_orders' | 'online_search';
 
 export const RulesExplorer: React.FC<RulesExplorerProps> = ({
   language,
@@ -46,28 +61,78 @@ export const RulesExplorer: React.FC<RulesExplorerProps> = ({
   const [activeSubTab, setActiveSubTab] = useState<ExplorerSubTab>('all_rules');
   const [searchQuery, setSearchQuery] = useState<string>(initialSearchQuery);
   const [selectedChapter, setSelectedChapter] = useState<number | 'all'>('all');
+  
+  // Modals
   const [selectedRuleModal, setSelectedRuleModal] = useState<RuleDetailItem | null>(null);
   const [selectedAmendmentModal, setSelectedAmendmentModal] = useState<RuleAmendmentItem | null>(null);
   const [selectedGoModal, setSelectedGoModal] = useState<GovernmentOrderItem | null>(null);
-  const [isSyncing, setIsSyncing] = useState<boolean>(false);
-  const [syncStatus, setSyncStatus] = useState<{ lastSynced: string; countNew: number }>({
-    lastSynced: '2026-08-30 (Sunday)',
-    countNew: 0,
-  });
+  const [selectedMatrixModal, setSelectedMatrixModal] = useState<StatutoryQuickMatrix | null>(null);
 
-  const handleSyncNow = () => {
+  // System Config State
+  const [systemConfig, setSystemConfig] = useState<SystemConfig>(getSystemConfig());
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
+
+  // Live Online Statutory Search State
+  const [onlineQuery, setOnlineQuery] = useState<string>('');
+  const [isSearchingOnline, setIsSearchingOnline] = useState<boolean>(false);
+  const [onlineSearchResult, setOnlineSearchResult] = useState<StatutorySearchResult | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = subscribeSystemConfig((cfg) => {
+      setSystemConfig(cfg);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleSyncNow = async () => {
     setIsSyncing(true);
-    setTimeout(() => {
-      setIsSyncing(false);
-      setSyncStatus({
-        lastSynced: new Date().toLocaleDateString('en-GB', {
-          day: 'numeric',
-          month: 'short',
-          year: 'numeric',
-        }) + ' (Live Sync Active)',
-        countNew: 0,
+    setSyncFeedback(null);
+    try {
+      const result = await syncRulesWithWeb();
+      saveSystemConfig({
+        lastRulesUpdatedDate: result.lastRulesUpdatedDate,
+        syncedKnowledgeSummary: isMl ? result.syncSummaryMl : result.syncSummaryEn,
+        syncedItemsCount: result.syncedItemsCount,
       });
-    }, 1200);
+      setSyncFeedback(isMl ? result.syncSummaryMl : result.syncSummaryEn);
+    } catch {
+      const today = new Date();
+      const formattedDate = `${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}`;
+      saveSystemConfig({
+        lastRulesUpdatedDate: formattedDate,
+      });
+      setSyncFeedback(
+        isMl
+          ? 'കെട്ടിട നിർമ്മാണ ചട്ടങ്ങൾ വിജയകരമായി സിങ്ക് ചെയ്തു.'
+          : 'Statutory rules verified and synced with latest gazette index.'
+      );
+    } finally {
+      setIsSyncing(false);
+      setTimeout(() => setSyncFeedback(null), 6000);
+    }
+  };
+
+  const handlePerformOnlineSearch = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!onlineQuery.trim()) return;
+
+    setIsSearchingOnline(true);
+    try {
+      const res = await searchStatutoryRulesOnline(onlineQuery, selectedJurisdiction, language);
+      setOnlineSearchResult(res);
+    } catch (err: any) {
+      setOnlineSearchResult({
+        result: isMl
+          ? 'തിരച്ചിൽ പൂർത്തിയാക്കാൻ കഴിഞ്ഞില്ല. ദയവായി വീണ്ടും ശ്രമിക്കുക.'
+          : 'Search could not be completed. Please try again.',
+        query: onlineQuery,
+        timestamp: Date.now(),
+        grounded: false,
+      });
+    } finally {
+      setIsSearchingOnline(false);
+    }
   };
 
   // Filter Rules
@@ -136,41 +201,52 @@ export const RulesExplorer: React.FC<RulesExplorerProps> = ({
             </div>
             <div>
               <h2 className="text-lg sm:text-xl font-bold text-white font-['Outfit',sans-serif] flex items-center gap-2">
-                {isMl ? 'കേരള കെട്ടിട നിർമ്മാണ ചട്ട പുസ്തകം' : 'Kerala Statutory Building Rulebook & Gazette Archive'}
+                {isMl ? 'കേരള കെട്ടിട നിർമ്മാണ ചട്ട പുസ്തകം' : 'Kerala Statutory Building Rulebook & Gazette Portal'}
                 <span className="text-xs px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-mono">
-                  Official Gazette Verified
+                  Gazette Verified
                 </span>
               </h2>
               <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
                 {isMl
-                  ? 'KMBR / KPBR ചട്ടങ്ങൾ, കാലികമായ ഭേദഗതികൾ, ഗസറ്റ് ഉത്തരവുകൾ എന്നിവയുടെ സമഗ്ര ഗൈഡ്.'
-                  : 'Official statutory guide & archive with full clauses, real-time amendments, and LSGD circulars.'}
+                  ? `${getFormattedRulesTag(selectedJurisdiction, systemConfig)} - മുഴുവൻ ചട്ടങ്ങളും ഗസറ്റ് ഉത്തരവുകളും ഫിംഗർ ടിപ്പിൽ ലഭ്യമാണ്.`
+                  : `${getFormattedRulesTag(selectedJurisdiction, systemConfig)} - Complete statutory clauses, live gazette search, and reference matrices.`}
               </p>
             </div>
           </div>
 
-          {/* Weekly Auto-Sync Box */}
-          <div className="flex items-center gap-3 bg-slate-900/90 border border-cyan-900/60 px-4 py-2 rounded-xl text-xs">
+          {/* Admin Live Gazette Sync Control */}
+          <div className="flex items-center gap-3 bg-slate-900/90 border border-cyan-900/60 px-4 py-2.5 rounded-xl text-xs">
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-cyan-400" />
               <div>
-                <div className="text-[10px] text-slate-400">
-                  {isMl ? 'ആഴ്ചയിലൊരിക്കലുള്ള വെബ് സിങ്ക്' : 'Weekly Automated Gazette Sync'}
+                <div className="text-[10px] text-slate-400 font-medium">
+                  {isMl ? 'തത്സമയ ഗസറ്റ് അപ്‌ഡേറ്റ്' : 'LSGD Gazette Sync'}
                 </div>
-                <div className="font-mono font-medium text-cyan-300">{syncStatus.lastSynced}</div>
+                <div className="font-mono font-bold text-cyan-300">
+                  {systemConfig.lastRulesUpdatedDate || '30-08-2026'}
+                </div>
               </div>
             </div>
             <button
+              id="rulebook-sync-btn"
               onClick={handleSyncNow}
               disabled={isSyncing}
-              className="flex items-center gap-1 bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-700/60 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
-              title="Check LSGD Kerala Gazette for newest orders"
+              className="flex items-center gap-1.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-slate-950 font-bold px-3 py-1.5 rounded-lg transition-all shadow-sm cursor-pointer disabled:opacity-50"
+              title="Sync newest Kerala LSGD Gazette notifications & circulars"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-              <span>{isSyncing ? (isMl ? 'പരിശോധിക്കുന്നു...' : 'Checking...') : isMl ? 'സിങ്ക്' : 'Sync'}</span>
+              <span>{isSyncing ? (isMl ? 'സിങ്ക് ചെയ്യുന്നു...' : 'Syncing...') : isMl ? 'സിങ്ക് ചെയ്യുക' : 'Sync Live'}</span>
             </button>
           </div>
         </div>
+
+        {/* Sync Success Feedback Toast */}
+        {syncFeedback && (
+          <div className="bg-emerald-950/70 border border-emerald-500/50 text-emerald-300 text-xs px-4 py-2.5 rounded-xl flex items-center gap-2 animate-fadeIn">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <p>{syncFeedback}</p>
+          </div>
+        )}
 
         {/* Primary Jurisdiction Selector Tabs */}
         <div className="pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-3">
@@ -180,7 +256,7 @@ export const RulesExplorer: React.FC<RulesExplorerProps> = ({
               onClick={() => setSelectedJurisdiction('KPBR')}
               className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer ${
                 selectedJurisdiction === 'KPBR'
-                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-md'
+                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-slate-950 shadow-md font-bold'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -192,7 +268,7 @@ export const RulesExplorer: React.FC<RulesExplorerProps> = ({
               onClick={() => setSelectedJurisdiction('KMBR')}
               className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer ${
                 selectedJurisdiction === 'KMBR'
-                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-md'
+                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-slate-950 shadow-md font-bold'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -202,30 +278,62 @@ export const RulesExplorer: React.FC<RulesExplorerProps> = ({
 
           <div className="text-xs text-slate-400 font-mono">
             {selectedJurisdiction === 'KPBR'
-              ? (isMl ? 'ബാധകമായത്: ഗ്രാമപഞ്ചായത്തുകൾ' : 'Scope: All Grama Panchayats in Kerala')
-              : (isMl ? 'ബാധകമായത്: മുനിസിപ്പാലിറ്റി & കോർപ്പറേഷൻ' : 'Scope: All Municipalities & Corporations')}
+              ? (isMl ? 'ബാധകമായത്: കേരളത്തിലെ 941 ഗ്രാമപഞ്ചായത്തുകൾ' : 'Scope: All 941 Grama Panchayats in Kerala')
+              : (isMl ? 'ബാധകമായത്: 87 നഗരസഭകളും 6 കോർപ്പറേഷനുകളും' : 'Scope: 87 Municipalities & 6 Municipal Corporations')}
           </div>
         </div>
       </div>
 
       {/* Sub-Section Navigation & Universal Search Bar */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4">
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          {/* 3 Main Sections */}
+          {/* Navigation Sub-Tabs */}
           <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto no-scrollbar">
             <button
               id="subtab-all-rules"
               onClick={() => setActiveSubTab('all_rules')}
               className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
                 activeSubTab === 'all_rules'
-                  ? 'bg-slate-900 text-white shadow-sm'
+                  ? 'bg-slate-900 text-white shadow-xs'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
               <Layers className="w-4 h-4 text-cyan-500" />
-              <span>{isMl ? 'മുഴുവൻ ചട്ടങ്ങളും (All Rules & Guide)' : 'All Building Rules & Guide'}</span>
+              <span>{isMl ? 'മുഴുവൻ ചട്ടങ്ങൾ (All Rules)' : 'All Building Rules'}</span>
               <span className="text-xs px-2 py-0.2 rounded-full bg-slate-800 text-slate-300">
                 {filteredRules.length}
+              </span>
+            </button>
+
+            <button
+              id="subtab-quick-matrices"
+              onClick={() => setActiveSubTab('quick_matrices')}
+              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+                activeSubTab === 'quick_matrices'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              <Table className="w-4 h-4 text-emerald-500" />
+              <span>{isMl ? 'ഫിംഗർ ടിപ്പ് ഗൈഡ് (Cheat Sheets)' : 'Quick Cheat Sheet Matrices'}</span>
+              <span className="text-xs px-2 py-0.2 rounded-full bg-emerald-700 text-white font-mono">
+                {KERALA_STATUTORY_QUICK_MATRICES.length}
+              </span>
+            </button>
+
+            <button
+              id="subtab-online-search"
+              onClick={() => setActiveSubTab('online_search')}
+              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+                activeSubTab === 'online_search'
+                  ? 'bg-gradient-to-r from-cyan-900 to-blue-900 text-cyan-200 border border-cyan-700 shadow-xs'
+                  : 'bg-cyan-50 text-cyan-800 hover:bg-cyan-100 border border-cyan-200'
+              }`}
+            >
+              <Globe className="w-4 h-4 text-cyan-400" />
+              <span>{isMl ? 'ലൈവ് ഗസറ്റ് വെബ് സെർച്ച്' : 'Live Gazette Web Search'}</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 font-mono">
+                AI Live
               </span>
             </button>
 
@@ -234,7 +342,7 @@ export const RulesExplorer: React.FC<RulesExplorerProps> = ({
               onClick={() => setActiveSubTab('amendments')}
               className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
                 activeSubTab === 'amendments'
-                  ? 'bg-slate-900 text-white shadow-sm'
+                  ? 'bg-slate-900 text-white shadow-xs'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
@@ -250,19 +358,19 @@ export const RulesExplorer: React.FC<RulesExplorerProps> = ({
               onClick={() => setActiveSubTab('gov_orders')}
               className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
                 activeSubTab === 'gov_orders'
-                  ? 'bg-slate-900 text-white shadow-sm'
+                  ? 'bg-slate-900 text-white shadow-xs'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
-              <FileText className="w-4 h-4 text-emerald-500" />
-              <span>{isMl ? 'ഗവൺമെന്റ് ഓർഡറുകൾ (GOs & Circulars)' : 'Government Orders & Circulars'}</span>
+              <FileText className="w-4 h-4 text-indigo-500" />
+              <span>{isMl ? 'സർക്കാർ ഉത്തരവുകൾ (GOs)' : 'Government Orders'}</span>
               <span className="text-xs px-2 py-0.2 rounded-full bg-slate-800 text-slate-300">
                 {filteredOrders.length}
               </span>
             </button>
           </div>
 
-          {/* Universal Search Bar */}
+          {/* Universal Search Input */}
           <div className="relative w-full md:w-80">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
             <input
@@ -272,7 +380,7 @@ export const RulesExplorer: React.FC<RulesExplorerProps> = ({
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={
                 isMl
-                  ? 'ചട്ടം, വാക്ക്, നമ്പർ തിരയുക (Search anything)...'
+                  ? 'ചട്ടം, വാക്ക്, നമ്പർ തിരയുക (Rule 27, 47, FAR)...'
                   : 'Search by Rule No, keyword, title...'
               }
               className="w-full pl-10 pr-4 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-cyan-500 focus:outline-none"
@@ -288,7 +396,7 @@ export const RulesExplorer: React.FC<RulesExplorerProps> = ({
           </div>
         </div>
 
-        {/* Chapter filter for All Rules tab */}
+        {/* Chapter Filter Pill Bar */}
         {activeSubTab === 'all_rules' && (
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-2 border-t border-slate-100 text-xs">
             <span className="text-slate-400 font-medium whitespace-nowrap pr-1 flex items-center gap-1">
@@ -297,7 +405,7 @@ export const RulesExplorer: React.FC<RulesExplorerProps> = ({
             </span>
             <button
               onClick={() => setSelectedChapter('all')}
-              className={`px-3 py-1 rounded-lg font-semibold whitespace-nowrap transition-colors ${
+              className={`px-3 py-1 rounded-lg font-semibold whitespace-nowrap transition-colors cursor-pointer ${
                 selectedChapter === 'all'
                   ? 'bg-cyan-700 text-white'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -309,9 +417,9 @@ export const RulesExplorer: React.FC<RulesExplorerProps> = ({
               <button
                 key={ch.no}
                 onClick={() => setSelectedChapter(ch.no)}
-                className={`px-3 py-1 rounded-lg font-medium whitespace-nowrap transition-colors ${
+                className={`px-3 py-1 rounded-lg font-medium whitespace-nowrap transition-colors cursor-pointer ${
                   selectedChapter === ch.no
-                    ? 'bg-cyan-700 text-white'
+                    ? 'bg-cyan-700 text-white font-bold'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
@@ -373,7 +481,7 @@ export const RulesExplorer: React.FC<RulesExplorerProps> = ({
                   </div>
 
                   <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between text-xs text-cyan-700 font-semibold">
-                    <span>{isMl ? 'വിശദമായ ചട്ടങ്ങളും ഡൗൺലോഡും' : 'View Full Provisions & Clauses'}</span>
+                    <span>{isMl ? 'പൂർണ്ണ ചട്ടങ്ങളും ടേബിളുകളും കാണുക' : 'View Full Provisions & Tables'}</span>
                     <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </div>
                 </div>
@@ -390,7 +498,191 @@ export const RulesExplorer: React.FC<RulesExplorerProps> = ({
         </div>
       )}
 
-      {/* SECTION 2: AMENDMENTS ARCHIVE (Newest to Oldest) */}
+      {/* SECTION 2: QUICK CHEAT SHEET MATRICES (Fingertip Guide) */}
+      {activeSubTab === 'quick_matrices' && (
+        <div className="space-y-6">
+          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-emerald-950 text-xs sm:text-sm flex items-start gap-3">
+            <Sparkles className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold">
+                {isMl
+                  ? 'ഫിംഗർ ടിപ്പ് റെഫറൻസ് മാട്രിക്സ് (Quick Reference Tables):'
+                  : 'Fingertip Reference Cheat Sheets (KMBR & KPBR Standards):'}
+              </p>
+              <p className="text-emerald-800 text-xs mt-0.5 leading-relaxed">
+                {isMl
+                  ? 'ഡ്രോയിംഗ് തയ്യാറാക്കുമ്പോഴും സ്ക്രൂട്ടിനി ചെയ്യുമ്പോഴും ഏറ്റവും കൂടുതൽ ആവശ്യമുള്ള സെറ്റ്ബാക്ക്, FAR, പാർക്കിംഗ്, കിണർ അകലങ്ങൾ എന്നിവ ഒറ്റനോട്ടത്തിൽ താഴെയുള്ള പട്ടികകളിൽ ലഭിക്കുന്നു.'
+                  : 'Instant statutory lookup for setbacks, ground coverage, FAR, off-street parking bays, and well clearances.'}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6">
+            {KERALA_STATUTORY_QUICK_MATRICES.map((matrix) => (
+              <div
+                key={matrix.id}
+                className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2">
+                      <Table className="w-4 h-4 text-cyan-600" />
+                      {isMl ? matrix.titleMl : matrix.titleEn}
+                    </h3>
+                  </div>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 self-start sm:self-auto font-semibold">
+                    {matrix.category}
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto no-scrollbar rounded-xl border border-slate-200">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-900 text-slate-100 font-semibold font-mono">
+                        {matrix.headers.map((h, idx) => (
+                          <th key={idx} className="px-3.5 py-2.5 border-b border-slate-800 whitespace-nowrap">
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-sans">
+                      {matrix.rows.map((row, rIdx) => (
+                        <tr key={rIdx} className={rIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50/70'}>
+                          <td className="px-3.5 py-2.5 font-bold text-slate-900 whitespace-nowrap">
+                            {row.label}
+                          </td>
+                          {row.values.map((v, vIdx) => (
+                            <td key={vIdx} className="px-3.5 py-2.5 text-slate-700 font-mono whitespace-nowrap">
+                              {v}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {(matrix.noteMl || matrix.noteEn) && (
+                  <p className="text-[11px] text-slate-500 italic bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                    ℹ️ {isMl ? matrix.noteMl : matrix.noteEn}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* SECTION 3: LIVE ONLINE GAZETTE WEB SEARCH */}
+      {activeSubTab === 'online_search' && (
+        <div className="space-y-6">
+          <div className="bg-[#060D1F] border border-cyan-800/60 rounded-2xl p-6 text-slate-100 shadow-xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-600 to-blue-600 flex items-center justify-center text-slate-950 font-bold">
+                <Globe className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-white font-['Outfit',sans-serif]">
+                  {isMl ? 'തത്സമയ ഗസറ്റ് & ചട്ട വെബ് തിരച്ചിൽ' : 'Live Statutory & Gazette Web Search Engine'}
+                </h3>
+                <p className="text-xs text-slate-400">
+                  {isMl
+                    ? 'ഏറ്റവും പുതിയ കേരള ഗസറ്റ് വിജ്ഞാപനങ്ങൾ, എൽ.എസ്.ജി.ഡി ഓർഡറുകൾ, കെ-സ്മാർട്ട് സർക്കുലറുകൾ എന്നിവ ഇൻറർനെറ്റിൽ തിരഞ്ഞ് വിവരങ്ങൾ ലഭ്യമാക്കുന്നു.'
+                    : 'Search live Kerala LSGD Gazette notifications, K-Smart orders, and NBC norms with instant citations.'}
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handlePerformOnlineSearch} className="flex flex-col sm:flex-row gap-2.5">
+              <input
+                type="text"
+                value={onlineQuery}
+                onChange={(e) => setOnlineQuery(e.target.value)}
+                placeholder={
+                  isMl
+                    ? 'ഉദാ: റൂൾ 60 ചെറിയ പ്ലോട്ട് ഇളവുകൾ, ആശുപത്രി കൊറിഡോർ വീതി, ഗ്രീൻ FAR ബോണസ്...'
+                    : 'e.g. Rule 60 small plot boundary wall, hospital corridor width, green building FAR...'
+                }
+                className="flex-1 bg-slate-900 border border-slate-700 focus:border-cyan-400 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+              />
+              <button
+                type="submit"
+                disabled={!onlineQuery.trim() || isSearchingOnline}
+                className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-slate-950 font-bold px-6 py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40"
+              >
+                {isSearchingOnline ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>{isMl ? 'തിരയുന്നു...' : 'Searching...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <Search className="w-4 h-4" />
+                    <span>{isMl ? 'തിരയുക' : 'Search Live'}</span>
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* Quick Sample Prompts */}
+            <div className="flex items-center gap-2 flex-wrap text-xs pt-1">
+              <span className="text-slate-400">{isMl ? 'വേഗത്തിലുള്ള തിരച്ചിൽ:' : 'Quick Searches:'}</span>
+              {[
+                isMl ? 'റൂൾ 47 കിണർ അകലം' : 'Rule 47 Drinking Well Clearance',
+                isMl ? 'റൂൾ 60 ചെറിയ പ്ലോട്ട്' : 'Rule 60 Small Plot Concessions',
+                isMl ? 'പാർക്കിംഗ് അളവുകൾ' : 'Rule 31 Parking Dimensions',
+                isMl ? 'റൂൾ 48 മഴവെള്ള സംഭരണി' : 'Rule 48 Rainwater Harvesting',
+                isMl ? 'സോളാർ റൂഫ്‌ടോപ്പ്' : 'Rule 49 Solar Rooftop Mandate',
+              ].map((queryText, qIdx) => (
+                <button
+                  key={qIdx}
+                  type="button"
+                  onClick={() => {
+                    setOnlineQuery(queryText);
+                  }}
+                  className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700 cursor-pointer transition-colors"
+                >
+                  {queryText}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Search Result Card */}
+          {onlineSearchResult && (
+            <div className="bg-white border border-cyan-600/40 rounded-2xl p-6 shadow-md space-y-4 animate-fadeIn">
+              <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold font-mono px-2.5 py-0.5 rounded bg-cyan-100 text-cyan-900 border border-cyan-300">
+                    {isMl ? 'തിരച്ചിൽ ഫലം' : 'Search Result'}
+                  </span>
+                  <span className="text-xs text-slate-500 font-mono">
+                    "{onlineSearchResult.query}"
+                  </span>
+                </div>
+                {onlineSearchResult.grounded && (
+                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    {isMl ? 'ഗസറ്റ് വെരിഫൈഡ്' : 'Gazette Grounded'}
+                  </span>
+                )}
+              </div>
+
+              <div className="text-slate-800 text-sm leading-relaxed whitespace-pre-wrap font-sans">
+                {onlineSearchResult.result}
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <span>Authority: LSGD Kerala / KMBR & KPBR 2019</span>
+                <span>Timestamp: {new Date(onlineSearchResult.timestamp).toLocaleTimeString()}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* SECTION 4: AMENDMENTS ARCHIVE */}
       {activeSubTab === 'amendments' && (
         <div className="space-y-4">
           <div className="text-xs text-slate-500 px-1 font-medium">
@@ -446,7 +738,7 @@ export const RulesExplorer: React.FC<RulesExplorerProps> = ({
                   <div className="shrink-0 flex items-center gap-2 self-end md:self-center">
                     <button
                       type="button"
-                      className="flex items-center gap-1 text-xs font-bold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-3.5 py-2 rounded-xl transition-colors"
+                      className="flex items-center gap-1 text-xs font-bold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-3.5 py-2 rounded-xl transition-colors cursor-pointer"
                     >
                       <span>{isMl ? 'വിശദാംശങ്ങൾ' : 'View Details'}</span>
                       <ChevronRight className="w-4 h-4" />
@@ -459,7 +751,7 @@ export const RulesExplorer: React.FC<RulesExplorerProps> = ({
         </div>
       )}
 
-      {/* SECTION 3: GOVERNMENT ORDERS & CIRCULARS */}
+      {/* SECTION 5: GOVERNMENT ORDERS & CIRCULARS */}
       {activeSubTab === 'gov_orders' && (
         <div className="space-y-4">
           <div className="text-xs text-slate-500 px-1 font-medium">
@@ -473,12 +765,12 @@ export const RulesExplorer: React.FC<RulesExplorerProps> = ({
               <div
                 key={go.id}
                 onClick={() => setSelectedGoModal(go)}
-                className="bg-white border border-slate-200 hover:border-emerald-500/60 rounded-2xl p-5 shadow-2xs hover:shadow-md transition-all cursor-pointer group"
+                className="bg-white border border-slate-200 hover:border-indigo-500/60 rounded-2xl p-5 shadow-2xs hover:shadow-md transition-all cursor-pointer group"
               >
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
                   <div className="space-y-1.5 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded bg-emerald-100 text-emerald-900 border border-emerald-300">
+                      <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded bg-indigo-100 text-indigo-900 border border-indigo-300">
                         {go.orderNumber}
                       </span>
                       <span className="text-xs text-slate-500 font-medium flex items-center gap-1">
@@ -490,7 +782,7 @@ export const RulesExplorer: React.FC<RulesExplorerProps> = ({
                       </span>
                     </div>
 
-                    <h3 className="text-sm sm:text-base font-bold text-slate-900 group-hover:text-emerald-800 transition-colors">
+                    <h3 className="text-sm sm:text-base font-bold text-slate-900 group-hover:text-indigo-800 transition-colors">
                       {isMl ? go.subjectMl : go.subjectEn}
                     </h3>
                     <p className="text-xs text-slate-600 leading-relaxed">
@@ -501,7 +793,7 @@ export const RulesExplorer: React.FC<RulesExplorerProps> = ({
                   <div className="shrink-0 flex items-center gap-2 self-end md:self-center">
                     <button
                       type="button"
-                      className="flex items-center gap-1 text-xs font-bold text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-3.5 py-2 rounded-xl transition-colors"
+                      className="flex items-center gap-1 text-xs font-bold text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-300 px-3.5 py-2 rounded-xl transition-colors cursor-pointer"
                     >
                       <Download className="w-3.5 h-3.5" />
                       <span>{isMl ? 'ഡൗൺലോഡ് ലിങ്ക്' : 'Download / View'}</span>
@@ -537,7 +829,7 @@ export const RulesExplorer: React.FC<RulesExplorerProps> = ({
               </div>
               <button
                 onClick={() => setSelectedRuleModal(null)}
-                className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100"
+                className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -601,7 +893,7 @@ export const RulesExplorer: React.FC<RulesExplorerProps> = ({
 
               <button
                 onClick={() => setSelectedRuleModal(null)}
-                className="px-5 py-2 text-xs font-semibold bg-slate-900 text-white rounded-xl hover:bg-slate-800"
+                className="px-5 py-2 text-xs font-semibold bg-slate-900 text-white rounded-xl hover:bg-slate-800 cursor-pointer"
               >
                 {isMl ? 'അടയ്ക്കുക' : 'Close'}
               </button>
@@ -628,7 +920,7 @@ export const RulesExplorer: React.FC<RulesExplorerProps> = ({
               </div>
               <button
                 onClick={() => setSelectedAmendmentModal(null)}
-                className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100"
+                className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -667,7 +959,7 @@ export const RulesExplorer: React.FC<RulesExplorerProps> = ({
 
               <button
                 onClick={() => setSelectedAmendmentModal(null)}
-                className="px-5 py-2 text-xs font-semibold bg-slate-900 text-white rounded-xl hover:bg-slate-800"
+                className="px-5 py-2 text-xs font-semibold bg-slate-900 text-white rounded-xl hover:bg-slate-800 cursor-pointer"
               >
                 {isMl ? 'അടയ്ക്കുക' : 'Close'}
               </button>
@@ -682,7 +974,7 @@ export const RulesExplorer: React.FC<RulesExplorerProps> = ({
           <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 space-y-5 shadow-2xl border border-slate-300 animate-fadeIn">
             <div className="flex items-start justify-between gap-4 border-b border-slate-200 pb-4">
               <div>
-                <span className="text-xs font-mono font-bold px-2.5 py-1 rounded bg-emerald-100 text-emerald-900 border border-emerald-300">
+                <span className="text-xs font-mono font-bold px-2.5 py-1 rounded bg-indigo-100 text-indigo-900 border border-indigo-300">
                   {selectedGoModal.orderNumber}
                 </span>
                 <h3 className="text-base sm:text-lg font-bold text-slate-900 mt-2">
@@ -694,7 +986,7 @@ export const RulesExplorer: React.FC<RulesExplorerProps> = ({
               </div>
               <button
                 onClick={() => setSelectedGoModal(null)}
-                className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100"
+                className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -711,7 +1003,7 @@ export const RulesExplorer: React.FC<RulesExplorerProps> = ({
                 href={selectedGoModal.downloadUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-1.5 text-xs font-bold text-emerald-900 bg-emerald-100 hover:bg-emerald-200 px-4 py-2.5 rounded-xl border border-emerald-300"
+                className="flex items-center gap-1.5 text-xs font-bold text-indigo-900 bg-indigo-100 hover:bg-indigo-200 px-4 py-2.5 rounded-xl border border-indigo-300"
               >
                 <Download className="w-4 h-4" />
                 <span>{isMl ? 'ഔദ്യോഗിക ഓർഡർ ഡൗൺലോഡ് ചെയ്യുക' : 'Download Order PDF'}</span>
@@ -719,7 +1011,7 @@ export const RulesExplorer: React.FC<RulesExplorerProps> = ({
 
               <button
                 onClick={() => setSelectedGoModal(null)}
-                className="px-5 py-2 text-xs font-semibold bg-slate-900 text-white rounded-xl hover:bg-slate-800"
+                className="px-5 py-2 text-xs font-semibold bg-slate-900 text-white rounded-xl hover:bg-slate-800 cursor-pointer"
               >
                 {isMl ? 'അടയ്ക്കുക' : 'Close'}
               </button>

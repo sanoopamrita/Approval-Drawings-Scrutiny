@@ -318,12 +318,12 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
           </div>
         </div>
 
-        {/* Card 2: Applicant & Project Metadata */}
+        {/* Card 2: Applicant & Preparation Details */}
         <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
           <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
             <UserCheck className="w-5 h-5 text-emerald-600" />
             <h3 className="font-bold text-slate-900 text-sm sm:text-base">
-              {isMl ? '2. അപേക്ഷകനും രജിസ്റ്റേർഡ് എഞ്ചിനീയറും' : '2. Applicant & Licensed Engineer'}
+              {isMl ? '2. അപേക്ഷകനും തയ്യാറാക്കിയ വിവരങ്ങളും' : '2. Applicant & Preparation Details'}
             </h3>
           </div>
 
@@ -359,29 +359,29 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-slate-700 font-medium mb-1">
-                  {isMl ? 'ആർക്കിടെക്റ്റ് / എഞ്ചിനീയർ:' : 'Architect / Engineer:'}
+                  {isMl ? 'തയ്യാറാക്കിയത് - പേര് (Prepared by - Name):' : 'Prepared by (Name):'}
                 </label>
                 <input
                   type="text"
-                  id="auth-engineer"
-                  value={data.architectEngineerName}
-                  onChange={(e) => onChange({ architectEngineerName: e.target.value })}
-                  placeholder="e.g. Er. Rajesh Kumar, FIE"
+                  id="auth-prepared-name"
+                  value={data.preparedByName}
+                  onChange={(e) => onChange({ preparedByName: e.target.value })}
+                  placeholder="e.g. Sanoop Sadanandhan"
                   className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 />
               </div>
 
               <div>
                 <label className="block text-slate-700 font-medium mb-1">
-                  {isMl ? 'ലൈസൻസ് നമ്പർ (LSGD / COA):' : 'LSGD / COA License No:'}
+                  {isMl ? 'തയ്യാറാക്കിയത് - പദവി (Prepared by - Designation):' : 'Prepared by (Designation):'}
                 </label>
                 <input
                   type="text"
-                  id="auth-license"
-                  value={data.licenseNumber}
-                  onChange={(e) => onChange({ licenseNumber: e.target.value })}
-                  placeholder="e.g. LSGD/ENG/A/2024/0984"
-                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-mono"
+                  id="auth-prepared-designation"
+                  value={data.preparedByDesignation}
+                  onChange={(e) => onChange({ preparedByDesignation: e.target.value })}
+                  placeholder="e.g. Scrutiny Engineer / Senior Architect"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 />
               </div>
             </div>

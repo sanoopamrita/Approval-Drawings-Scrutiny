@@ -42,8 +42,8 @@ const initialDefaultFormData: AreaStatementData = {
   localBodyName: '',
   projectName: '',
   applicantName: '',
-  architectEngineerName: '',
-  licenseNumber: '',
+  preparedByName: '',
+  preparedByDesignation: '',
   surveyNumber: '',
   wardNumber: '',
   villageName: '',
@@ -394,45 +394,6 @@ export function App() {
 
           {activeTab === 'rulebook' && <RulesExplorer language={language} />}
 
-          {activeTab === 'chatbot' && (
-            <div className="space-y-4">
-              <div className="bg-[#0A1326] border border-cyan-900/50 rounded-2xl p-5 text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-600 via-sky-500 to-blue-600 flex items-center justify-center text-slate-950 font-bold shadow-[0_0_15px_rgba(0,229,255,0.4)]">
-                    <Bot className="w-6 h-6 text-slate-950" />
-                  </div>
-                  <div>
-                    <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2 font-['Outfit',sans-serif]">
-                      {language === 'ml' ? 'വിന്യാസ AI സാങ്കേതിക ഉപദേശകൻ' : 'VINYASA AI Compliance Advisor'}
-                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-mono">
-                        Gemini 2.5 Multi-turn
-                      </span>
-                    </h2>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      {language === 'ml'
-                        ? 'KMBR / KPBR ചട്ട സംശയങ്ങൾ, സെറ്റ്ബാക്ക് കണക്കുകൂട്ടലുകൾ, പ്ലാനിലെ അപാകതകൾ, കെ-സ്മാർട്ട് നടപടിക്രമങ്ങൾ എന്നിവ തത്സമയം ചോദിക്കാം.'
-                        : 'Real-time multi-turn building rules scrutiny, setback verification, defect diagnosis & K-Smart filing support.'}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-cyan-300 bg-cyan-950/80 px-3 py-1.5 rounded-lg border border-cyan-800/60 font-mono font-medium">
-                    {formData.jurisdiction === 'KMBR' ? '🏛️ KMBR 2019' : '🏡 KPBR 2019'}
-                  </span>
-                </div>
-              </div>
-
-              <div className="h-[750px]">
-                <GeminiChatbot
-                  language={language}
-                  jurisdiction={formData.jurisdiction}
-                  projectData={formData}
-                  mode="embedded"
-                />
-              </div>
-            </div>
-          )}
-
           {/* Super Admin Dashboard (Accessible ONLY to super admins) */}
           {activeTab === 'admin' && (
             <AdminPanel
@@ -457,8 +418,8 @@ export function App() {
         </ErrorBoundary>
       )}
 
-      {/* Floating Action Button */}
-      {!floatingChatOpen && activeTab !== 'chatbot' && (
+      {/* Floating Action Button - Always available on all screens */}
+      {!floatingChatOpen && (
         <button
           id="floating-ai-chat-btn"
           onClick={() => {
@@ -474,7 +435,7 @@ export function App() {
             }
           }}
           className="fixed bottom-6 right-6 z-40 bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 px-4 py-3 rounded-full shadow-[0_0_25px_rgba(0,229,255,0.4)] flex items-center gap-2.5 font-bold text-xs sm:text-sm border-2 border-white/20 transition-all transform hover:scale-105 active:scale-95 group cursor-pointer"
-          title="Open VINYASA AI Building Rules Advisor"
+          title={language === 'ml' ? 'വിന്യാസ AI കെട്ടിട നിർമ്മാണ ചട്ട ഉപദേശകൻ' : 'Open VINYASA AI Building Rules Advisor'}
         >
           <div className="relative flex items-center justify-center">
             <Bot className="w-5 h-5 text-slate-950" />

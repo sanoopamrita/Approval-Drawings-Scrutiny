@@ -20,8 +20,8 @@ export const SAMPLE_PROJECT_PRESETS: ProjectPreset[] = [
     data: {
       projectName: 'Green Villa Residential Project',
       applicantName: 'Sanoop Sadanandhan',
-      architectEngineerName: 'Er. Rajesh Kumar, B.Tech (Civil), FIE',
-      licenseNumber: 'LSGD/ENG/A/2024/0984',
+      preparedByName: 'Sanoop Sadanandhan',
+      preparedByDesignation: 'Project Lead / Scrutiny Engineer',
       localBodyName: 'Kizhakkambalam Grama Panchayat',
       wardNumber: 'Ward 08',
       surveyNumber: '142/3-B, Block 12',
@@ -103,8 +103,8 @@ export const SAMPLE_PROJECT_PRESETS: ProjectPreset[] = [
     data: {
       projectName: 'City Center Commercial Mall',
       applicantName: 'M/s Horizon Ventures LLP',
-      architectEngineerName: 'Ar. Ananya Menon, Council of Architecture CA/2018/45120',
-      licenseNumber: 'LSGD/ARCH/A/2023/1102',
+      preparedByName: 'Ar. Ananya Menon',
+      preparedByDesignation: 'Senior Architect',
       localBodyName: 'Kochi Municipal Corporation',
       wardNumber: 'Division 42 (Edappally)',
       surveyNumber: '582/1-A',
@@ -184,8 +184,8 @@ export const SAMPLE_PROJECT_PRESETS: ProjectPreset[] = [
     data: {
       projectName: 'Compact Urban Home',
       applicantName: 'Abdul Rahman & Fathima',
-      architectEngineerName: 'Er. Shaji Varghese, Licensed Supervisor LSGD',
-      licenseNumber: 'LSGD/SUP/B/2022/411',
+      preparedByName: 'Er. Shaji Varghese',
+      preparedByDesignation: 'Civil Engineer',
       localBodyName: 'Aluva Municipality',
       wardNumber: 'Ward 14',
       surveyNumber: '89/4',
