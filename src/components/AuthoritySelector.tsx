@@ -1,12 +1,25 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Building,
   MapPin,
   UserCheck,
-  HelpCircle,
   ArrowRight,
+  Sparkles,
+  CheckCircle2,
+  Edit3,
+  ListFilter,
+  Layers,
+  Search,
 } from 'lucide-react';
-import { AreaStatementData, JurisdictionType, Language, OccupancyGroup, PlotType } from '../types';
+import { AreaStatementData, Language, OccupancyGroup } from '../types';
+import {
+  KERALA_ADMINISTRATIVE_DATA,
+  KERALA_DISTRICT_NAMES,
+  getLocalBodiesForDistrict,
+  getTaluksForDistrict,
+  getVillagesForTaluk,
+  STANDARD_WARD_OPTIONS,
+} from '../data/keralaAdministrativeData';
 
 interface AuthoritySelectorProps {
   data: AreaStatementData;
@@ -14,23 +27,6 @@ interface AuthoritySelectorProps {
   language: Language;
   onNext: () => void;
 }
-
-const KERALA_DISTRICTS = [
-  'Thiruvananthapuram',
-  'Kollam',
-  'Pathanamthitta',
-  'Alappuzha',
-  'Kottayam',
-  'Idukki',
-  'Ernakulam',
-  'Thrissur',
-  'Palakkad',
-  'Malappuram',
-  'Kozhikode',
-  'Wayanad',
-  'Kannur',
-  'Kasaragod',
-];
 
 const OCCUPANCIES: {
   group: OccupancyGroup;
@@ -126,25 +122,81 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
 }) => {
   const isMl = language === 'ml';
 
+  // Fallback / manual input mode toggles for fields
+  const [customLocalBodyMode, setCustomLocalBodyMode] = useState(false);
+  const [customTalukMode, setCustomTalukMode] = useState(false);
+  const [customVillageMode, setCustomVillageMode] = useState(false);
+  const [customWardMode, setCustomWardMode] = useState(false);
+
+  // Computed options based on selected district and jurisdiction
+  const currentDistrict = data.district || 'Ernakulam';
+  const localBodies = getLocalBodiesForDistrict(currentDistrict, data.jurisdiction);
+  const taluks = getTaluksForDistrict(currentDistrict);
+  const villages = getVillagesForTaluk(currentDistrict, data.talukName);
+
+  // Initialize or align local body / taluk / village on district or jurisdiction change
+  const handleDistrictChange = (newDistrict: string) => {
+    const newLocalBodies = getLocalBodiesForDistrict(newDistrict, data.jurisdiction);
+    const newTaluks = getTaluksForDistrict(newDistrict);
+    const firstLocalBody = newLocalBodies.length > 0 ? (isMl ? newLocalBodies[0].nameMl : newLocalBodies[0].nameEn) : '';
+    const firstTaluk = newTaluks.length > 0 ? (isMl ? newTaluks[0].nameMl : newTaluks[0].nameEn) : '';
+    const newVillages = getVillagesForTaluk(newDistrict, firstTaluk);
+    const firstVillage = newVillages.length > 0 ? (isMl ? newVillages[0].nameMl : newVillages[0].nameEn) : '';
+
+    onChange({
+      district: newDistrict,
+      localBodyName: firstLocalBody,
+      talukName: firstTaluk,
+      villageName: firstVillage,
+      wardNumber: data.wardNumber || 'Ward 01',
+    });
+    setCustomLocalBodyMode(false);
+    setCustomTalukMode(false);
+    setCustomVillageMode(false);
+  };
+
+  const handleJurisdictionChange = (newJurisdiction: 'KMBR' | 'KPBR') => {
+    const newLocalBodies = getLocalBodiesForDistrict(currentDistrict, newJurisdiction);
+    const firstLocalBody = newLocalBodies.length > 0 ? (isMl ? newLocalBodies[0].nameMl : newLocalBodies[0].nameEn) : '';
+    onChange({
+      jurisdiction: newJurisdiction,
+      localBodyName: firstLocalBody,
+    });
+    setCustomLocalBodyMode(false);
+  };
+
+  const handleTalukChange = (newTaluk: string) => {
+    const newVillages = getVillagesForTaluk(currentDistrict, newTaluk);
+    const firstVillage = newVillages.length > 0 ? (isMl ? newVillages[0].nameMl : newVillages[0].nameEn) : '';
+    onChange({
+      talukName: newTaluk,
+      villageName: firstVillage,
+    });
+    setCustomVillageMode(false);
+  };
+
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Introduction Card */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border border-slate-700/80 rounded-2xl p-5 text-white shadow-md">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs px-2.5 py-0.5 rounded-full font-mono">
-                {data.jurisdiction === 'KMBR' ? 'Kerala Municipality Building Rules (KMBR 2019)' : 'Kerala Panchayat Building Rules (KPBR 2019)'}
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs px-2.5 py-0.5 rounded-full font-mono font-medium">
+                {data.jurisdiction === 'KMBR' ? 'KMBR 2019 (നഗരസഭ / കോർപ്പറേഷൻ)' : 'KPBR 2019 (ഗ്രാമപഞ്ചായത്ത്)'}
               </span>
-              <span className="text-xs text-slate-400">Govt. of Kerala LSGD</span>
+              <span className="text-xs bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-2 py-0.5 rounded-full flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3 text-cyan-400" />
+                {isMl ? 'തദ്ദേശ സ്ഥാപന മാസ്റ്റർ ഡാറ്റ സിങ്ക് ചെയ്തു' : 'LSGD Master Data Synced'}
+              </span>
             </div>
             <h2 className="text-xl font-bold tracking-tight">
               {isMl ? 'പ്രോജക്റ്റ് വിവരങ്ങളും അധികാര പരിധിയും' : 'Project Identification & Statutory Authority'}
             </h2>
             <p className="text-xs sm:text-sm text-slate-300 mt-1">
               {isMl
-                ? 'തദ്ദേശ സ്വയംഭരണ സ്ഥാപനത്തിന്റെ പരിധി, സർവേ നമ്പർ, ഓക്കുപ്പൻസി ഗ്രൂപ്പ് എന്നിവ തെരഞ്ഞെടുക്കുക.'
-                : 'Select the LSGD jurisdiction, survey particulars, occupancy classification, and plot category.'}
+                ? 'ജില്ല, തദ്ദേശ സ്വയംഭരണ സ്ഥാപനം, താലൂക്ക്, വില്ലേജ്, വാർഡ് എന്നിവ സെലക്ട് ചെയ്യുക.'
+                : 'Select the District, Local Body, Taluk, Revenue Village, Ward, and Project details.'}
             </p>
           </div>
 
@@ -153,7 +205,7 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
               {isMl ? 'നിലവിലെ ചട്ട ബാധ്യത:' : 'Applicable Ruleset:'}
             </span>
             <span className="text-emerald-400 font-bold text-sm">
-              {data.jurisdiction === 'KMBR' ? 'KMBR 2019 (നഗരസഭ)' : 'KPBR 2019 (പഞ്ചായത്ത്)'}
+              {data.jurisdiction === 'KMBR' ? 'KMBR 2019 (മുനിസിപ്പാലിറ്റി/കോർപ്പറേഷൻ)' : 'KPBR 2019 (പഞ്ചായത്ത്)'}
             </span>
             <span className="text-slate-400 text-[11px]">
               {data.jurisdiction === 'KMBR' ? 'Corporations & Municipalities' : 'Grama Panchayats in Kerala'}
@@ -164,13 +216,18 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
 
       {/* Grid: Authority & Project Details */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Card 1: Jurisdiction & Local Body */}
+        {/* Card 1: Jurisdiction & Local Body & Revenue Particulars */}
         <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
-          <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-            <Building className="w-5 h-5 text-emerald-600" />
-            <h3 className="font-bold text-slate-900 text-sm sm:text-base">
-              {isMl ? '1. തദ്ദേശ സ്വയംഭരണ സ്ഥാപനം & പരിധി' : '1. Local Self Government Jurisdiction'}
-            </h3>
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <Building className="w-5 h-5 text-emerald-600" />
+              <h3 className="font-bold text-slate-900 text-sm sm:text-base">
+                {isMl ? '1. തദ്ദേശ സ്വയംഭരണ സ്ഥാപനം & പരിധി' : '1. Local Self Government Jurisdiction'}
+              </h3>
+            </div>
+            <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+              {isMl ? 'ഓട്ടോ-സെലക്ഷൻ ലഭ്യമാണ്' : 'Auto-Select Enabled'}
+            </span>
           </div>
 
           <div className="space-y-4 text-xs sm:text-sm">
@@ -183,16 +240,20 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
                 <button
                   type="button"
                   id="auth-select-kmbr"
-                  onClick={() => onChange({ jurisdiction: 'KMBR' })}
+                  onClick={() => handleJurisdictionChange('KMBR')}
                   className={`p-3 rounded-xl border text-left transition-all ${
                     data.jurisdiction === 'KMBR'
-                      ? 'border-emerald-600 bg-emerald-50/60 ring-2 ring-emerald-500/20 text-slate-900'
+                      ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-500/20 text-slate-900'
                       : 'border-slate-200 hover:border-slate-300 text-slate-600'
                   }`}
                 >
                   <div className="font-bold text-emerald-800 flex items-center justify-between">
                     <span>KMBR 2019</span>
-                    {data.jurisdiction === 'KMBR' && <span className="text-xs bg-emerald-600 text-white px-1.5 py-0.5 rounded">Active</span>}
+                    {data.jurisdiction === 'KMBR' && (
+                      <span className="text-xs bg-emerald-600 text-white px-1.5 py-0.5 rounded font-mono">
+                        Active
+                      </span>
+                    )}
                   </div>
                   <div className="text-[11px] text-slate-500 mt-1">
                     {isMl ? 'മുനിസിപ്പൽ കോർപ്പറേഷൻ & മുനിസിപ്പാലിറ്റി' : 'Municipal Corporations & Municipalities'}
@@ -202,16 +263,20 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
                 <button
                   type="button"
                   id="auth-select-kpbr"
-                  onClick={() => onChange({ jurisdiction: 'KPBR' })}
+                  onClick={() => handleJurisdictionChange('KPBR')}
                   className={`p-3 rounded-xl border text-left transition-all ${
                     data.jurisdiction === 'KPBR'
-                      ? 'border-emerald-600 bg-emerald-50/60 ring-2 ring-emerald-500/20 text-slate-900'
+                      ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-500/20 text-slate-900'
                       : 'border-slate-200 hover:border-slate-300 text-slate-600'
                   }`}
                 >
                   <div className="font-bold text-emerald-800 flex items-center justify-between">
                     <span>KPBR 2019</span>
-                    {data.jurisdiction === 'KPBR' && <span className="text-xs bg-emerald-600 text-white px-1.5 py-0.5 rounded">Active</span>}
+                    {data.jurisdiction === 'KPBR' && (
+                      <span className="text-xs bg-emerald-600 text-white px-1.5 py-0.5 rounded font-mono">
+                        Active
+                      </span>
+                    )}
                   </div>
                   <div className="text-[11px] text-slate-500 mt-1">
                     {isMl ? 'ഗ്രാമപഞ്ചായത്തുകൾ' : 'Grama Panchayats in Kerala'}
@@ -222,98 +287,252 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
 
             {/* District & Local Body Name */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* District Dropdown */}
               <div>
-                <label className="block text-slate-700 font-medium mb-1">
-                  {isMl ? 'ജില്ല (District):' : 'District:'}
+                <label className="block text-slate-700 font-medium mb-1 flex items-center justify-between">
+                  <span>{isMl ? 'ജില്ല (District):' : 'District:'}</span>
+                  <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.2 rounded">14 Districts</span>
                 </label>
                 <select
                   id="auth-district"
-                  value={data.district}
-                  onChange={(e) => onChange({ district: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  value={currentDistrict}
+                  onChange={(e) => handleDistrictChange(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium"
                 >
-                  {KERALA_DISTRICTS.map((d) => (
-                    <option key={d} value={d}>
-                      {d}
+                  {KERALA_ADMINISTRATIVE_DATA.map((d) => (
+                    <option key={d.district} value={d.district}>
+                      {isMl ? `${d.districtMl} (${d.district})` : d.district}
                     </option>
                   ))}
                 </select>
               </div>
 
+              {/* Local Body Name Dropdown with Custom Entry Fallback */}
               <div>
-                <label className="block text-slate-700 font-medium mb-1">
-                  {isMl ? 'തദ്ദേശ സ്ഥാപനത്തിന്റെ പേര്:' : 'Local Body Name:'}
-                </label>
-                <input
-                  type="text"
-                  id="auth-localbody"
-                  value={data.localBodyName}
-                  onChange={(e) => onChange({ localBodyName: e.target.value })}
-                  placeholder={data.jurisdiction === 'KMBR' ? 'e.g. Kochi Corporation' : 'e.g. Kizhakkambalam Grama Panchayat'}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-slate-700 font-medium">
+                    {isMl ? 'തദ്ദേശ സ്ഥാപനം (Local Body):' : 'Local Body Name:'}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setCustomLocalBodyMode(!customLocalBodyMode)}
+                    className="text-[11px] text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1"
+                  >
+                    {customLocalBodyMode ? (
+                      <span>📋 {isMl ? 'ലിസ്റ്റിൽ നിന്ന് സെലക്ട് ചെയ്യുക' : 'Select from List'}</span>
+                    ) : (
+                      <span>✏️ {isMl ? 'മറ്റ് പേര് ടൈപ്പ് ചെയ്യുക' : 'Custom Input'}</span>
+                    )}
+                  </button>
+                </div>
+
+                {customLocalBodyMode ? (
+                  <input
+                    type="text"
+                    id="auth-localbody-custom"
+                    value={data.localBodyName}
+                    onChange={(e) => onChange({ localBodyName: e.target.value })}
+                    placeholder={
+                      data.jurisdiction === 'KMBR'
+                        ? isMl ? 'ഉദാ: കൊച്ചി കോർപ്പറേഷൻ' : 'e.g. Kochi Corporation'
+                        : isMl ? 'ഉദാ: കിഴക്കമ്പലം ഗ്രാമപഞ്ചായത്ത്' : 'e.g. Kizhakkambalam Grama Panchayat'
+                    }
+                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  />
+                ) : (
+                  <select
+                    id="auth-localbody"
+                    value={data.localBodyName}
+                    onChange={(e) => {
+                      if (e.target.value === '__custom__') {
+                        setCustomLocalBodyMode(true);
+                      } else {
+                        onChange({ localBodyName: e.target.value });
+                      }
+                    }}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium"
+                  >
+                    {localBodies.map((lb) => {
+                      const label = isMl ? lb.nameMl : lb.nameEn;
+                      return (
+                        <option key={lb.nameEn} value={label}>
+                          {label}
+                        </option>
+                      );
+                    })}
+                    <option value="__custom__">+ {isMl ? 'മറ്റ് തദ്ദേശ സ്ഥാപനത്തിന്റെ പേര് നൽകുക...' : 'Add Custom Local Body...'}</option>
+                  </select>
+                )}
               </div>
             </div>
 
-            {/* Ward & Taluk & Village */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Taluk & Revenue Village Dropdowns */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Taluk Dropdown */}
               <div>
-                <label className="block text-slate-700 font-medium mb-1">
-                  {isMl ? 'വാർഡ് (Ward):' : 'Ward / Division:'}
-                </label>
-                <input
-                  type="text"
-                  id="auth-ward"
-                  value={data.wardNumber}
-                  onChange={(e) => onChange({ wardNumber: e.target.value })}
-                  placeholder="e.g. Ward 08"
-                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-slate-700 font-medium">
+                    {isMl ? 'താലൂക്ക് (Taluk):' : 'Taluk:'}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setCustomTalukMode(!customTalukMode)}
+                    className="text-[11px] text-emerald-600 hover:text-emerald-700 hover:underline"
+                  >
+                    {customTalukMode ? (isMl ? 'ലിസ്റ്റ്' : 'List') : (isMl ? 'ടൈപ്പ് ചെയ്യുക' : 'Custom')}
+                  </button>
+                </div>
+
+                {customTalukMode ? (
+                  <input
+                    type="text"
+                    id="auth-taluk-custom"
+                    value={data.talukName}
+                    onChange={(e) => onChange({ talukName: e.target.value })}
+                    placeholder="e.g. Kunnathunad"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  />
+                ) : (
+                  <select
+                    id="auth-taluk"
+                    value={data.talukName}
+                    onChange={(e) => {
+                      if (e.target.value === '__custom__') {
+                        setCustomTalukMode(true);
+                      } else {
+                        handleTalukChange(e.target.value);
+                      }
+                    }}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  >
+                    {taluks.map((t) => {
+                      const val = isMl ? t.nameMl : t.nameEn;
+                      return (
+                        <option key={t.nameEn} value={val}>
+                          {isMl ? `${t.nameMl} (${t.nameEn})` : t.nameEn}
+                        </option>
+                      );
+                    })}
+                    <option value="__custom__">+ {isMl ? 'മറ്റ് താലൂക്ക് നൽകുക...' : 'Add Custom Taluk...'}</option>
+                  </select>
+                )}
               </div>
 
+              {/* Revenue Village Dropdown */}
               <div>
-                <label className="block text-slate-700 font-medium mb-1">
-                  {isMl ? 'വില്ലേജ് (Village):' : 'Revenue Village:'}
-                </label>
-                <input
-                  type="text"
-                  id="auth-village"
-                  value={data.villageName}
-                  onChange={(e) => onChange({ villageName: e.target.value })}
-                  placeholder="e.g. Kizhakkambalam"
-                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                />
-              </div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-slate-700 font-medium">
+                    {isMl ? 'വില്ലേജ് (Revenue Village):' : 'Revenue Village:'}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setCustomVillageMode(!customVillageMode)}
+                    className="text-[11px] text-emerald-600 hover:text-emerald-700 hover:underline"
+                  >
+                    {customVillageMode ? (isMl ? 'ലിസ്റ്റ്' : 'List') : (isMl ? 'ടൈപ്പ് ചെയ്യുക' : 'Custom')}
+                  </button>
+                </div>
 
-              <div>
-                <label className="block text-slate-700 font-medium mb-1">
-                  {isMl ? 'താലൂക്ക് (Taluk):' : 'Taluk:'}
-                </label>
-                <input
-                  type="text"
-                  id="auth-taluk"
-                  value={data.talukName}
-                  onChange={(e) => onChange({ talukName: e.target.value })}
-                  placeholder="e.g. Kunnathunad"
-                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                />
+                {customVillageMode ? (
+                  <input
+                    type="text"
+                    id="auth-village-custom"
+                    value={data.villageName}
+                    onChange={(e) => onChange({ villageName: e.target.value })}
+                    placeholder="e.g. Kizhakkambalam"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  />
+                ) : (
+                  <select
+                    id="auth-village"
+                    value={data.villageName}
+                    onChange={(e) => {
+                      if (e.target.value === '__custom__') {
+                        setCustomVillageMode(true);
+                      } else {
+                        onChange({ villageName: e.target.value });
+                      }
+                    }}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  >
+                    {villages.map((v) => {
+                      const val = isMl ? v.nameMl : v.nameEn;
+                      return (
+                        <option key={v.nameEn} value={val}>
+                          {isMl ? `${v.nameMl} (${v.nameEn})` : v.nameEn}
+                        </option>
+                      );
+                    })}
+                    <option value="__custom__">+ {isMl ? 'മറ്റ് വില്ലേജ് നൽകുക...' : 'Add Custom Village...'}</option>
+                  </select>
+                )}
               </div>
             </div>
 
-            {/* Survey Number */}
-            <div>
-              <label className="block text-slate-700 font-medium mb-1 flex items-center justify-between">
-                <span>{isMl ? 'റീ-സർവേ നമ്പർ & ബ്ലോക്ക്:' : 'Re-Survey Number & Block:'}</span>
-                <span className="text-[11px] text-slate-500 font-normal">Matching Revenue Sketch</span>
-              </label>
-              <input
-                type="text"
-                id="auth-surveyno"
-                value={data.surveyNumber}
-                onChange={(e) => onChange({ surveyNumber: e.target.value })}
-                placeholder="e.g. 142/3-B, Block 12"
-                className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-mono"
-              />
+            {/* Ward & Survey Number */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Ward / Division Dropdown */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-slate-700 font-medium">
+                    {isMl ? 'വാർഡ് / ഡിവിഷൻ (Ward):' : 'Ward / Division:'}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setCustomWardMode(!customWardMode)}
+                    className="text-[11px] text-emerald-600 hover:text-emerald-700 hover:underline"
+                  >
+                    {customWardMode ? (isMl ? 'ലിസ്റ്റ്' : 'List') : (isMl ? 'ടൈപ്പ് ചെയ്യുക' : 'Custom')}
+                  </button>
+                </div>
+
+                {customWardMode ? (
+                  <input
+                    type="text"
+                    id="auth-ward-custom"
+                    value={data.wardNumber}
+                    onChange={(e) => onChange({ wardNumber: e.target.value })}
+                    placeholder="e.g. Ward 08 (Kallumala)"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  />
+                ) : (
+                  <select
+                    id="auth-ward"
+                    value={data.wardNumber}
+                    onChange={(e) => {
+                      if (e.target.value === '__custom__') {
+                        setCustomWardMode(true);
+                      } else {
+                        onChange({ wardNumber: e.target.value });
+                      }
+                    }}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  >
+                    {STANDARD_WARD_OPTIONS.map((w) => (
+                      <option key={w.value} value={isMl ? w.labelMl : w.labelEn}>
+                        {isMl ? w.labelMl : w.labelEn}
+                      </option>
+                    ))}
+                    <option value="__custom__">+ {isMl ? 'മറ്റ് വാർഡ് നൽകുക...' : 'Add Custom Ward...'}</option>
+                  </select>
+                )}
+              </div>
+
+              {/* Survey Number */}
+              <div>
+                <label className="block text-slate-700 font-medium mb-1 flex items-center justify-between">
+                  <span>{isMl ? 'റീ-സർവേ നമ്പർ & ബ്ലോക്ക്:' : 'Re-Survey No & Block:'}</span>
+                  <span className="text-[10px] text-slate-500 font-normal font-mono">e.g. 142/3-B, Blk 12</span>
+                </label>
+                <input
+                  type="text"
+                  id="auth-surveyno"
+                  value={data.surveyNumber}
+                  onChange={(e) => onChange({ surveyNumber: e.target.value })}
+                  placeholder="e.g. 142/3-B, Block 12"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-mono"
+                />
+              </div>
             </div>
           </div>
         </div>
