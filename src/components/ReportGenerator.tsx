@@ -1,33 +1,31 @@
 import React, { useRef, useState } from 'react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import {
+  FileText,
   Download,
   Printer,
-  FileCheck2,
-  Building2,
   CheckCircle2,
-  XCircle,
   AlertTriangle,
-  QrCode,
-  Globe,
-  Share2,
+  XCircle,
   ShieldCheck,
+  Building,
+  Calendar,
+  Layers,
+  MapPin,
+  Sparkles,
+  Info,
   Check,
+  FileCheck2,
 } from 'lucide-react';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
-import {
-  AreaStatementData,
-  Language,
-  ScrutinyCheckResult,
-  ScrutinyReportSummary,
-  UploadedDrawing,
-} from '../types';
+import { BuildingFormData, Language, ScrutinyCheckResult, ScrutinyReportSummary, UploadedDrawing } from '../types';
+import { VinyasaLogo } from './VinyasaLogo';
 
 interface ReportGeneratorProps {
-  data: AreaStatementData;
+  data: BuildingFormData;
   summary: ScrutinyReportSummary;
   checks: ScrutinyCheckResult[];
-  drawings: UploadedDrawing[];
+  drawings?: UploadedDrawing[];
   language: Language;
 }
 
@@ -35,16 +33,17 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
   data,
   summary,
   checks,
-  drawings,
-  language: initialLanguage,
+  language,
 }) => {
-  const [reportLang, setReportLang] = useState<Language>(initialLanguage);
-  const [isExporting, setIsExporting] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
+  const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [reportLang, setReportLang] = useState<Language>(language);
+
   const isMl = reportLang === 'ml';
 
   const handleDownloadPdf = async () => {
     if (!reportRef.current) return;
+
     try {
       setIsExporting(true);
       const element = reportRef.current;
@@ -74,7 +73,8 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
         heightLeft -= pageHeight;
       }
 
-      const fileName = `K-BuildScrutiny_${data.jurisdiction}_${data.projectName.replace(/\s+/g, '_')}_${summary.scrutinyReferenceId}.pdf`;
+      const cleanProjectName = data.projectName ? data.projectName.replace(/\s+/g, '_') : 'Project';
+      const fileName = `VINYASA_${data.jurisdiction}_${cleanProjectName}_Report.pdf`;
       pdf.save(fileName);
     } catch (err) {
       console.error('Error generating PDF:', err);
@@ -91,28 +91,33 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
   const warningItems = checks.filter((c) => c.status === 'warning');
 
   return (
-    <div className="space-y-6 animate-fadeIn">
-      {/* Control Bar */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h2 className="text-base sm:text-lg font-bold text-slate-900">
-            {isMl ? 'ഔദ്യോഗിക പ്ലാൻ പരിശോധനാ റിപ്പോർട്ട് & സർട്ടിഫിക്കറ്റ്' : 'Official Plan Scrutiny Certificate & Technical Report'}
-          </h2>
-          <p className="text-xs text-slate-500">
-            {isMl
-              ? 'തദ്ദേശ സ്ഥാപനങ്ങളിലെ കെ-സ്മാർട്ട് / ടൗൺ പ്ലാനിംഗ് അപേക്ഷകൾക്കായുള്ള റിപ്പോർട്ട്'
-              : 'Formal inspection sheet formatted for Kerala LSGD, K-Smart & Municipal Town Planning submission.'}
-          </p>
+    <div className="space-y-6 animate-fadeIn font-sans">
+      {/* Top Action & Control Bar */}
+      <div className="bg-[#0A1326] border border-cyan-900/40 rounded-2xl p-4 sm:p-5 shadow-lg flex flex-wrap items-center justify-between gap-4 text-white">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-cyan-950 border border-cyan-700/50 flex items-center justify-center text-cyan-400">
+            <FileText className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-base sm:text-lg font-bold text-white font-['Outfit',sans-serif]">
+              {isMl ? 'വിന്യാസ സാങ്കേതിക പരിശോധനാ റിപ്പോർട്ട്' : 'VINYASA Technical Compliance Scrutiny Report'}
+            </h2>
+            <p className="text-xs text-slate-400">
+              {isMl
+                ? 'കേരള കെട്ടിട നിർമ്മാണ ചട്ടങ്ങൾ (KMBR/KPBR 2019) അപഗ്രഥിച്ചുകൊണ്ടുള്ള ഔദ്യോഗിക പരിശോധനാ റിപ്പോർട്ട്.'
+                : 'Technical scrutiny report formatted under Kerala LSGD KMBR / KPBR 2019 building rules.'}
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center flex-wrap gap-2.5">
           {/* Language Toggle */}
-          <div className="bg-slate-100 p-0.5 rounded-lg flex text-xs font-semibold">
+          <div className="bg-slate-900 p-0.5 rounded-lg border border-slate-800 flex text-xs font-semibold">
             <button
               type="button"
               onClick={() => setReportLang('en')}
               className={`px-3 py-1.5 rounded-md transition-all ${
-                reportLang === 'en' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500'
+                reportLang === 'en' ? 'bg-cyan-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
               }`}
             >
               English
@@ -121,7 +126,7 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
               type="button"
               onClick={() => setReportLang('ml')}
               className={`px-3 py-1.5 rounded-md transition-all ${
-                reportLang === 'ml' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500'
+                reportLang === 'ml' ? 'bg-cyan-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
               }`}
             >
               മലയാളം
@@ -132,9 +137,9 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
             type="button"
             id="print-report-btn"
             onClick={handlePrint}
-            className="flex items-center gap-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-xl transition-colors"
+            className="flex items-center gap-1.5 text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 px-3.5 py-2 rounded-xl transition-colors cursor-pointer"
           >
-            <Printer className="w-4 h-4" />
+            <Printer className="w-4 h-4 text-slate-400" />
             <span>{isMl ? 'പ്രിന്റ്' : 'Print'}</span>
           </button>
 
@@ -143,40 +148,39 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
             id="download-pdf-btn"
             onClick={handleDownloadPdf}
             disabled={isExporting}
-            className="flex items-center gap-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl shadow-sm transition-all transform active:scale-95 disabled:opacity-50"
+            className="flex items-center gap-1.5 text-xs font-bold bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 px-4 py-2 rounded-xl shadow-[0_0_15px_rgba(0,229,255,0.35)] transition-all transform active:scale-95 disabled:opacity-50 cursor-pointer"
           >
-            <Download className="w-4 h-4" />
+            <Download className="w-4 h-4 text-slate-950" />
             <span>
               {isExporting
                 ? (isMl ? 'പി.ഡി.എഫ് തയ്യാറാക്കുന്നു...' : 'Generating PDF...')
-                : (isMl ? 'PDF ഡൗൺലോഡ് ചെയ്യുക' : 'Download PDF Certificate')}
+                : (isMl ? 'റിപ്പോർട്ട് PDF ഡൗൺലോഡ്' : 'Download PDF Report')}
             </span>
           </button>
         </div>
       </div>
 
-      {/* Official Printable Report Sheet (A4 Structured View) */}
+      {/* Official Printable Report Sheet (A4 View) */}
       <div
         ref={reportRef}
         id="printable-scrutiny-report"
         className="bg-white border border-slate-300 rounded-2xl p-6 sm:p-10 shadow-lg text-slate-900 space-y-6 max-w-4xl mx-auto font-sans"
       >
-        {/* Government Header */}
-        <div className="border-b-2 border-slate-900 pb-5 text-center space-y-1.5">
-          <div className="flex items-center justify-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black text-xl">
-              KL
-            </div>
-            <div>
-              <div className="text-xs uppercase tracking-widest text-slate-500 font-bold">
-                Government of Kerala · Local Self Government Department (LSGD)
+        {/* Header with Vinyasa Logo & Rules reference */}
+        <div className="border-b-2 border-slate-900 pb-5 space-y-3">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <VinyasaLogo variant="full" size="md" theme="light" showDomain={true} />
+
+            <div className="text-center sm:text-right">
+              <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">
+                LSGD Statutory Rule Scrutiny
               </div>
-              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-950 uppercase">
+              <h1 className="text-lg sm:text-xl font-black tracking-tight text-slate-950 uppercase">
                 {isMl
-                  ? 'കെട്ടിട നിർമ്മാണ പ്ലാൻ ചട്ട പരിശോധനാ സർട്ടിഫിക്കറ്റ്'
-                  : 'BUILDING PLAN TECHNICAL SCRUTINY REPORT'}
+                  ? 'സാങ്കേതിക പരിശോധനാ റിപ്പോർട്ട്'
+                  : 'TECHNICAL COMPLIANCE SCRUTINY REPORT'}
               </h1>
-              <div className="text-xs font-semibold text-emerald-800">
+              <div className="text-xs font-bold text-cyan-800">
                 {data.jurisdiction === 'KMBR'
                   ? 'Under Kerala Municipality Building Rules, 2019 (KMBR)'
                   : 'Under Kerala Panchayat Building Rules, 2019 (KPBR)'}
@@ -184,10 +188,10 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-xs text-slate-600 pt-3 border-t border-slate-200 mt-3 font-mono">
-            <span>Reference No: <strong>{summary.scrutinyReferenceId}</strong></span>
-            <span>Local Body: <strong>{data.localBodyName || 'LSGD Authority'}</strong></span>
-            <span>Date: <strong>{new Date(summary.scrutinyTimestamp).toLocaleDateString('en-GB')}</strong></span>
+          <div className="flex flex-wrap items-center justify-between text-xs text-slate-600 pt-3 border-t border-slate-200 font-mono gap-2">
+            <span>Reference ID: <strong className="text-slate-900">{summary.scrutinyReferenceId}</strong></span>
+            <span>Local Body: <strong className="text-slate-900">{data.localBodyName || 'LSGD Authority'}</strong></span>
+            <span>Date: <strong className="text-slate-900">{new Date(summary.scrutinyTimestamp).toLocaleDateString('en-GB')}</strong></span>
           </div>
         </div>
 
@@ -211,18 +215,18 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
             )}
             <div>
               <div className="font-bold text-sm sm:text-base">
-                {isMl ? 'പരിശോധനാ ഫലം:' : 'Scrutiny Endorsement Status:'}{' '}
+                {isMl ? 'പരിശോധനാ ഫലം:' : 'Scrutiny Status:'}{' '}
                 {summary.overallStatus === 'APPROVED'
                   ? (isMl ? 'അംഗീകൃത യോഗ്യം (APPROVED)' : 'COMPLIANT & APPROVED')
                   : summary.overallStatus === 'CONDITIONAL_APPROVAL'
                   ? (isMl ? 'വ്യവസ്ഥകൾക്ക് വിധേയം (CONDITIONAL APPROVAL)' : 'CONDITIONAL APPROVAL (FEES APPLICABLE)')
-                  : (isMl ? 'ചട്ടലംഘനം കണ്ടെത്തി / തിരുത്തണം (DEFECTIVE)' : 'DEFECTIVE - REVISIONS REQUIRED')}
+                  : (isMl ? 'ചട്ടലംഘനം കണ്ടെത്തി / തിരുത്തണം (DEFECTS FOUND)' : 'DEFECTIVE - REVISIONS REQUIRED')}
               </div>
               <div className="text-xs mt-0.5">
                 {summary.failedCount === 0
                   ? (isMl ? 'പ്ലാൻ എല്ലാ ചട്ടങ്ങളും പാലിക്കുന്നു.' : 'All mandatory setbacks, coverage and sanitary clearances meet statutory guidelines.')
                   : (isMl
-                      ? `${summary.failedCount} ചട്ടലംഘനങ്ങൾ കണ്ടെത്തി. പ്ലാൻ തിരുത്തി വീണ്ടും സമർപ്പിക്കുക.`
+                      ? `${summary.failedCount} ചട്ടലംഘനങ്ങൾ കണ്ടെത്തി. പ്ലാൻ തിരുത്തി വീണ്ടും പരിശോധിക്കുക.`
                       : `${summary.failedCount} rule violations found. Revisions must be made by the licensed architect/engineer.`)}
               </div>
             </div>
@@ -234,26 +238,26 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
           </div>
         </div>
 
-        {/* Section 1: Project & Site Data Table */}
+        {/* Section 1: Project & Site Data */}
         <div className="space-y-2">
           <h3 className="font-bold text-xs uppercase tracking-wider text-slate-700 pb-1 border-b border-slate-200">
             {isMl ? '1. പ്രോജക്റ്റും പ്ലോട്ട് വിവരങ്ങളും' : '1. Project & Site Particulars'}
           </h3>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-            <div className="p-2 bg-slate-50 rounded-lg border border-slate-200">
+            <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
               <span className="text-slate-500 block text-[10px]">Project Name:</span>
-              <span className="font-bold text-slate-900 truncate block">{data.projectName}</span>
+              <span className="font-bold text-slate-900 truncate block">{data.projectName || 'Proposed Building'}</span>
             </div>
-            <div className="p-2 bg-slate-50 rounded-lg border border-slate-200">
+            <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
               <span className="text-slate-500 block text-[10px]">Applicant:</span>
-              <span className="font-semibold text-slate-900 truncate block">{data.applicantName}</span>
+              <span className="font-semibold text-slate-900 truncate block">{data.applicantName || 'Applicant'}</span>
             </div>
-            <div className="p-2 bg-slate-50 rounded-lg border border-slate-200">
+            <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
               <span className="text-slate-500 block text-[10px]">Survey No & Ward:</span>
-              <span className="font-mono text-slate-900 block">{data.surveyNumber}, {data.wardNumber}</span>
+              <span className="font-mono text-slate-900 block">{data.surveyNumber || '-'}, Ward {data.wardNumber || '-'}</span>
             </div>
-            <div className="p-2 bg-slate-50 rounded-lg border border-slate-200">
+            <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
               <span className="text-slate-500 block text-[10px]">Occupancy:</span>
               <span className="font-bold text-slate-900 block">Group {data.occupancyGroup}</span>
             </div>
@@ -305,7 +309,7 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
               <tr>
                 <td className="p-2 font-medium">Floor Area Ratio (FAR)</td>
                 <td className="p-2 font-mono font-bold">{summary.providedFar.toFixed(3)} ({data.totalFloorAreaSqM.toFixed(2)} m²)</td>
-                <td className="p-2 text-slate-500">Base: {summary.permissibleFarWithoutFee} | Max with Fee: {summary.maxPermissibleFarWithFee}</td>
+                <td className="p-2 text-slate-500">Base: {summary.permissibleFarWithoutFee} | Max: {summary.maxPermissibleFarWithFee}</td>
                 <td className="p-2 font-semibold">
                   {summary.providedFar <= summary.permissibleFarWithoutFee ? (
                     <span className="text-emerald-700">Within Base FAR ✓</span>
@@ -319,13 +323,13 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
               <tr>
                 <td className="p-2 font-medium">Building Height & Floors</td>
                 <td className="p-2 font-mono font-bold">{data.buildingHeightM.toFixed(2)} m ({data.numberOfFloors} Floors)</td>
-                <td className="p-2 text-slate-500">1.5 × (Road + Setback)</td>
+                <td className="p-2 text-slate-500">Permissible: 1.5 × (Road + Setback)</td>
                 <td className="p-2 text-emerald-700 font-semibold">Verified ✓</td>
               </tr>
               <tr>
                 <td className="p-2 font-medium">Car Parking Slots</td>
                 <td className="p-2 font-mono font-bold">{data.carParkingProvided} Slot(s)</td>
-                <td className="p-2 text-slate-500">Required: {summary.requiredCarParking} Slot(s) (2.5x5.0m)</td>
+                <td className="p-2 text-slate-500">Required: {summary.requiredCarParking} Slot(s)</td>
                 <td className="p-2 font-semibold">
                   {data.carParkingProvided >= summary.requiredCarParking ? (
                     <span className="text-emerald-700">Pass ✓</span>
@@ -388,7 +392,7 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
           <div className="space-y-2">
             <h3 className="font-bold text-xs uppercase tracking-wider text-rose-700 pb-1 border-b border-rose-200 flex items-center gap-1.5">
               <AlertTriangle className="w-4 h-4" />
-              <span>{isMl ? '4. കണ്ടെത്തിയ പിഴവുകളും പരിഹാര നിർദ്ദേശങ്ങളും (Defect Notice)' : '4. Statutory Non-Compliance & Plan Rectification Order'}</span>
+              <span>{isMl ? '4. കണ്ടെത്തിയ പിഴവുകളും പരിഹാര നിർദ്ദേശങ്ങളും (Defect Notice)' : '4. Statutory Non-Compliance & Plan Rectification Schedule'}</span>
             </h3>
 
             <div className="space-y-2">
@@ -416,32 +420,9 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
           </div>
         )}
 
-        {/* Section 5: Engineer's Declaration & Official Stamp */}
-        <div className="pt-6 border-t-2 border-slate-300 grid grid-cols-1 sm:grid-cols-2 gap-6 text-xs">
-          <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
-            <div className="font-bold text-slate-800">Engineer / Architect Declaration:</div>
-            <p className="text-slate-600 text-[11px] leading-relaxed">
-              Certified that the building plans and area statements scrutinized herein have been prepared in
-              strict accordance with the provisions of {data.jurisdiction === 'KMBR' ? 'KMBR 2019' : 'KPBR 2019'} and
-              applicable Government Orders.
-            </p>
-            <div className="pt-2 text-slate-900 font-semibold">
-              <div>{data.architectEngineerName}</div>
-              <div className="font-mono text-[10px] text-slate-500">License: {data.licenseNumber}</div>
-            </div>
-          </div>
-
-          <div className="border-2 border-dashed border-slate-300 rounded-xl p-4 flex flex-col justify-between items-center text-center bg-slate-50/50">
-            <div className="text-[10px] uppercase font-bold text-slate-400">
-              Government / Municipal Seal & Verification QR
-            </div>
-            <div className="w-16 h-16 bg-white border border-slate-300 rounded-lg flex items-center justify-center p-1 shadow-2xs my-1">
-              <QrCode className="w-12 h-12 text-slate-800" />
-            </div>
-            <div className="text-[10px] text-slate-500 font-mono">
-              Ref: {summary.scrutinyReferenceId}
-            </div>
-          </div>
+        {/* Copyright Notice */}
+        <div className="pt-4 border-t border-slate-200 text-center text-[10px] text-slate-400 font-mono">
+          Copyright © 2026 vinyasa.online - All Rights Reserved.
         </div>
       </div>
     </div>

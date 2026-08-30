@@ -1,0 +1,525 @@
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  Bot,
+  Send,
+  Sparkles,
+  Paperclip,
+  Camera,
+  RotateCcw,
+  Volume2,
+  VolumeX,
+  Copy,
+  Check,
+  Building2,
+  X,
+  FileText,
+  AlertCircle,
+  HelpCircle,
+  Download,
+  Info,
+  Maximize2,
+  Minimize2,
+} from 'lucide-react';
+import Markdown from 'react-markdown';
+import { AreaStatementData, JurisdictionType, Language } from '../types';
+import { ChatMessage, sendChatMessage } from '../services/geminiService';
+
+interface GeminiChatbotProps {
+  language: Language;
+  jurisdiction: JurisdictionType;
+  projectData: AreaStatementData | null;
+  mode?: 'embedded' | 'floating';
+  onClose?: () => void;
+}
+
+const QUICK_PROMPTS_ML = [
+  'ചെറിയ പ്ലോട്ട് ഇളവുകൾ (Rule 60/62) പ്രകാരം സെറ്റ്ബാക്ക് എത്ര?',
+  'കുടിവെള്ള കിണറും സെപ്റ്റിക് ടാങ്കും തമ്മിൽ എത്ര അകലം വേണം?',
+  '150 ച.മീ താഴെയുള്ള വീടിന് കാർ പാർക്കിംഗ് നിർബന്ധമാണോ?',
+  'KMBR & KPBR തമ്മിലുള്ള പ്രധാന വ്യത്യാസങ്ങൾ എന്തെല്ലാം?',
+  'മഴവെള്ള സംഭരണിയുടെ കപ്പാസിറ്റി എങ്ങനെ കണക്കാക്കാം?',
+  'റോഡ് വീതിക്കനുസരിച്ച് അനുവദനീയമായ പരമാവധി ഉയരം എത്ര?',
+  'എന്റെ പ്ലാനിലെ അപാകതകൾ എങ്ങനെ പെട്ടെന്ന് തിരുത്താം?',
+];
+
+const QUICK_PROMPTS_EN = [
+  'What are small plot concessions (Rule 60/62) for setbacks & coverage?',
+  'Minimum clearance required between drinking well and septic tank?',
+  'Is car parking required for residential houses below 150 sq.m?',
+  'Key differences between KMBR 2019 and KPBR 2019?',
+  'How to calculate Rainwater Harvesting (RWH) tank capacity?',
+  'Maximum permissible building height based on access road width?',
+  'How can I rectify setback violations on my plan for K-Smart?',
+];
+
+export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
+  language,
+  jurisdiction,
+  projectData,
+  mode = 'embedded',
+  onClose,
+}) => {
+  const isMl = language === 'ml';
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    const welcomeText = isMl
+      ? `നമസ്കാരം! ഞാൻ നിങ്ങളുടെ **കേരള കെട്ടിട നിർമ്മാണ ചട്ട (KMBR 2019 & KPBR 2019) AI എഞ്ചിനീയറിംഗ് അസിസ്റ്റന്റ്** ആണ്.\n\nനിങ്ങളുടെ പ്ലാൻ പരിശോധന, സെറ്റ്ബാക്ക് നിയമങ്ങൾ, കവറേജ് & FAR, കിണർ-സെപ്റ്റിക് ടാങ്ക് അകലം, പാർക്കിംഗ്, ചെറിയ പ്ലോട്ട് ഇളവുകൾ (Rule 60/62), കെ-സ്മാർട്ട് (K-Smart) സംശയങ്ങൾ എന്നിവയിലെല്ലാം എന്നോട് ചോദിക്കാം.\n\nതാഴെയുള്ള ചോദ്യങ്ങളിൽ ക്ലിക്ക് ചെയ്യുകയോ അല്ലെങ്കിൽ നിങ്ങളുടെ പ്ലാൻ ഫോട്ടോ/ചോദ്യം അയക്കുകയോ ചെയ്യാം.`
+      : `Welcome! I am your **Kerala Building Rules (KMBR 2019 & KPBR 2019) AI Senior Engineering Assistant**.\n\nI can help you review blueprint setbacks, FAR and coverage calculations, well clearances, parking requirements, small plot concessions (Rule 60/62), defect rectification, and K-Smart permit submissions.\n\nAsk me anything or upload a drawing photo for instant technical guidance!`;
+
+    return [
+      {
+        id: 'welcome-1',
+        role: 'assistant',
+        content: welcomeText,
+        timestamp: Date.now(),
+      },
+    ];
+  });
+
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [attachedImage, setAttachedImage] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(mode === 'embedded');
+
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-scroll to bottom of chat
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, loading]);
+
+  const handleSendMessage = async (textToSend?: string) => {
+    const messageContent = (textToSend || input).trim();
+    if (!messageContent && !attachedImage) return;
+
+    const userMessage: ChatMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: messageContent,
+      image: attachedImage || undefined,
+      timestamp: Date.now(),
+    };
+
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
+    setInput('');
+    setAttachedImage(null);
+    setLoading(true);
+
+    try {
+      const reply = await sendChatMessage(newMessages, projectData, language);
+
+      const assistantMessage: ChatMessage = {
+        id: `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: reply,
+        timestamp: Date.now(),
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+    } catch (err: any) {
+      const errorMessage: ChatMessage = {
+        id: `err-${Date.now()}`,
+        role: 'assistant',
+        content: isMl
+          ? `⚠️ **ക്ഷമിക്കുക, മറുപടി നൽകുന്നതിൽ തടസ്സം നേരിട്ടു:** ${err?.message || 'സെർവർ ബന്ധപ്പെടാൻ സാധിച്ചില്ല.'}\n\nദയവായി കുറച്ചു കഴിഞ്ഞു വീണ്ടും ശ്രമിക്കുക.`
+          : `⚠️ **Unable to generate response:** ${err?.message || 'Server connection error.'}\n\nPlease try again shortly.`,
+        timestamp: Date.now(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setAttachedImage(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleCopy = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleSpeak = (text: string) => {
+    if (!('speechSynthesis' in window)) return;
+
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const cleanText = text.replace(/[*#_`]/g, '');
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = isMl ? 'ml-IN' : 'en-US';
+    utterance.rate = 1.0;
+
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+
+    setIsSpeaking(true);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const handleResetChat = () => {
+    window.speechSynthesis?.cancel();
+    setIsSpeaking(false);
+    setMessages([
+      {
+        id: `welcome-${Date.now()}`,
+        role: 'assistant',
+        content: isMl
+          ? `സംഭാഷണം പുനരാരംഭിച്ചു. കേരള കെട്ടിട നിർമ്മാണ ചട്ടങ്ങൾ (${jurisdiction}) സംബന്ധിച്ച നിങ്ങളുടെ സംശയങ്ങൾ ചോദിക്കാം.`
+          : `Conversation reset. Feel free to ask any question regarding ${jurisdiction} building rules, setback calculations, or plan scrutiny!`,
+        timestamp: Date.now(),
+      },
+    ]);
+  };
+
+  const handleExportChat = () => {
+    const chatText = messages
+      .map(
+        (m) =>
+          `[${new Date(m.timestamp).toLocaleTimeString()}] ${
+            m.role === 'user' ? 'User' : 'KMBR/KPBR AI Assistant'
+          }:\n${m.content}\n`
+      )
+      .join('\n---\n\n');
+
+    const blob = new Blob([chatText], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `K-BuildScrutiny-AI-Chat-${Date.now()}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const activeQuickPrompts = isMl ? QUICK_PROMPTS_ML : QUICK_PROMPTS_EN;
+
+  return (
+    <div
+      className={`flex flex-col bg-slate-900 border border-slate-800 text-slate-100 rounded-xl overflow-hidden shadow-2xl transition-all ${
+        mode === 'floating'
+          ? isExpanded
+            ? 'fixed inset-4 z-50 md:inset-x-auto md:right-6 md:bottom-6 md:top-16 md:w-[650px] md:h-[80vh]'
+            : 'fixed bottom-4 right-4 z-50 w-[92vw] sm:w-[460px] h-[580px]'
+          : 'w-full h-full min-h-[650px]'
+      }`}
+    >
+      {/* Header */}
+      <div className="bg-slate-950 px-4 py-3 border-b border-slate-800 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+            <Bot className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-sm text-white flex items-center gap-1.5">
+                {isMl ? 'KMBR & KPBR AI അസിസ്റ്റന്റ്' : 'KMBR & KPBR AI Advisor'}
+                <span className="text-[10px] px-1.5 py-0.2 rounded font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  Gemini 2.5
+                </span>
+              </h3>
+            </div>
+            <p className="text-[11px] text-slate-400 truncate max-w-[220px] sm:max-w-xs">
+              {isMl
+                ? `${jurisdiction} ചട്ടങ്ങൾ, സെറ്റ്ബാക്ക്, പ്ലാൻ അപാകതകൾ`
+                : `${jurisdiction} Rules, Setbacks & Defect Remediation`}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1">
+          {projectData && (
+            <span className="hidden sm:inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+              <Building2 className="w-3 h-3 text-emerald-400" />
+              <span className="truncate max-w-[100px]">{projectData.projectName || 'Project'}</span>
+            </span>
+          )}
+
+          <button
+            id="chat-export-btn"
+            onClick={handleExportChat}
+            className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-md transition-colors"
+            title="Export Consultation / സേവ് ചെയ്യുക"
+          >
+            <Download className="w-4 h-4" />
+          </button>
+
+          <button
+            id="chat-reset-btn"
+            onClick={handleResetChat}
+            className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-md transition-colors"
+            title="Reset Chat / പുനരാരംഭിക്കുക"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </button>
+
+          {mode === 'floating' && (
+            <>
+              <button
+                id="chat-expand-btn"
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-md transition-colors"
+                title={isExpanded ? 'Minimize' : 'Maximize'}
+              >
+                {isExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+              </button>
+              {onClose && (
+                <button
+                  id="chat-close-btn"
+                  onClick={onClose}
+                  className="p-1.5 text-slate-400 hover:text-rose-300 hover:bg-slate-800 rounded-md transition-colors"
+                  title="Close Chat"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Project Context Badge */}
+      {projectData && (
+        <div className="bg-slate-950/60 px-4 py-1.5 border-b border-slate-800/80 text-[11px] text-slate-300 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+            <span className="text-emerald-400 font-medium">{jurisdiction} 2019</span>
+            <span>•</span>
+            <span>Plot: {projectData.plotAreaSqM} m² ({projectData.plotAreaCents} Cents)</span>
+            <span>•</span>
+            <span>Road: {projectData.roadAccessWidthM}m</span>
+            <span>•</span>
+            <span>Height: {projectData.buildingHeightM}m</span>
+          </div>
+          <span className="text-[10px] text-slate-400 shrink-0">
+            {isMl ? 'ലൈവ് പ്രോജക്റ്റ് വിവരങ്ങൾ സിങ്ക് ചെയ്തു' : 'Live Sync'}
+          </span>
+        </div>
+      )}
+
+      {/* Messages List */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {messages.map((msg) => (
+          <div
+            key={msg.id}
+            className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
+          >
+            <div className="flex items-start gap-2 max-w-[88%] sm:max-w-[80%]">
+              {msg.role === 'assistant' && (
+                <div className="w-7 h-7 rounded-lg bg-emerald-600/30 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0 mt-0.5">
+                  <Bot className="w-4 h-4" />
+                </div>
+              )}
+
+              <div
+                className={`rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm ${
+                  msg.role === 'user'
+                    ? 'bg-emerald-600 text-white rounded-tr-none'
+                    : 'bg-slate-800/90 text-slate-100 border border-slate-700 rounded-tl-none'
+                }`}
+              >
+                {/* Image attached by user */}
+                {msg.image && (
+                  <div className="mb-2.5 rounded-lg overflow-hidden border border-slate-600 max-w-xs">
+                    <img
+                      src={msg.image}
+                      alt="Uploaded blueprint"
+                      className="w-full h-auto object-cover max-h-48"
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                )}
+
+                {/* Markdown body for assistant */}
+                {msg.role === 'assistant' ? (
+                  <div className="prose prose-invert prose-sm max-w-none text-slate-200">
+                    <Markdown>{msg.content}</Markdown>
+                  </div>
+                ) : (
+                  <p className="whitespace-pre-wrap">{msg.content}</p>
+                )}
+
+                {/* Action buttons on assistant response */}
+                {msg.role === 'assistant' && (
+                  <div className="mt-2.5 pt-2 border-t border-slate-700/60 flex items-center justify-between text-xs text-slate-400">
+                    <span className="text-[10px]">
+                      {new Date(msg.timestamp).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleSpeak(msg.content)}
+                        className="p-1 hover:text-emerald-300 transition-colors"
+                        title={isSpeaking ? 'Stop Reading' : 'Read aloud'}
+                      >
+                        {isSpeaking ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                      </button>
+                      <button
+                        onClick={() => handleCopy(msg.content, msg.id)}
+                        className="p-1 hover:text-emerald-300 transition-colors"
+                        title="Copy message"
+                      >
+                        {copiedId === msg.id ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {loading && (
+          <div className="flex items-start gap-2 max-w-[80%]">
+            <div className="w-7 h-7 rounded-lg bg-emerald-600/30 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0">
+              <Bot className="w-4 h-4" />
+            </div>
+            <div className="bg-slate-800 border border-slate-700 rounded-2xl rounded-tl-none px-4 py-3 text-slate-300 text-sm flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-emerald-400 animate-spin" />
+              <span>{isMl ? 'കേരള ചട്ടങ്ങൾ പരിശോധിച്ച് മറുപടി തയ്യാറാക്കുന്നു...' : 'Analyzing Kerala Building Rules...'}</span>
+            </div>
+          </div>
+        )}
+
+        <div ref={chatEndRef} />
+      </div>
+
+      {/* Quick Prompts Carousel */}
+      <div className="bg-slate-950/90 border-t border-slate-800/80 px-3 py-2">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+          <span className="text-[11px] text-emerald-400 font-medium shrink-0 flex items-center gap-1">
+            <Sparkles className="w-3 h-3" />
+            {isMl ? 'പ്രധാന സംശയങ്ങൾ:' : 'Quick Questions:'}
+          </span>
+          {activeQuickPrompts.map((prompt, idx) => (
+            <button
+              key={idx}
+              onClick={() => handleSendMessage(prompt)}
+              disabled={loading}
+              className="text-xs shrink-0 bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-emerald-300 border border-slate-700/80 rounded-full px-3 py-1 transition-all whitespace-nowrap disabled:opacity-50"
+            >
+              {prompt}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Image Preview if attached */}
+      {attachedImage && (
+        <div className="bg-slate-950 px-4 py-2 border-t border-slate-800 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-10 h-10 rounded border border-slate-700 overflow-hidden">
+              <img
+                src={attachedImage}
+                alt="Attachment preview"
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+            <span className="text-xs text-slate-300">
+              {isMl ? 'പ്ലാൻ ഫോട്ടോ ചേർത്തു' : 'Drawing photo attached'}
+            </span>
+          </div>
+          <button
+            onClick={() => setAttachedImage(null)}
+            className="text-slate-400 hover:text-rose-400 p-1"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Input Form */}
+      <div className="bg-slate-950 p-3 border-t border-slate-800">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSendMessage();
+          }}
+          className="flex items-center gap-2"
+        >
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            accept="image/*,.pdf"
+            className="hidden"
+          />
+          <input
+            type="file"
+            ref={cameraInputRef}
+            onChange={handleFileUpload}
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+          />
+
+          <button
+            type="button"
+            id="chat-attach-file-btn"
+            onClick={() => fileInputRef.current?.click()}
+            className="p-2 text-slate-400 hover:text-emerald-400 hover:bg-slate-800 rounded-lg transition-colors"
+            title={isMl ? 'പ്ലാൻ ഫയൽ അറ്റാച്ച് ചെയ്യുക' : 'Attach drawing image/PDF'}
+          >
+            <Paperclip className="w-4 h-4" />
+          </button>
+
+          <button
+            type="button"
+            id="chat-camera-btn"
+            onClick={() => cameraInputRef.current?.click()}
+            className="p-2 text-slate-400 hover:text-emerald-400 hover:bg-slate-800 rounded-lg transition-colors"
+            title={isMl ? 'ക്യാമറ വഴി ഫോട്ടോ എടുക്കുക' : 'Take Blueprint Photo'}
+          >
+            <Camera className="w-4 h-4" />
+          </button>
+
+          <input
+            type="text"
+            id="chat-input-field"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={
+              isMl
+                ? 'കെട്ടിട നിർമ്മാണ ചട്ടങ്ങളെക്കുറിച്ച് എന്തും ചോദിക്കുക...'
+                : 'Ask anything about KMBR/KPBR rules, setbacks, FAR, permits...'
+            }
+            disabled={loading}
+            className="flex-1 bg-slate-900 border border-slate-700 focus:border-emerald-500 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          />
+
+          <button
+            type="submit"
+            id="chat-send-btn"
+            disabled={(!input.trim() && !attachedImage) || loading}
+            className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 disabled:opacity-40 text-slate-950 font-semibold p-2.5 rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center cursor-pointer disabled:cursor-not-allowed"
+          >
+            <Send className="w-4 h-4" />
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};

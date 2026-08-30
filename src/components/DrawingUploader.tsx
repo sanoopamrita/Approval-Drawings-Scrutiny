@@ -14,14 +14,28 @@ import {
   Tag,
   Maximize2,
   X,
+  Camera,
+  Sparkles,
+  Bot,
+  Loader2,
+  Copy,
+  Check,
+  ShieldCheck,
+  EyeOff,
+  HardDrive,
+  RotateCcw,
 } from 'lucide-react';
+import Markdown from 'react-markdown';
 import { DrawingCategory, Language, UploadedDrawing } from '../types';
+import { analyzeDrawingWithGemini } from '../services/geminiService';
 
 interface DrawingUploaderProps {
   drawings: UploadedDrawing[];
   onAddDrawing: (drawing: UploadedDrawing) => void;
   onRemoveDrawing: (id: string) => void;
   onUpdateDrawing: (id: string, partial: Partial<UploadedDrawing>) => void;
+  onPurgeDrawings?: () => void;
+  onApplyExtractedData?: (partial: Record<string, any>) => void;
   language: Language;
   onNext: () => void;
   onPrev: () => void;
@@ -124,15 +138,90 @@ export const DrawingUploader: React.FC<DrawingUploaderProps> = ({
   onAddDrawing,
   onRemoveDrawing,
   onUpdateDrawing,
+  onPurgeDrawings,
+  onApplyExtractedData,
   language,
   onNext,
   onPrev,
 }) => {
   const isMl = language === 'ml';
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [selectedCategory, setSelectedCategory] = useState<DrawingCategory>('site_plan');
   const [dragActive, setDragActive] = useState(false);
   const [previewDrawing, setPreviewDrawing] = useState<UploadedDrawing | null>(null);
+
+  // AI Visual Inspection State
+  const [analyzingDrawingId, setAnalyzingDrawingId] = useState<string | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<{
+    drawing: UploadedDrawing;
+    text: string;
+  } | null>(null);
+  const [copiedAnalysis, setCopiedAnalysis] = useState(false);
+  const [appliedDataToast, setAppliedDataToast] = useState(false);
+
+  // Helper to extract numeric metrics from text for quick autofill
+  const parseExtractedMetrics = (text: string) => {
+    const extracted: Record<string, any> = {};
+
+    // Check for JSON block first if returned
+    const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
+    if (jsonMatch) {
+      try {
+        const parsed = JSON.parse(jsonMatch[1]);
+        if (parsed.extractedValues) {
+          return parsed.extractedValues;
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    // RegEx heuristic parsing
+    const plotAreaMatch = text.match(/(?:plot area|പ്ലോട്ട് വിസ്തീർണ്ണം|site area)\s*[:=]?\s*(\d+(?:\.\d+)?)/i);
+    if (plotAreaMatch) extracted.plotAreaSqM = parseFloat(plotAreaMatch[1]);
+
+    const roadMatch = text.match(/(?:road width|access road|വഴിവീതി|street width)\s*[:=]?\s*(\d+(?:\.\d+)?)/i);
+    if (roadMatch) extracted.roadAccessWidthM = parseFloat(roadMatch[1]);
+
+    const frontMatch = text.match(/(?:front setback|മുൻവശം|front yard|FOS)\s*[:=]?\s*(\d+(?:\.\d+)?)/i);
+    if (frontMatch) extracted.frontSetbackM = parseFloat(frontMatch[1]);
+
+    const rearMatch = text.match(/(?:rear setback|പിൻവശം|rear yard|ROS)\s*[:=]?\s*(\d+(?:\.\d+)?)/i);
+    if (rearMatch) extracted.rearSetbackM = parseFloat(rearMatch[1]);
+
+    const side1Match = text.match(/(?:side setback 1|side 1|ഇടതുവശം)\s*[:=]?\s*(\d+(?:\.\d+)?)/i);
+    if (side1Match) extracted.sideSetback1M = parseFloat(side1Match[1]);
+
+    const side2Match = text.match(/(?:side setback 2|side 2|വലതുവശം)\s*[:=]?\s*(\d+(?:\.\d+)?)/i);
+    if (side2Match) extracted.sideSetback2M = parseFloat(side2Match[1]);
+
+    const heightMatch = text.match(/(?:building height|ആകെ ഉയരം|total height)\s*[:=]?\s*(\d+(?:\.\d+)?)/i);
+    if (heightMatch) extracted.buildingHeightM = parseFloat(heightMatch[1]);
+
+    const coverageMatch = text.match(/(?:coverage|footprint|ഗ്രൗണ്ട് കവറേജ്)\s*[:=]?\s*(\d+(?:\.\d+)?)/i);
+    if (coverageMatch) extracted.groundCoverageSqM = parseFloat(coverageMatch[1]);
+
+    const wellSepticMatch = text.match(/(?:well to septic|കിണറും സെപ്റ്റിക്|septic clearance)\s*[:=]?\s*(\d+(?:\.\d+)?)/i);
+    if (wellSepticMatch) {
+      extracted.openWellInPlot = true;
+      extracted.distanceWellToSepticTankM = parseFloat(wellSepticMatch[1]);
+    }
+
+    return extracted;
+  };
+
+  const handleApplyToForm = () => {
+    if (!analysisResult || !onApplyExtractedData) return;
+    const metrics = parseExtractedMetrics(analysisResult.text);
+    if (Object.keys(metrics).length === 0) {
+      alert(isMl ? 'ഡ്രോയിംഗിൽ നിന്ന് കൃത്യമായ അളവുകൾ കണ്ടെത്താനായില്ല.' : 'No numeric dimensions could be auto-extracted.');
+      return;
+    }
+    onApplyExtractedData(metrics);
+    setAppliedDataToast(true);
+    setTimeout(() => setAppliedDataToast(false), 2500);
+  };
 
   const handleFiles = (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -167,6 +256,41 @@ export const DrawingUploader: React.FC<DrawingUploaderProps> = ({
     }
   };
 
+  const handleRunAiInspection = async (drawing: UploadedDrawing) => {
+    if (!drawing.dataUrl) {
+      alert(
+        isMl
+          ? 'AI വിഷ്വൽ പരിശോധനയ്ക്ക് പ്ലാനിന്റെ ഇമേജ് (JPG/PNG) ആവശ്യമാണ്.'
+          : 'Image format (JPG/PNG) required for AI vision scrutiny.'
+      );
+      return;
+    }
+
+    setAnalyzingDrawingId(drawing.id);
+    try {
+      const result = await analyzeDrawingWithGemini(
+        drawing.dataUrl,
+        drawing.category,
+        drawing.name,
+        'KMBR',
+        'A1',
+        null,
+        language
+      );
+      setAnalysisResult({
+        drawing,
+        text: result,
+      });
+    } catch (err: any) {
+      alert(
+        (isMl ? 'പരിശോധന പരാജയപ്പെട്ടു: ' : 'Scrutiny failed: ') +
+          (err?.message || 'Server error')
+      );
+    } finally {
+      setAnalyzingDrawingId(null);
+    }
+  };
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -192,11 +316,11 @@ export const DrawingUploader: React.FC<DrawingUploaderProps> = ({
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Overview Banner */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono font-bold bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full">
+              <span className="text-xs font-mono font-bold bg-cyan-100 text-cyan-800 px-2.5 py-0.5 rounded-full">
                 Step 2 of 5
               </span>
               <span className="text-xs text-slate-500 font-medium">
@@ -222,10 +346,45 @@ export const DrawingUploader: React.FC<DrawingUploaderProps> = ({
                 {uploadedMandatory} / {totalMandatory} {isMl ? 'ചേർത്തു' : 'Uploaded'}
               </div>
             </div>
-            <div className="w-10 h-10 rounded-full border-2 border-emerald-500 flex items-center justify-center font-bold text-emerald-700 bg-emerald-50">
+            <div className="w-10 h-10 rounded-full border-2 border-cyan-500 flex items-center justify-center font-bold text-cyan-700 bg-cyan-50">
               {Math.round((uploadedMandatory / totalMandatory) * 100)}%
             </div>
           </div>
+        </div>
+
+        {/* Zero-Storage Privacy & Memory Purge Bar */}
+        <div className="bg-slate-900 border border-cyan-900/60 rounded-xl p-3 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 rounded-lg bg-cyan-950 border border-cyan-500/40 text-cyan-300">
+              <EyeOff className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="font-bold text-white flex items-center gap-1.5">
+                <span>{isMl ? 'സീറോ-സ്റ്റോറേജ് പ്രൈവസി സിസ്റ്റം' : 'Zero-Cloud-Storage Stateless Architecture'}</span>
+                <span className="text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-1.5 py-0.2 rounded font-mono">
+                  100% In-Memory
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                {isMl
+                  ? 'ഡ്രോയിംഗുകൾ ബ്രൗസർ മെമ്മറിയിൽ മാത്രം പരിശോധിക്കുന്നു. സെർവറിലോ ക്ലൗഡ് സ്റ്റോറേജിലോ ഫയലുകൾ സൂക്ഷിക്കപ്പെടുന്നില്ല.'
+                  : 'Drawings are processed strictly in temporary client memory and discarded after report generation.'}
+              </p>
+            </div>
+          </div>
+
+          {drawings.length > 0 && onPurgeDrawings && (
+            <button
+              type="button"
+              id="purge-drawings-btn"
+              onClick={onPurgeDrawings}
+              className="flex items-center gap-1.5 bg-rose-950/60 hover:bg-rose-900 border border-rose-800/80 text-rose-300 px-3 py-1.5 rounded-lg transition-colors font-semibold shrink-0 cursor-pointer text-xs"
+              title="Immediately wipe uploaded drawing representations from memory"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>{isMl ? 'ഡ്രോയിംഗ് മെമ്മറി മായ്‌ക്കുക' : 'Purge Drawing Memory'}</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -303,14 +462,26 @@ export const DrawingUploader: React.FC<DrawingUploaderProps> = ({
                     {isMl ? activeCfg?.titleMl : activeCfg?.titleEn}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  id="browse-files-btn"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs px-3 py-1.5 rounded-lg shadow-sm transition-all"
-                >
-                  {isMl ? '+ ഫയൽ ചേർക്കുക' : '+ Add Files'}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    id="camera-photo-btn"
+                    onClick={() => cameraInputRef.current?.click()}
+                    className="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-medium text-xs px-2.5 py-1.5 rounded-lg border border-slate-700 flex items-center gap-1.5 transition-all"
+                    title="Take photo of physical plan"
+                  >
+                    <Camera className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>{isMl ? 'ക്യാമറ ഫോട്ടോ' : 'Photo'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    id="browse-files-btn"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs px-3 py-1.5 rounded-lg shadow-sm transition-all"
+                  >
+                    {isMl ? '+ ഫയൽ ചേർക്കുക' : '+ Add Files'}
+                  </button>
+                </div>
               </div>
             );
           })()}
@@ -338,6 +509,15 @@ export const DrawingUploader: React.FC<DrawingUploaderProps> = ({
               onChange={(e) => handleFiles(e.target.files)}
               className="hidden"
             />
+            {/* Camera capture input */}
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(e) => handleFiles(e.target.files)}
+              className="hidden"
+            />
             <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-3 shadow-inner">
               <UploadCloud className="w-6 h-6" />
             </div>
@@ -346,8 +526,8 @@ export const DrawingUploader: React.FC<DrawingUploaderProps> = ({
             </h4>
             <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
               {isMl
-                ? 'PDF, DWG, DXF, PNG, JPG ഫോർമാറ്റുകൾ സ്വീകരിക്കും (Max 25MB per file)'
-                : 'Supports PDF, DWG, DXF, PNG, JPEG formats with scale metadata'}
+                ? 'PDF, DWG, DXF, PNG, JPG അല്ലെങ്കിൽ ക്യാമറ ഫോട്ടോകൾ സ്വീകരിക്കും (Max 25MB per file)'
+                : 'Supports PDF, DWG, DXF, PNG, JPEG or Camera photos with scale metadata'}
             </p>
           </div>
 
@@ -402,7 +582,7 @@ export const DrawingUploader: React.FC<DrawingUploaderProps> = ({
                       </div>
 
                       {/* Scale Modifier & Actions */}
-                      <div className="flex items-center gap-2 w-full sm:w-auto justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                      <div className="flex items-center gap-2 w-full sm:w-auto justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 flex-wrap">
                         <select
                           value={drawing.scale}
                           onChange={(e) => onUpdateDrawing(drawing.id, { scale: e.target.value })}
@@ -415,6 +595,29 @@ export const DrawingUploader: React.FC<DrawingUploaderProps> = ({
                           <option value="1:1000">1:1000</option>
                           <option value="1:2000">1:2000</option>
                         </select>
+
+                        {/* AI Vision Inspection Button */}
+                        {drawing.dataUrl && (
+                          <button
+                            type="button"
+                            onClick={() => handleRunAiInspection(drawing)}
+                            disabled={analyzingDrawingId === drawing.id}
+                            className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-300 transition-colors disabled:opacity-50"
+                            title="Run Gemini AI Visual Scrutiny on this drawing"
+                          >
+                            {analyzingDrawingId === drawing.id ? (
+                              <>
+                                <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />
+                                <span>{isMl ? 'പരിശോധിക്കുന്നു...' : 'Analyzing...'}</span>
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>{isMl ? 'AI പരിശോധന' : 'AI Scrutiny'}</span>
+                              </>
+                            )}
+                          </button>
+                        )}
 
                         {drawing.dataUrl && (
                           <button
@@ -466,6 +669,133 @@ export const DrawingUploader: React.FC<DrawingUploaderProps> = ({
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>
+
+      {/* AI Vision Analysis Scrutiny Result Modal */}
+      {analysisResult && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl flex flex-col animate-scaleUp">
+            {/* Modal Header */}
+            <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-900 text-white">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm sm:text-base flex items-center gap-2">
+                    {isMl ? 'AI വിഷ്വൽ പ്ലാൻ പരിശോധനാ റിപ്പോർട്ട്' : 'AI Visual Blueprint Scrutiny Report'}
+                    <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                      Gemini 2.5 Vision
+                    </span>
+                  </h3>
+                  <span className="text-xs text-slate-400 font-mono">
+                    {analysisResult.drawing.name} ({analysisResult.drawing.category})
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAnalysisResult(null)}
+                className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Content Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-12 overflow-hidden flex-1">
+              {/* Drawing Preview Column */}
+              <div className="md:col-span-5 bg-slate-950 p-4 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-slate-800">
+                {analysisResult.drawing.dataUrl ? (
+                  <img
+                    src={analysisResult.drawing.dataUrl}
+                    alt={analysisResult.drawing.name}
+                    className="max-h-[350px] md:max-h-[500px] w-full object-contain rounded-lg border border-slate-800 bg-slate-900"
+                  />
+                ) : (
+                  <div className="text-slate-400 text-xs">PDF Document</div>
+                )}
+                <div className="text-slate-400 text-[11px] mt-2 flex items-center justify-between w-full">
+                  <span>Scale: {analysisResult.drawing.scale}</span>
+                  <span className="text-emerald-400">Visual Scan Complete</span>
+                </div>
+              </div>
+
+              {/* Scrutiny Findings Column */}
+              <div className="md:col-span-7 p-5 overflow-y-auto flex flex-col space-y-4 max-h-[60vh] md:max-h-[550px]">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                    {isMl ? 'കെട്ടിട നിർമ്മാണ ചട്ട പരിശോധനാ ഫലം' : 'Rule Scrutiny & Rectification Guide'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(analysisResult.text);
+                      setCopiedAnalysis(true);
+                      setTimeout(() => setCopiedAnalysis(false), 2000);
+                    }}
+                    className="text-xs text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-md flex items-center gap-1 font-medium transition-colors"
+                  >
+                    {copiedAnalysis ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>{isMl ? 'കോപ്പി ചെയ്തു' : 'Copied'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>{isMl ? 'റിപ്പോർട്ട് കോപ്പി' : 'Copy'}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div className="prose prose-xs sm:prose-sm max-w-none text-slate-700 space-y-3 leading-relaxed bg-slate-50/70 p-4 rounded-xl border border-slate-200">
+                  <Markdown>{analysisResult.text}</Markdown>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-3 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+              <span>
+                {isMl
+                  ? '💡 KMBR 2019 / KPBR 2019 ചട്ടങ്ങൾ ആധാരമാക്കിയാണ് വിശകലനം ചെയ്തിരിക്കുന്നത്.'
+                  : '💡 Scrutinized strictly in compliance with KMBR 2019 / KPBR 2019 standards.'}
+              </span>
+
+              <div className="flex items-center gap-2">
+                {onApplyExtractedData && (
+                  <button
+                    type="button"
+                    onClick={handleApplyToForm}
+                    className="flex items-center gap-1.5 px-4 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-lg shadow-sm transition-all cursor-pointer"
+                  >
+                    {appliedDataToast ? (
+                      <>
+                        <Check className="w-4 h-4 text-white" />
+                        <span>{isMl ? 'ഫോമിലേക്ക് ചേർത്തു ✓' : 'Applied to Form ✓'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 text-emerald-200" />
+                        <span>{isMl ? 'കണ്ടെത്തിയ അളവുകൾ ഫോമിലേക്ക് ചേർക്കുക' : 'Apply Detected Values to Form'}</span>
+                      </>
+                    )}
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setAnalysisResult(null)}
+                  className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-medium rounded-lg cursor-pointer"
+                >
+                  {isMl ? 'അടയ്ക്കുക' : 'Close'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Preview Modal */}
       {previewDrawing && (

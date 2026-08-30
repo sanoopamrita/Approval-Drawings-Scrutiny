@@ -82,10 +82,14 @@ export function runKeralaBuildingRulesScrutiny(
     }
   } else if (data.occupancyGroup === 'F' || data.occupancyGroup === 'E') {
     minRequiredRoadWidthM = data.totalBuiltUpAreaSqM > 300 ? (isKmbr ? 6.0 : 5.0) : 3.6;
+  } else if (data.occupancyGroup === 'B') {
+    minRequiredRoadWidthM = data.totalBuiltUpAreaSqM > 500 ? (isKmbr ? 7.0 : 6.0) : (isKmbr ? 5.0 : 4.0);
   } else if (data.occupancyGroup === 'D' || data.occupancyGroup === 'C') {
     minRequiredRoadWidthM = isKmbr ? 7.0 : 6.0;
   } else if (data.occupancyGroup === 'G1' || data.occupancyGroup === 'G2' || data.occupancyGroup === 'H') {
     minRequiredRoadWidthM = isKmbr ? 7.0 : 6.0;
+  } else if (data.occupancyGroup === 'I') {
+    minRequiredRoadWidthM = isKmbr ? 12.0 : 10.0;
   }
 
   // High rise road width override
@@ -894,6 +898,226 @@ export function runKeralaBuildingRulesScrutiny(
       rectificationAdviceMl: data.hasLift ? undefined : `ഫ്ലോർ പ്ലാനുകളിലും സെക്ഷനിലും ലിഫ്റ്റ് വെൽ ഉൾപ്പെടുത്തുക.`,
     });
   }
+
+  // ==========================================
+  // 10. DUAL STAIRCASES & EGRESS (Rule 38 / NBC Part IV)
+  // ==========================================
+  const requiresDualStaircase =
+    data.occupancyGroup === 'B' || // Educational
+    data.occupancyGroup === 'D' || // Assembly
+    (data.occupancyGroup === 'F' && data.totalFloorAreaSqM > 300) ||
+    data.buildingHeightM > 15 ||
+    data.numberOfFloors > 2;
+
+  if (requiresDualStaircase) {
+    const stairCount = data.staircaseCount || 1;
+    const dualStairPass = stairCount >= 2;
+    checks.push({
+      id: 'arch-dual-staircase',
+      category: 'architecture',
+      ruleNoKmbr: 'KMBR 2019 Rule 38 / NBC Part IV',
+      ruleNoKpbr: 'KPBR 2019 Rule 38 / NBC Part IV',
+      titleEn: 'Dual Independent Exit Staircases',
+      titleMl: 'രണ്ട് സ്വതന്ത്ര എക്സിറ്റ് സ്റ്റെയർകേസുകൾ (Dual Exit Staircase)',
+      requirementEn: `Mandatory minimum of 2 separate independent enclosed exit staircases for ${data.occupancyGroup} occupancy / multi-floor public occupancy.`,
+      requirementMl: `${data.occupancyGroup} വിഭാഗം കെട്ടിടങ്ങൾക്കും ഒന്നിലധികം നിലകളുള്ള പൊതു കെട്ടിടങ്ങൾക്കും കുറഞ്ഞത് 2 സ്വതന്ത്ര എക്സിറ്റ് സ്റ്റെയർകേസുകൾ നിർബന്ധമാണ്.`,
+      providedValue: `${stairCount} Staircase(s) in Plan`,
+      requiredValue: `≥ 2 Separate Staircases`,
+      status: dualStairPass ? 'pass' : 'fail',
+      severity: 'critical',
+      technicalNoteEn: dualStairPass
+        ? `Two independent egress staircases provided complying with NBC Part IV evacuation limits.`
+        : `Single staircase provided. High risk of egress failure during emergency/fire. Rule strictly mandates 2 separate staircases.`,
+      technicalNoteMl: dualStairPass
+        ? `ചട്ടപ്രകാരം 2 സ്വതന്ത്ര സ്റ്റെയർകേസുകൾ പ്ലാനിൽ നൽകിയിട്ടുണ്ട്.`
+        : `ഒറ്റ സ്റ്റെയർകേസ് മാത്രമേ നൽകിയിട്ടുള്ളൂ. അടിയന്തര സാഹചര്യത്തിൽ എക്സിറ്റിനായി കുറഞ്ഞത് 2 സ്റ്റെയർകേസുകൾ നിർബന്ധമാണ്.`,
+      rectificationAdviceEn: dualStairPass ? undefined : `Add a secondary fire escape / exit staircase with direct exterior egress.`,
+      rectificationAdviceMl: dualStairPass ? undefined : `പ്ലാനിൽ പുറത്തേക്ക് എളുപ്പത്തിൽ ഇറങ്ങാൻ കഴിയുന്ന രണ്ടാമതൊരു സ്റ്റെയർകേസ് കൂടി ഉൾപ്പെടുത്തുക.`,
+    });
+  }
+
+  // ==========================================
+  // 11. SPECIALIZED EDUCATIONAL NORMS (Group B / KER)
+  // ==========================================
+  if (data.occupancyGroup === 'B') {
+    // 1. Minimum Classroom Area (KER Chapter IV Rule 3: min 36 sq.m)
+    const classroomArea = data.minClassroomAreaSqM || 36.0;
+    const classroomAreaPass = classroomArea >= 36.0;
+    checks.push({
+      id: 'ker-classroom-area',
+      category: 'architecture',
+      ruleNoKmbr: 'KER Chap IV Rule 3 / KMBR Rule 53',
+      ruleNoKpbr: 'KER Chap IV Rule 3 / KPBR Rule 53',
+      titleEn: 'KER Minimum Classroom Floor Dimension (36.0 sq.m)',
+      titleMl: 'ക്ലാസ്സ് മുറിയുടെ കുറഞ്ഞ വിസ്തീർണ്ണം (KER Norms - 36 ച.മീ.)',
+      requirementEn: `Kerala Education Rules (KER) mandates minimum classroom floor area of 36.0 sq.m (standard 6.0m × 6.0m dimension) per standard division.`,
+      requirementMl: `കേരള എഡ്യൂക്കേഷൻ റൂൾസ് (KER) പ്രകാരം ഓരോ ക്ലാസ്സ് മുറിക്കും കുറഞ്ഞത് 36.0 ച.മീറ്റർ വിസ്തീർണ്ണം (6m × 6m) ഉണ്ടായിരിക്കണം.`,
+      providedValue: `${classroomArea.toFixed(1)} sq.m`,
+      requiredValue: `≥ 36.0 sq.m`,
+      status: classroomAreaPass ? 'pass' : 'fail',
+      severity: 'critical',
+      technicalNoteEn: classroomAreaPass
+        ? `Classroom dimensions meet KER educational structural norms.`
+        : `Classroom area (${classroomArea} sq.m) fails mandatory 36 sq.m standard under KER Chapter IV. DEO/AEO recognition will be withheld.`,
+      technicalNoteMl: classroomAreaPass
+        ? `ക്ലാസ്സ് മുറിയുടെ വിസ്തീർണ്ണം KER മാനദണ്ഡങ്ങൾക്ക് അനുസൃതമാണ്.`
+        : `ക്ലാസ്സ് മുറിയുടെ വിസ്തീർണ്ണം കുറവാണ്. കുറഞ്ഞത് 36 ചതുരശ്ര മീറ്റർ ഉണ്ടായിരിക്കണം.`,
+      rectificationAdviceEn: classroomAreaPass ? undefined : `Resize classrooms to minimum 6.00m × 6.00m internal dimension.`,
+      rectificationAdviceMl: classroomAreaPass ? undefined : `ക്ലാസ്സ് മുറിയുടെ അളവ് 6.0m × 6.0m ആക്കി പ്ലാനിൽ തിരുത്തുക.`,
+    });
+
+    // 2. Classroom Height (KER Chap IV: min 3.0m clear ceiling height)
+    const classroomHeight = data.minClassroomHeightM || data.minHabitableRoomHeightM || 3.0;
+    const classroomHeightPass = classroomHeight >= 3.0;
+    checks.push({
+      id: 'ker-classroom-height',
+      category: 'architecture',
+      ruleNoKmbr: 'KER Chap IV / KMBR Rule 53',
+      ruleNoKpbr: 'KER Chap IV / KPBR Rule 53',
+      titleEn: 'KER Minimum Classroom Ceiling Height',
+      titleMl: 'ക്ലാസ്സ് മുറിയുടെ ഉയരം (KER Ceiling Height)',
+      requirementEn: `Minimum clear vertical ceiling height of 3.00m required for school classrooms.`,
+      requirementMl: `ക്ലാസ്സ് മുറികൾക്ക് കുറഞ്ഞത് 3.00 മീറ്റർ വ്യക്തമായ ഉയരം ഉണ്ടായിരിക്കണം.`,
+      providedValue: `${classroomHeight.toFixed(2)} m`,
+      requiredValue: `≥ 3.00 m`,
+      status: classroomHeightPass ? 'pass' : 'fail',
+      severity: 'high',
+      technicalNoteEn: classroomHeightPass
+        ? `Clear ceiling height satisfies educational ventilation norms.`
+        : `Ceiling height is only ${classroomHeight}m (fails 3.0m standard).`,
+      technicalNoteMl: classroomHeightPass
+        ? `ക്ലാസ്സ് മുറിയുടെ ഉയരം ചട്ടപ്രകാരം ശരിയാണ്.`
+        : `ക്ലാസ്സ് മുറിയുടെ ഉയരം 3.0 മീറ്ററിൽ കുറവാണ്.`,
+      rectificationAdviceEn: classroomHeightPass ? undefined : `Ensure sectional elevation indicates >= 3.0m clear floor-to-ceiling height.`,
+      rectificationAdviceMl: classroomHeightPass ? undefined : `സെക്ഷൻ പ്ലാനിൽ ക്ലാസ്സ് മുറിയുടെ ഉയരം 3.0 മീറ്ററായി ഉയർത്തുക.`,
+    });
+
+    // 3. School Playground & Open Yard
+    const students = data.numberOfStudents || 100;
+    const requiredPlaygroundArea = Math.max(500, students * 5.0); // 5 sq.m per student or min 500 sq.m
+    const playgroundArea = data.playgroundAreaSqM || 600;
+    const playgroundPass = playgroundArea >= requiredPlaygroundArea;
+    checks.push({
+      id: 'ker-playground-norm',
+      category: 'architecture',
+      ruleNoKmbr: 'KER Chap IV Rule 1 / KMBR Rule 53',
+      ruleNoKpbr: 'KER Chap IV Rule 1 / KPBR Rule 53',
+      titleEn: 'KER School Playground Area Requirement',
+      titleMl: 'സ്കൂൾ കളിസ്ഥല വിസ്തീർണ്ണം (School Playground Norm)',
+      requirementEn: `Minimum playground open space of ${requiredPlaygroundArea.toLocaleString()} sq.m (min 5.0 sq.m per enrolled student).`,
+      requirementMl: `ഒരു വിദ്യാർത്ഥിക്ക് 5 ച.മീറ്റർ എന്ന നിരക്കിൽ കുറഞ്ഞത് ${requiredPlaygroundArea.toLocaleString()} ച.മീറ്റർ കളിസ്ഥലം സ്കൂൾ കാമ്പസിൽ ഉണ്ടായിരിക്കണം.`,
+      providedValue: `${playgroundArea.toLocaleString()} sq.m`,
+      requiredValue: `≥ ${requiredPlaygroundArea.toLocaleString()} sq.m`,
+      status: playgroundPass ? 'pass' : 'warning',
+      severity: 'high',
+      technicalNoteEn: playgroundPass
+        ? `Adequate recreational playground open ground provided.`
+        : `Deficient playground area (${playgroundArea} sq.m vs ${requiredPlaygroundArea} sq.m). Essential for KER departmental fitness clearance.`,
+      technicalNoteMl: playgroundPass
+        ? `കളിസ്ഥലം ചട്ടപ്രകാരം ലഭ്യമാണ്.`
+        : `കളിസ്ഥലത്തിന് ആവശ്യമായ സ്ഥലം കുറവാണ്.`,
+      rectificationAdviceEn: playgroundPass ? undefined : `Demarcate open sports ground / recreation area in site master plan.`,
+      rectificationAdviceMl: playgroundPass ? undefined : `സൈറ്റ് പ്ലാനിൽ കളിസ്ഥലത്തിന്റെ സ്ഥലം കൃത്യമായി അടയാളപ്പെടുത്തുക.`,
+    });
+  }
+
+  // ==========================================
+  // 12. FIRE SAFETY, NOC & HYDRANT (NBC Part IV & Kerala Fire Services)
+  // ==========================================
+  const requiresFireNoc =
+    data.buildingHeightM > 16 ||
+    (data.occupancyGroup === 'D' && data.totalBuiltUpAreaSqM > 500) ||
+    (data.occupancyGroup === 'F' && data.totalBuiltUpAreaSqM > 1000) ||
+    (data.occupancyGroup === 'B' && data.totalBuiltUpAreaSqM > 1000) ||
+    (data.occupancyGroup === 'C' && data.totalBuiltUpAreaSqM > 500) ||
+    data.occupancyGroup === 'I';
+
+  if (requiresFireNoc) {
+    const fireNocPass = !!data.hasFireNoc;
+    checks.push({
+      id: 'fire-noc-statutory',
+      category: 'fire_safety',
+      ruleNoKmbr: 'KMBR 2019 Rule 58 & NBC Part IV',
+      ruleNoKpbr: 'KPBR 2019 Rule 58 & NBC Part IV',
+      titleEn: 'Statutory Fire NOC from Kerala Fire & Rescue Services',
+      titleMl: 'കേരള ഫയർ & റെസ്ക്യൂ സർവീസസ് അനുമതി (Fire NOC Clearance)',
+      requirementEn: `Mandatory Fire & Life Safety NOC / Clearance Certificate from Department of Fire & Rescue Services Kerala for high-rise / special occupancy.`,
+      requirementMl: `ഉയരമുള്ള കെട്ടിടങ്ങൾക്കും പൊതു സ്ഥാപനങ്ങൾക്കും കേരള ഫയർ ഫോഴ്സിന്റെ മുൻകൂർ അനുമതി പത്രം (Fire NOC) നിർബന്ധമാണ്.`,
+      providedValue: data.hasFireNoc ? 'Fire NOC / Scheme Submitted' : 'Fire NOC Scheme Not Attached',
+      requiredValue: 'Mandatory Fire NOC',
+      status: fireNocPass ? 'pass' : 'fail',
+      severity: 'critical',
+      technicalNoteEn: fireNocPass
+        ? `Fire NOC scheme incorporated with wet risers, yard hydrants, and smoke detection.`
+        : `Fire NOC is mandatory for this building scale. Drawing cannot receive LSGD sanction without Fire Department NOC.`,
+      technicalNoteMl: fireNocPass
+        ? `ഫയർ എൻ.ഒ.സി പ്ലാനുകൾ കൃത്യമായി നൽകിയിട്ടുണ്ട്.`
+        : `കെട്ടിടത്തിന് ഫയർ ഫോഴ്സ് എൻ.ഒ.സി നിർബന്ധമാണ്. എൻ.ഒ.സി ഇല്ലാതെ കെ-സ്മാർട്ട് വഴി അനുമതി ലഭിക്കില്ല.`,
+      rectificationAdviceEn: fireNocPass ? undefined : `Submit building plan to Kerala Fire & Rescue Services for Initial Fire Scheme Approval.`,
+      rectificationAdviceMl: fireNocPass ? undefined : `ഫയർ ഫോഴ്സ് ഓഫീസിൽ നിന്ന് ഫയർ സ്കീം അപ്രൂവൽ വാങ്ങി രേഖപ്പെടുത്തുക.`,
+    });
+  }
+
+  // External Fire Escape Staircase check for >15m or >500 sq.m public floor
+  if (data.buildingHeightM > 15 || (data.occupancyGroup !== 'A1' && data.totalBuiltUpAreaSqM > 1000)) {
+    const externalStairPass = !!data.hasExternalFireEscapeStair;
+    checks.push({
+      id: 'fire-external-stair',
+      category: 'fire_safety',
+      ruleNoKmbr: 'KMBR 2019 Rule 58(4) / NBC Part IV',
+      ruleNoKpbr: 'KPBR 2019 Rule 58(4) / NBC Part IV',
+      titleEn: 'External Fire Escape Staircase (Direct Ground Discharge)',
+      titleMl: 'പുറത്തുകൂടിയുള്ള എമർജൻസി ഫയർ എസ്കേപ്പ് സ്റ്റെയർകേസ്',
+      requirementEn: `Mandatory external steel/RCC fire escape staircase with minimum 1.0m width directly discharging to safe open exterior ground.`,
+      requirementMl: `അടിയന്തര സാഹചര്യങ്ങളിൽ രക്ഷപ്പെടാൻ പുറംഭിത്തിയോട് ചേർന്ന് കുറഞ്ഞത് 1.0 മീറ്റർ വീതിയുള്ള ഫയർ എസ്കേപ്പ് സ്റ്റെയർകേസ് നിർബന്ധമാണ്.`,
+      providedValue: externalStairPass ? 'External Fire Escape Stair Provided' : 'Not Shown in Plan',
+      requiredValue: 'Mandatory External Fire Stair',
+      status: externalStairPass ? 'pass' : 'fail',
+      severity: 'critical',
+      technicalNoteEn: externalStairPass
+        ? `External fire escape staircase provided complying with egress distances.`
+        : `Missing external fire escape staircase on outer building facade.`,
+      technicalNoteMl: externalStairPass
+        ? `എമർജൻസി ഫയർ എസ്കേപ്പ് സ്റ്റെയർകേസ് നൽകിയിട്ടുണ്ട്.`
+        : `കെട്ടിടത്തിന്റെ പുറംഭിത്തിയിൽ ഫയർ എസ്കേപ്പ് സ്റ്റെയർകേസ് കാണിച്ചിട്ടില്ല.`,
+      rectificationAdviceEn: externalStairPass ? undefined : `Add external fire escape staircase with minimum 1.0m width in architectural and elevation plans.`,
+      rectificationAdviceMl: externalStairPass ? undefined : `എലവേഷനിലും പ്ലാനിലും പുറം സ്റ്റെയർകേസ് വരച്ചു ചേർക്കുക.`,
+    });
+  }
+
+  // ==========================================
+  // 13. PROJECTIONS & ACCESSORY CLEARANCES (Rule 27 / 25)
+  // ==========================================
+  const canopyProj = data.canopyProjectionM || 0.6;
+  const balconyProj = data.balconyProjectionM || 0.9;
+  const minSide = Math.min(data.sideSetback1M, data.sideSetback2M);
+  // Rule: Balcony/canopy projection should leave at least 1.0m clear open space to boundary (or 0.6m in small plot)
+  const requiredClearAfterProjection = isSmallPlot ? 0.6 : 1.0;
+  const clearAfterProjection = minSide - balconyProj;
+  const projPass = clearAfterProjection >= requiredClearAfterProjection || balconyProj <= 1.2;
+
+  checks.push({
+    id: 'arch-projections-clearance',
+    category: 'setbacks',
+    ruleNoKmbr: 'KMBR 2019 Rule 27(6)',
+    ruleNoKpbr: 'KPBR 2019 Rule 25(6)',
+    titleEn: 'Balcony & Canopy Projections into Setback Yards',
+    titleMl: 'ബാൽക്കണി & സൺഷെയ്ഡ് തള്ളിനിൽക്കൽ (Projections into Setbacks)',
+    requirementEn: `Projections (sunshades/balconies) into open setbacks shall not exceed 1.20m and must leave minimum ${requiredClearAfterProjection.toFixed(1)}m clear open space to boundary.`,
+    requirementMl: `ബാൽക്കണികളും സൺഷെയ്ഡുകളും പരമാവധി 1.20 മീറ്ററിൽ കൂടുതൽ തള്ളിനിൽക്കാൻ പാടില്ല. അതിർത്തിയിലേക്ക് കുറഞ്ഞത് ${requiredClearAfterProjection.toFixed(1)} മീറ്റർ തുറസ്സായ സ്ഥലം അവശേഷിക്കണം.`,
+    providedValue: `Balcony: ${balconyProj.toFixed(2)}m | Clear Left: ${Math.max(0, clearAfterProjection).toFixed(2)}m`,
+    requiredValue: `Balcony ≤ 1.20m & Clear Space ≥ ${requiredClearAfterProjection.toFixed(1)}m`,
+    status: projPass ? 'pass' : 'warning',
+    severity: 'medium',
+    technicalNoteEn: projPass
+      ? `Architectural projections are within allowable projection limits.`
+      : `Balcony projection leaves less than required ${requiredClearAfterProjection}m clear open yard to plot boundary.`,
+    technicalNoteMl: projPass
+      ? `ബാൽക്കണി തള്ളിനിൽക്കൽ അനുവദനീയമായ പരിധിക്കുള്ളിലാണ്.`
+      : `ബാൽക്കണി തള്ളിനിൽക്കുന്നതിനാൽ അതിർത്തിയിലേക്കുള്ള കുറഞ്ഞ അകലം ലംഘിക്കപ്പെടുന്നു.`,
+    rectificationAdviceEn: projPass ? undefined : `Reduce balcony/canopy cantilever to ensure minimum ${requiredClearAfterProjection}m clear space to boundary.`,
+    rectificationAdviceMl: projPass ? undefined : `ബാൽക്കണിയുടെ വീതി കുറച്ച് അതിർത്തിയിലേക്കുള്ള അകലം ക്രമീകരിക്കുക.`,
+  });
 
   // Calculate summary counts
   const totalChecks = checks.length;

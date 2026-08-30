@@ -1,6 +1,6 @@
 {
-  "name": "K-BuildScrutiny Kerala Building Rules Compliance",
-  "description": "Comprehensive engineering scrutiny system for Kerala Municipality Building Rules (KMBR) & Kerala Panchayat Building Rules (KPBR) with drawing verification, area statement calculation, detailed rule checklists, and bilingual PDF reports.",
+  "name": "VINYASA - Building Compliance Intelligence",
+  "description": "VINYASA is an international-grade statutory building compliance intelligence engine for Kerala Building Rules (KMBR 2019 & KPBR 2019), blueprint visual scrutiny, and automated defect remediation. Official portal: www.vinyasa.online",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

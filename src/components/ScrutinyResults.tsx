@@ -15,6 +15,11 @@ import {
   ShieldCheck,
   Printer,
   FileCheck2,
+  Columns,
+  ListFilter,
+  Layers,
+  Check,
+  X,
 } from 'lucide-react';
 import { Language, ScrutinyCheckResult, ScrutinyReportSummary } from '../types';
 
@@ -25,6 +30,8 @@ interface ScrutinyResultsProps {
   onGoToReport: () => void;
 }
 
+type ViewMode = 'side_by_side' | 'detailed';
+
 export const ScrutinyResults: React.FC<ScrutinyResultsProps> = ({
   summary,
   checks,
@@ -32,6 +39,7 @@ export const ScrutinyResults: React.FC<ScrutinyResultsProps> = ({
   onGoToReport,
 }) => {
   const isMl = language === 'ml';
+  const [viewMode, setViewMode] = useState<ViewMode>('side_by_side');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'fail' | 'warning' | 'pass'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -57,16 +65,17 @@ export const ScrutinyResults: React.FC<ScrutinyResultsProps> = ({
       const matchTitle = (item.titleEn + ' ' + item.titleMl).toLowerCase().includes(query);
       const matchRule = (item.ruleNoKmbr + ' ' + item.ruleNoKpbr).toLowerCase().includes(query);
       const matchNote = (item.technicalNoteEn + ' ' + item.technicalNoteMl).toLowerCase().includes(query);
-      if (!matchTitle && !matchRule && !matchNote) return false;
+      const matchValues = (item.providedValue + ' ' + item.requiredValue).toLowerCase().includes(query);
+      if (!matchTitle && !matchRule && !matchNote && !matchValues) return false;
     }
     return true;
   });
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-6 animate-fadeIn font-sans">
       {/* Executive Summary Status Card */}
       <div
-        className={`rounded-2xl p-6 text-white shadow-md border ${
+        className={`rounded-2xl p-6 text-white shadow-lg border ${
           summary.overallStatus === 'APPROVED'
             ? 'bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-900 border-emerald-500/40'
             : summary.overallStatus === 'CONDITIONAL_APPROVAL'
@@ -91,35 +100,35 @@ export const ScrutinyResults: React.FC<ScrutinyResultsProps> = ({
               </span>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3.5">
               {summary.overallStatus === 'APPROVED' ? (
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-400">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-400 shrink-0">
                   <CheckCircle2 className="w-7 h-7" />
                 </div>
               ) : summary.overallStatus === 'CONDITIONAL_APPROVAL' ? (
-                <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-400">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-400 shrink-0">
                   <AlertTriangle className="w-7 h-7" />
                 </div>
               ) : (
-                <div className="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-400/40 flex items-center justify-center text-rose-400">
+                <div className="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-400/40 flex items-center justify-center text-rose-400 shrink-0">
                   <XCircle className="w-7 h-7" />
                 </div>
               )}
 
               <div>
-                <h2 className="text-xl sm:text-2xl font-black tracking-tight">
+                <h2 className="text-xl sm:text-2xl font-black tracking-tight font-['Outfit',sans-serif]">
                   {summary.overallStatus === 'APPROVED'
-                    ? (isMl ? 'ചട്ടപ്രകാരം അംഗീകൃത യോഗ്യം (APPROVED)' : 'FULLY COMPLIANT WITH KERALA BUILDING RULES')
+                    ? (isMl ? 'ചട്ടപ്രകാരം അനുയോജ്യമാണ് (COMPLIANT)' : 'FULLY COMPLIANT WITH KERALA BUILDING RULES')
                     : summary.overallStatus === 'CONDITIONAL_APPROVAL'
                     ? (isMl ? 'വ്യവസ്ഥകൾക്ക് വിധേയം (CONDITIONAL APPROVAL)' : 'CONDITIONAL COMPLIANCE (ADDITIONAL FEES APPLICABLE)')
-                    : (isMl ? 'ചട്ടലംഘനം കണ്ടെത്തി / പ്ലാൻ തിരുത്തണം (DEFECTIVE)' : 'STATUTORY DEFECTS DETECTED - REVISIONS MANDATORY')}
+                    : (isMl ? 'ചട്ടലംഘനം കണ്ടെത്തി / പ്ലാൻ തിരുത്തണം (DEFECTS FOUND)' : 'STATUTORY DEFECTS DETECTED - REVISIONS MANDATORY')}
                 </h2>
                 <p className="text-xs sm:text-sm text-white/80 mt-0.5">
                   {summary.failedCount === 0
                     ? (isMl ? 'എല്ലാ പരിശോധനകളും വിജയകരമായി പൂർത്തിയായി.' : 'All mandatory setbacks, coverage, parking and sanitary clearances verified.')
                     : (isMl
-                        ? `${summary.failedCount} ചട്ടലംഘനങ്ങൾ കണ്ടെത്തി. വിശദാംശങ്ങൾ താഴെ നൽകിയിരിക്കുന്നു.`
-                        : `${summary.failedCount} non-compliant item(s) must be rectified before permit endorsement.`)}
+                        ? `${summary.failedCount} ചട്ടലംഘനങ്ങൾ കണ്ടെത്തി. സൈഡ്-ബൈ-സൈഡ് താരതമ്യം താഴെ കാണാം.`
+                        : `${summary.failedCount} non-compliant item(s) found. Side-by-side drawing vs rule comparison shown below.`)}
                 </p>
               </div>
             </div>
@@ -128,43 +137,60 @@ export const ScrutinyResults: React.FC<ScrutinyResultsProps> = ({
           {/* KPI Mini Counter Cards */}
           <div className="grid grid-cols-3 gap-3 w-full md:w-auto">
             <div className="bg-slate-900/80 border border-emerald-500/30 rounded-xl p-3 text-center">
-              <div className="text-emerald-400 font-bold text-xl sm:text-2xl">{summary.passedCount}</div>
+              <div className="text-emerald-400 font-bold text-xl sm:text-2xl font-mono">{summary.passedCount}</div>
               <div className="text-[11px] text-slate-400 font-medium">Passed (✅)</div>
             </div>
 
             <div className="bg-slate-900/80 border border-rose-500/30 rounded-xl p-3 text-center">
-              <div className="text-rose-400 font-bold text-xl sm:text-2xl">{summary.failedCount}</div>
+              <div className="text-rose-400 font-bold text-xl sm:text-2xl font-mono">{summary.failedCount}</div>
               <div className="text-[11px] text-slate-400 font-medium">Violations (❌)</div>
             </div>
 
             <div className="bg-slate-900/80 border border-amber-500/30 rounded-xl p-3 text-center">
-              <div className="text-amber-400 font-bold text-xl sm:text-2xl">{summary.warningCount}</div>
+              <div className="text-amber-400 font-bold text-xl sm:text-2xl font-mono">{summary.warningCount}</div>
               <div className="text-[11px] text-slate-400 font-medium">Warnings (⚠️)</div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-          {/* Search Input */}
-          <div className="relative w-full sm:w-80">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={isMl ? 'ചട്ടം അല്ലെങ്കിൽ വാക്ക് തിരയുക...' : 'Search by Rule No or parameter...'}
-              className="w-full pl-9 pr-3 py-1.5 text-xs sm:text-sm bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-            />
+      {/* Control Bar: View Switcher (Side-by-Side vs Detailed) & Filters */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4">
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
+          {/* View Mode Toggle */}
+          <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl w-full sm:w-auto">
+            <button
+              id="view-side-by-side-btn"
+              onClick={() => setViewMode('side_by_side')}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                viewMode === 'side_by_side'
+                  ? 'bg-slate-900 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Columns className="w-4 h-4 text-cyan-400" />
+              <span>{isMl ? 'സൈഡ്-ബൈ-സൈഡ് താരതമ്യം' : 'Side-by-Side Comparison View'}</span>
+            </button>
+
+            <button
+              id="view-detailed-btn"
+              onClick={() => setViewMode('detailed')}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                viewMode === 'detailed'
+                  ? 'bg-slate-900 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <ListFilter className="w-4 h-4 text-cyan-400" />
+              <span>{isMl ? 'വിശദമായ കാർഡുകൾ' : 'Detailed Cards View'}</span>
+            </button>
           </div>
 
-          {/* Status Quick Filter Pills */}
+          {/* Quick Status Filter Pills */}
           <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto">
             <button
               onClick={() => setStatusFilter('all')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 statusFilter === 'all'
                   ? 'bg-slate-900 text-white'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -174,7 +200,7 @@ export const ScrutinyResults: React.FC<ScrutinyResultsProps> = ({
             </button>
             <button
               onClick={() => setStatusFilter('fail')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer ${
                 statusFilter === 'fail'
                   ? 'bg-rose-600 text-white'
                   : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
@@ -185,7 +211,7 @@ export const ScrutinyResults: React.FC<ScrutinyResultsProps> = ({
             </button>
             <button
               onClick={() => setStatusFilter('warning')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer ${
                 statusFilter === 'warning'
                   ? 'bg-amber-600 text-white'
                   : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
@@ -196,7 +222,7 @@ export const ScrutinyResults: React.FC<ScrutinyResultsProps> = ({
             </button>
             <button
               onClick={() => setStatusFilter('pass')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer ${
                 statusFilter === 'pass'
                   ? 'bg-emerald-600 text-white'
                   : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
@@ -206,6 +232,18 @@ export const ScrutinyResults: React.FC<ScrutinyResultsProps> = ({
               <span>Passed ({summary.passedCount})</span>
             </button>
           </div>
+
+          {/* Search Input */}
+          <div className="relative w-full sm:w-72">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={isMl ? 'ചട്ടം അല്ലെങ്കിൽ മൂല്യം തിരയുക...' : 'Search rule or value...'}
+              className="w-full pl-9 pr-3 py-1.5 text-xs sm:text-sm bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-cyan-500 focus:outline-none"
+            />
+          </div>
         </div>
 
         {/* Category Filter Chips */}
@@ -214,9 +252,9 @@ export const ScrutinyResults: React.FC<ScrutinyResultsProps> = ({
             <button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
-              className={`px-3 py-1 rounded-full whitespace-nowrap font-medium transition-all ${
+              className={`px-3 py-1 rounded-full whitespace-nowrap font-medium transition-all cursor-pointer ${
                 selectedCategory === cat.id
-                  ? 'bg-emerald-600 text-white shadow-xs'
+                  ? 'bg-cyan-700 text-white shadow-xs'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
@@ -226,179 +264,304 @@ export const ScrutinyResults: React.FC<ScrutinyResultsProps> = ({
         </div>
       </div>
 
-      {/* Scrutiny Checklist Table / Cards */}
-      <div className="space-y-3">
-        {filteredChecks.length === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center text-slate-500">
-            <Info className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-            <p className="text-sm">No rules match the active filter or search query.</p>
-          </div>
-        ) : (
-          filteredChecks.map((item) => {
-            const isExpanded = expandedCheckId === item.id;
-            const isPass = item.status === 'pass';
-            const isFail = item.status === 'fail';
-            const isWarning = item.status === 'warning';
+      {/* VIEW MODE 1: SIDE-BY-SIDE COMPARISON TABLE */}
+      {viewMode === 'side_by_side' && (
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-900 text-white uppercase text-[11px] tracking-wider font-bold">
+                  <th className="py-3.5 px-4">{isMl ? 'ചട്ടം & ഘടകം' : 'Rule & Parameter'}</th>
+                  <th className="py-3.5 px-4 bg-slate-800 text-cyan-300">
+                    {isMl ? 'സമർപ്പിച്ച ഡ്രോയിംഗ് വിവരങ്ങൾ' : 'Submitted Drawing Data'}
+                  </th>
+                  <th className="py-3.5 px-4 bg-slate-900 text-slate-300">
+                    {isMl ? 'ചട്ടപ്രകാരമുള്ള നിബന്ധന' : 'Statutory KMBR/KPBR Criteria'}
+                  </th>
+                  <th className="py-3.5 px-4">{isMl ? 'അന്തരം / വ്യത്യാസം' : 'Variance / Deviation'}</th>
+                  <th className="py-3.5 px-4">{isMl ? 'പരിശോധനാ ഫലം & പരിഹാരം' : 'Status & Rectification'}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {filteredChecks.map((item) => {
+                  const isPass = item.status === 'pass';
+                  const isFail = item.status === 'fail';
+                  const isWarning = item.status === 'warning';
 
-            return (
-              <div
-                key={item.id}
-                className={`bg-white rounded-2xl border transition-all shadow-2xs overflow-hidden ${
-                  isFail
-                    ? 'border-rose-300 ring-1 ring-rose-500/20'
-                    : isWarning
-                    ? 'border-amber-300 ring-1 ring-amber-500/20'
-                    : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                {/* Rule Card Header */}
+                  return (
+                    <tr
+                      key={item.id}
+                      className={`hover:bg-slate-50 transition-colors ${
+                        isFail
+                          ? 'bg-rose-50/40'
+                          : isWarning
+                          ? 'bg-amber-50/40'
+                          : 'bg-white'
+                      }`}
+                    >
+                      {/* Column 1: Rule & Parameter */}
+                      <td className="py-3 px-4 align-top">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-mono font-bold text-[11px] px-2 py-0.5 rounded bg-slate-100 text-slate-800 border border-slate-200">
+                            {item.ruleNoKmbr}
+                          </span>
+                          <span className="text-[10px] font-mono text-slate-400">
+                            ({item.ruleNoKpbr})
+                          </span>
+                        </div>
+                        <div className="font-bold text-slate-900 text-xs sm:text-sm mt-1">
+                          {isMl ? item.titleMl : item.titleEn}
+                        </div>
+                        <div className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mt-0.5">
+                          {item.category}
+                        </div>
+                      </td>
+
+                      {/* Column 2: User's Submitted Drawing Data */}
+                      <td className="py-3 px-4 align-top bg-cyan-950/5 border-x border-slate-100">
+                        <div className="font-mono font-bold text-sm text-slate-900">
+                          {item.providedValue}
+                        </div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">
+                          {isMl ? 'ഡ്രോയിംഗിൽ രേഖപ്പെടുത്തിയത്' : 'From CAD / Plan data'}
+                        </div>
+                      </td>
+
+                      {/* Column 3: Statutory Requirement */}
+                      <td className="py-3 px-4 align-top">
+                        <div className="font-mono font-bold text-sm text-slate-800">
+                          {item.requiredValue}
+                        </div>
+                        <div className="text-[11px] text-slate-600 mt-0.5 line-clamp-2">
+                          {isMl ? item.requirementMl : item.requirementEn}
+                        </div>
+                      </td>
+
+                      {/* Column 4: Variance / Deviation */}
+                      <td className="py-3 px-4 align-top">
+                        {isFail ? (
+                          <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-100 text-rose-800 font-bold font-mono text-xs border border-rose-300">
+                            <X className="w-3.5 h-3.5" />
+                            <span>Deficit / Violation</span>
+                          </div>
+                        ) : isWarning ? (
+                          <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-100 text-amber-900 font-bold font-mono text-xs border border-amber-300">
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                            <span>Marginal / Notice</span>
+                          </div>
+                        ) : (
+                          <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 font-bold font-mono text-xs border border-emerald-300">
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Compliant</span>
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Column 5: Finding & Rectification */}
+                      <td className="py-3 px-4 align-top max-w-xs">
+                        <div className="text-slate-700 leading-relaxed text-xs">
+                          {isMl ? item.technicalNoteMl : item.technicalNoteEn}
+                        </div>
+                        {(isFail || isWarning) && item.rectificationAdviceEn && (
+                          <div className="mt-1.5 p-2 bg-rose-50 border border-rose-200 rounded-lg text-rose-900 text-[11px] font-medium">
+                            <strong>{isMl ? 'പരിഹാരം:' : 'Action:'}</strong>{' '}
+                            {isMl ? item.rectificationAdviceMl : item.rectificationAdviceEn}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {filteredChecks.length === 0 && (
+            <div className="p-8 text-center text-slate-500">
+              <Info className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+              <p className="text-sm">No rules match the active filter or search query.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* VIEW MODE 2: DETAILED CARDS VIEW */}
+      {viewMode === 'detailed' && (
+        <div className="space-y-3">
+          {filteredChecks.length === 0 ? (
+            <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center text-slate-500">
+              <Info className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+              <p className="text-sm">No rules match the active filter or search query.</p>
+            </div>
+          ) : (
+            filteredChecks.map((item) => {
+              const isExpanded = expandedCheckId === item.id;
+              const isPass = item.status === 'pass';
+              const isFail = item.status === 'fail';
+              const isWarning = item.status === 'warning';
+
+              return (
                 <div
-                  onClick={() => setExpandedCheckId(isExpanded ? null : item.id)}
-                  className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 cursor-pointer hover:bg-slate-50/50"
+                  key={item.id}
+                  className={`bg-white rounded-2xl border transition-all shadow-2xs overflow-hidden ${
+                    isFail
+                      ? 'border-rose-300 ring-1 ring-rose-500/20'
+                      : isWarning
+                      ? 'border-amber-300 ring-1 ring-amber-500/20'
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
                 >
-                  <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <div className="mt-0.5 shrink-0">
-                      {isPass ? (
-                        <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
-                          ✓
+                  {/* Rule Card Header */}
+                  <div
+                    onClick={() => setExpandedCheckId(isExpanded ? null : item.id)}
+                    className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 cursor-pointer hover:bg-slate-50/50"
+                  >
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <div className="mt-0.5 shrink-0">
+                        {isPass ? (
+                          <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+                            ✓
+                          </div>
+                        ) : isFail ? (
+                          <div className="w-8 h-8 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center font-bold">
+                            ✕
+                          </div>
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+                            !
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                            {item.ruleNoKmbr}
+                          </span>
+                          <span className="text-[11px] text-slate-400 font-mono hidden md:inline">
+                            ({item.ruleNoKpbr})
+                          </span>
+                          <span
+                            className={`text-[10px] uppercase font-bold px-2 py-0.2 rounded-full ${
+                              isPass
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : isFail
+                                ? 'bg-rose-100 text-rose-800 font-bold'
+                                : 'bg-amber-100 text-amber-800'
+                            }`}
+                          >
+                            {isPass ? 'COMPLIANT ✅' : isFail ? 'VIOLATION ❌' : 'CONDITIONAL ⚠️'}
+                          </span>
                         </div>
-                      ) : isFail ? (
-                        <div className="w-8 h-8 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center font-bold">
-                          ✕
+
+                        <h4 className="font-bold text-slate-900 text-sm sm:text-base mt-1">
+                          {isMl ? item.titleMl : item.titleEn}
+                        </h4>
+                        <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">
+                          {isMl ? item.requirementMl : item.requirementEn}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Value Comparison */}
+                    <div className="flex items-center gap-4 shrink-0 w-full sm:w-auto justify-between sm:justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 text-xs">
+                      <div className="text-right">
+                        <div className="text-[10px] text-slate-400 font-medium">Submitted / Required</div>
+                        <div className="font-bold text-slate-900 font-mono">
+                          <span className={isFail ? 'text-rose-700' : 'text-emerald-700'}>
+                            {item.providedValue}
+                          </span>
+                          <span className="text-slate-400 mx-1">/</span>
+                          <span className="text-slate-600">{item.requiredValue}</span>
                         </div>
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
-                          !
+                      </div>
+
+                      <div className="text-slate-400">
+                        {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Expanded Details & Rectification Note */}
+                  {isExpanded && (
+                    <div className="p-4 bg-slate-50 border-t border-slate-200 space-y-3 text-xs sm:text-sm animate-fadeIn">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Left: Requirement Details */}
+                        <div className="space-y-2 bg-white p-3.5 rounded-xl border border-slate-200">
+                          <div className="font-semibold text-slate-800 flex items-center gap-1.5">
+                            <Building className="w-4 h-4 text-cyan-600" />
+                            <span>{isMl ? 'ചട്ടപരമായ നിബന്ധന:' : 'Statutory Rule Requirement:'}</span>
+                          </div>
+                          <p className="text-slate-600 text-xs leading-relaxed">
+                            {isMl ? item.requirementMl : item.requirementEn}
+                          </p>
+                          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                            <span className="text-slate-500">KMBR Ref:</span>
+                            <span className="font-mono font-medium text-slate-800">{item.ruleNoKmbr}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-slate-500">KPBR Ref:</span>
+                            <span className="font-mono font-medium text-slate-800">{item.ruleNoKpbr}</span>
+                          </div>
+                        </div>
+
+                        {/* Right: Technical Scrutiny Finding */}
+                        <div
+                          className={`space-y-2 p-3.5 rounded-xl border ${
+                            isFail
+                              ? 'bg-rose-50/70 border-rose-200 text-rose-950'
+                              : isWarning
+                              ? 'bg-amber-50/70 border-amber-200 text-amber-950'
+                              : 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
+                          }`}
+                        >
+                          <div className="font-semibold flex items-center gap-1.5">
+                            <Info className="w-4 h-4" />
+                            <span>{isMl ? 'സാങ്കേതിക പരിശോധനാ നിഗമനം:' : 'Engineering Scrutiny Finding:'}</span>
+                          </div>
+                          <p className="text-xs leading-relaxed">
+                            {isMl ? item.technicalNoteMl : item.technicalNoteEn}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Rectification Advice for Violations */}
+                      {(isFail || isWarning) && item.rectificationAdviceEn && (
+                        <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-950 space-y-1">
+                          <div className="font-bold text-xs flex items-center gap-1.5 text-rose-900">
+                            <AlertTriangle className="w-4 h-4 text-rose-600" />
+                            <span>{isMl ? 'പരിഹാര നിർദ്ദേശം (Action Required):' : 'Remedy & Plan Rectification Action:'}</span>
+                          </div>
+                          <p className="text-xs text-rose-800 leading-relaxed font-medium">
+                            {isMl ? item.rectificationAdviceMl : item.rectificationAdviceEn}
+                          </p>
                         </div>
                       )}
                     </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
-                          {item.ruleNoKmbr}
-                        </span>
-                        <span className="text-[11px] text-slate-400 font-mono hidden md:inline">
-                          ({item.ruleNoKpbr})
-                        </span>
-                        <span
-                          className={`text-[10px] uppercase font-bold px-2 py-0.2 rounded-full ${
-                            isPass
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : isFail
-                              ? 'bg-rose-100 text-rose-800 font-bold'
-                              : 'bg-amber-100 text-amber-800'
-                          }`}
-                        >
-                          {isPass ? 'COMPLIANT ✅' : isFail ? 'VIOLATION ❌' : 'CONDITIONAL ⚠️'}
-                        </span>
-                      </div>
-
-                      <h4 className="font-bold text-slate-900 text-sm sm:text-base mt-1">
-                        {isMl ? item.titleMl : item.titleEn}
-                      </h4>
-                      <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">
-                        {isMl ? item.requirementMl : item.requirementEn}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Value Comparison */}
-                  <div className="flex items-center gap-4 shrink-0 w-full sm:w-auto justify-between sm:justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 text-xs">
-                    <div className="text-right">
-                      <div className="text-[10px] text-slate-400 font-medium">Provided / Required</div>
-                      <div className="font-bold text-slate-900 font-mono">
-                        <span className={isFail ? 'text-rose-700' : 'text-emerald-700'}>
-                          {item.providedValue}
-                        </span>
-                        <span className="text-slate-400 mx-1">/</span>
-                        <span className="text-slate-600">{item.requiredValue}</span>
-                      </div>
-                    </div>
-
-                    <div className="text-slate-400">
-                      {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                    </div>
-                  </div>
+                  )}
                 </div>
-
-                {/* Expanded Details & Rectification Note */}
-                {isExpanded && (
-                  <div className="p-4 bg-slate-50 border-t border-slate-200 space-y-3 text-xs sm:text-sm animate-fadeIn">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Left: Requirement Details */}
-                      <div className="space-y-2 bg-white p-3.5 rounded-xl border border-slate-200">
-                        <div className="font-semibold text-slate-800 flex items-center gap-1.5">
-                          <Building className="w-4 h-4 text-emerald-600" />
-                          <span>{isMl ? 'ചട്ടപരമായ നിബന്ധന:' : 'Statutory Rule Requirement:'}</span>
-                        </div>
-                        <p className="text-slate-600 text-xs leading-relaxed">
-                          {isMl ? item.requirementMl : item.requirementEn}
-                        </p>
-                        <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-                          <span className="text-slate-500">KMBR Ref:</span>
-                          <span className="font-mono font-medium text-slate-800">{item.ruleNoKmbr}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-500">KPBR Ref:</span>
-                          <span className="font-mono font-medium text-slate-800">{item.ruleNoKpbr}</span>
-                        </div>
-                      </div>
-
-                      {/* Right: Technical Scrutiny Finding */}
-                      <div
-                        className={`space-y-2 p-3.5 rounded-xl border ${
-                          isFail
-                            ? 'bg-rose-50/70 border-rose-200 text-rose-950'
-                            : isWarning
-                            ? 'bg-amber-50/70 border-amber-200 text-amber-950'
-                            : 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
-                        }`}
-                      >
-                        <div className="font-semibold flex items-center gap-1.5">
-                          <Info className="w-4 h-4" />
-                          <span>{isMl ? 'സാങ്കേതിക പരിശോധനാ നിഗമനം:' : 'Engineering Scrutiny Finding:'}</span>
-                        </div>
-                        <p className="text-xs leading-relaxed">
-                          {isMl ? item.technicalNoteMl : item.technicalNoteEn}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Rectification Advice for Violations */}
-                    {(isFail || isWarning) && item.rectificationAdviceEn && (
-                      <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-950 space-y-1">
-                        <div className="font-bold text-xs flex items-center gap-1.5 text-rose-900">
-                          <AlertTriangle className="w-4 h-4 text-rose-600" />
-                          <span>{isMl ? 'പരിഹാര നിർദ്ദേശം (Action Required):' : 'Remedy & Plan Rectification Action:'}</span>
-                        </div>
-                        <p className="text-xs text-rose-800 leading-relaxed font-medium">
-                          {isMl ? item.rectificationAdviceMl : item.rectificationAdviceEn}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })
-        )}
-      </div>
+              );
+            })
+          )}
+        </div>
+      )}
 
       {/* Action to Official Report */}
-      <div className="flex items-center justify-between pt-4 border-t border-slate-200">
-        <span className="text-xs text-slate-500">
-          Generated under Kerala Municipality Building Rules & Panchayat Building Rules Engine.
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-200">
+        <span className="text-xs text-slate-500 text-center sm:text-left">
+          {isMl
+            ? 'കേരള മുനിസിപ്പാലിറ്റി & പഞ്ചായത്ത് കെട്ടിട നിർമ്മാണ ചട്ടങ്ങൾ പ്രകാരം തയ്യാറാക്കിയ സ്ക്രൂട്ടിനി ഫലം.'
+            : 'Generated under Kerala Municipality Building Rules & Panchayat Building Rules Engine.'}
         </span>
 
         <button
           type="button"
           id="btn-goto-official-report"
           onClick={onGoToReport}
-          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-6 py-2.5 rounded-xl shadow-sm transition-all transform active:scale-95 text-xs sm:text-sm"
+          className="flex items-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold px-6 py-2.5 rounded-xl shadow-md transition-all transform active:scale-95 text-xs sm:text-sm cursor-pointer"
         >
           <FileText className="w-4 h-4" />
-          <span>{isMl ? 'ഔദ്യോഗിക റിപ്പോർട്ടും PDF-ഉം കാണുക' : 'Generate Official Report & Export PDF'}</span>
+          <span>{isMl ? 'റിപ്പോർട്ട് കാണുക' : 'View Scrutiny Report'}</span>
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>

@@ -2,6 +2,95 @@ export type JurisdictionType = 'KMBR' | 'KPBR'; // KMBR: Municipality/Corp, KPBR
 
 export type Language = 'ml' | 'en';
 
+export type TabType = 
+  | 'authority' 
+  | 'drawings' 
+  | 'areastatement' 
+  | 'scrutiny' 
+  | 'report' 
+  | 'rulebook' 
+  | 'chatbot'
+  | 'admin';
+
+export type BuildingFormData = AreaStatementData;
+
+export const SUPER_ADMIN_EMAIL = 'sanoop.amrita@gmail.com';
+
+export type UserRole = 'super_admin' | 'user';
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  avatar?: string;
+  organization?: string;
+  licenseNumber?: string;
+  provider: 'google' | 'email' | 'guest';
+  createdAt: number;
+  lastLoginAt: number;
+  isSuperAdmin: boolean;
+}
+
+export interface AccessLogMetadata {
+  id: string;
+  userEmail: string;
+  userName: string;
+  role: UserRole;
+  timestamp: number;
+  sessionDurationSeconds: number;
+  actionType: 
+    | 'USER_LOGIN'
+    | 'USER_LOGOUT'
+    | 'SCRUTINY_EXECUTED'
+    | 'REPORT_DOWNLOADED'
+    | 'AI_ADVISOR_CONSULTED'
+    | 'RULE_CONFIG_UPDATED'
+    | 'DRAWING_MEMORY_PURGED';
+  jurisdiction: JurisdictionType;
+  referenceId?: string;
+  complianceStatus?: string;
+  deviceInfo: string;
+}
+
+export interface SystemNoticeConfig {
+  id: string;
+  enabled: boolean;
+  type: 'info' | 'warning' | 'success' | 'alert';
+  titleEn: string;
+  titleMl: string;
+  messageEn: string;
+  messageMl: string;
+  updatedAt: number;
+  updatedBy: string;
+}
+
+export interface FeatureFlagConfig {
+  enableAiVisionAnalysis: boolean;
+  enableAutomaticSmallPlotRule60: boolean;
+  enableStrictDrinkingWellClearance: boolean;
+  enableRwhFormulaEnforcement: boolean;
+  enableSolarRooftopMandate500SqM: boolean;
+  enableRealTimeComparisonTable: boolean;
+  enableGuestTrialMode: boolean;
+  enforceZeroStorageStatelessProcessing: boolean;
+}
+
+export interface SystemConfig {
+  systemPromptModifier: string;
+  kbrVersionKmbr: string;
+  kbrVersionKpbr: string;
+  baseFarResidentialKmbr: number;
+  baseFarResidentialKpbr: number;
+  minDrinkingWellDistanceM: number;
+  rwhLitersPerSqM: number;
+  maxSmallPlotAreaSqM: number;
+  notice: SystemNoticeConfig;
+  features: FeatureFlagConfig;
+  lastModifiedAt: number;
+  lastModifiedBy: string;
+}
+
 export type OccupancyGroup = 
   | 'A1' // Residential Single/Multi/Apartments
   | 'A2' // Special Residential / Hostel / Lodging
@@ -117,6 +206,7 @@ export interface AreaStatementData {
   staircaseTreadCm: number;
   staircaseRiserCm: number;
   staircaseHeadroomM: number;
+  staircaseCount?: number;
   minHabitableRoomAreaSqM: number;
   minHabitableRoomWidthM: number;
   minHabitableRoomHeightM: number;
@@ -127,6 +217,24 @@ export interface AreaStatementData {
   hasLift: boolean;
   hasRampForDisabled: boolean;
   rampSlopeRatio: number; // e.g. 10 for 1:10
+
+  // Specialized Educational Norms (Group B / KER - Kerala Education Rules)
+  numberOfStudents?: number;
+  playgroundAreaSqM?: number;
+  minClassroomAreaSqM?: number;
+  minClassroomHeightM?: number;
+  numberOfClassrooms?: number;
+  separateSanitationBoysGirls?: boolean;
+  toiletSeatsBoys?: number;
+  toiletSeatsGirls?: number;
+  urinalsCount?: number;
+
+  // Specialized Fire Safety (NBC Part IV & Kerala Fire & Rescue Services)
+  hasFireNoc?: boolean;
+  hasExternalFireEscapeStair?: boolean;
+  travelDistanceToExitM?: number;
+  refugeAreaProvided?: boolean;
+  fireHydrantRiserProvided?: boolean;
 }
 
 export type CheckStatus = 'pass' | 'fail' | 'warning' | 'exempt';

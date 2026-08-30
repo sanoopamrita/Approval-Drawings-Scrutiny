@@ -291,6 +291,42 @@ export const AreaStatementForm: React.FC<AreaStatementFormProps> = ({
                 <span className="text-slate-500 font-medium">m</span>
               </div>
             </div>
+
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+              <label className="block text-slate-700 font-semibold mb-1">
+                {isMl ? 'ബാൽക്കണി തള്ളിനിൽക്കൽ (Balcony Cantilever):' : 'Balcony Projection (m):'}
+              </label>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  step="0.05"
+                  min="0"
+                  value={data.balconyProjectionM || 0}
+                  onChange={(e) => onChange({ balconyProjectionM: parseFloat(e.target.value) || 0 })}
+                  className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 font-bold focus:ring-2 focus:ring-emerald-500"
+                />
+                <span className="text-slate-500 font-medium">m</span>
+              </div>
+              <span className="text-[10px] text-slate-500 mt-1 block">Max 1.20m into setback</span>
+            </div>
+
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+              <label className="block text-slate-700 font-semibold mb-1">
+                {isMl ? 'സൺഷെയ്ഡ് / കാനോപി (Canopy):' : 'Canopy / Sunshade (m):'}
+              </label>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  step="0.05"
+                  min="0"
+                  value={data.canopyProjectionM || 0.6}
+                  onChange={(e) => onChange({ canopyProjectionM: parseFloat(e.target.value) || 0 })}
+                  className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 font-bold focus:ring-2 focus:ring-emerald-500"
+                />
+                <span className="text-slate-500 font-medium">m</span>
+              </div>
+              <span className="text-[10px] text-slate-500 mt-1 block">Min 1.0m clear to boundary</span>
+            </div>
           </div>
         </div>
 
@@ -514,6 +550,176 @@ export const AreaStatementForm: React.FC<AreaStatementFormProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Section 7: Staircase, Egress & Accessibility */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+          <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+            <Layers className="w-5 h-5 text-emerald-600" />
+            <h3 className="font-bold text-slate-900 text-sm sm:text-base">
+              {isMl ? '7. സ്റ്റെയർകേസ് & എക്സിറ്റ് അളവുകൾ' : '7. Staircase & Egress Dimensions'}
+            </h3>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs sm:text-sm">
+            <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+              <label className="block text-slate-700 font-medium mb-1">{isMl ? 'കോണി വീതി (m):' : 'Flight Width (m):'}</label>
+              <input
+                type="number"
+                step="0.05"
+                value={data.mainStaircaseWidthM}
+                onChange={(e) => onChange({ mainStaircaseWidthM: parseFloat(e.target.value) || 0 })}
+                className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-slate-800 font-bold focus:ring-2 focus:ring-emerald-500"
+              />
+              <span className="text-[10px] text-slate-500">Min 1.0m (A1) / 1.5m (Pub)</span>
+            </div>
+
+            <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+              <label className="block text-slate-700 font-medium mb-1">{isMl ? 'റൈസർ (cm):' : 'Riser (cm):'}</label>
+              <input
+                type="number"
+                step="0.5"
+                value={data.staircaseRiserCm}
+                onChange={(e) => onChange({ staircaseRiserCm: parseFloat(e.target.value) || 0 })}
+                className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-slate-800 font-bold focus:ring-2 focus:ring-emerald-500"
+              />
+              <span className="text-[10px] text-slate-500">Max 17.5cm / 15cm</span>
+            </div>
+
+            <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+              <label className="block text-slate-700 font-medium mb-1">{isMl ? 'ട്രെഡ്ഡ് (cm):' : 'Tread (cm):'}</label>
+              <input
+                type="number"
+                step="0.5"
+                value={data.staircaseTreadCm}
+                onChange={(e) => onChange({ staircaseTreadCm: parseFloat(e.target.value) || 0 })}
+                className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-slate-800 font-bold focus:ring-2 focus:ring-emerald-500"
+              />
+              <span className="text-[10px] text-slate-500">Min 25cm / 30cm</span>
+            </div>
+
+            <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+              <label className="block text-slate-700 font-medium mb-1">{isMl ? 'സ്റ്റെയർകേസ് എണ്ണം:' : 'Staircase Count:'}</label>
+              <input
+                type="number"
+                min="1"
+                value={data.staircaseCount || 1}
+                onChange={(e) => onChange({ staircaseCount: parseInt(e.target.value, 10) || 1 })}
+                className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-slate-800 font-bold focus:ring-2 focus:ring-emerald-500"
+              />
+              <span className="text-[10px] text-slate-500">Dual required for Public/KER</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 8: Specialized Educational Norms (Conditional for Group B) */}
+        {data.occupancyGroup === 'B' && (
+          <div className="bg-blue-50/40 rounded-2xl border border-blue-200 p-5 shadow-sm space-y-4 lg:col-span-2">
+            <div className="flex items-center gap-2 pb-3 border-b border-blue-200/60">
+              <Sparkles className="w-5 h-5 text-blue-600" />
+              <h3 className="font-bold text-blue-950 text-sm sm:text-base">
+                {isMl ? 'കേരള എഡ്യൂക്കേഷൻ റൂൾസ് (KER) സ്കൂൾ മാനദണ്ഡങ്ങൾ (Group B Norms)' : 'Kerala Education Rules (KER) School Structural Norms'}
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs sm:text-sm">
+              <div className="bg-white p-3 rounded-xl border border-blue-100">
+                <label className="block text-slate-700 font-semibold mb-1">
+                  {isMl ? 'ക്ലാസ്സ് മുറി വിസ്തീർണ്ണം (m²):' : 'Min Classroom Area (m²):'}
+                </label>
+                <input
+                  type="number"
+                  step="0.5"
+                  value={data.minClassroomAreaSqM || 36.0}
+                  onChange={(e) => onChange({ minClassroomAreaSqM: parseFloat(e.target.value) || 0 })}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 font-bold"
+                />
+                <span className="text-[10px] text-blue-800 font-medium">KER Chapter IV: Min 36.0 m² (6m × 6m)</span>
+              </div>
+
+              <div className="bg-white p-3 rounded-xl border border-blue-100">
+                <label className="block text-slate-700 font-semibold mb-1">
+                  {isMl ? 'ക്ലാസ്സ് മുറി ഉയരം (m):' : 'Classroom Ceiling Height (m):'}
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={data.minClassroomHeightM || 3.0}
+                  onChange={(e) => onChange({ minClassroomHeightM: parseFloat(e.target.value) || 0 })}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 font-bold"
+                />
+                <span className="text-[10px] text-blue-800 font-medium">KER Standard: Min 3.00m clear</span>
+              </div>
+
+              <div className="bg-white p-3 rounded-xl border border-blue-100">
+                <label className="block text-slate-700 font-semibold mb-1">
+                  {isMl ? 'കളിസ്ഥലം വിസ്തീർണ്ണം (m²):' : 'Playground Open Yard (m²):'}
+                </label>
+                <input
+                  type="number"
+                  step="50"
+                  value={data.playgroundAreaSqM || 600}
+                  onChange={(e) => onChange({ playgroundAreaSqM: parseFloat(e.target.value) || 0 })}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 font-bold"
+                />
+                <span className="text-[10px] text-blue-800 font-medium">Min 5 sq.m per student</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Section 9: Fire Safety & High-Rise (Conditional) */}
+        {(data.buildingHeightM > 16 || data.occupancyGroup === 'D' || data.occupancyGroup === 'F' || data.occupancyGroup === 'B' || data.occupancyGroup === 'C' || data.occupancyGroup === 'I') && (
+          <div className="bg-rose-50/40 rounded-2xl border border-rose-200 p-5 shadow-sm space-y-4 lg:col-span-2">
+            <div className="flex items-center gap-2 pb-3 border-b border-rose-200/60">
+              <ShieldAlert className="w-5 h-5 text-rose-600" />
+              <h3 className="font-bold text-rose-950 text-sm sm:text-base">
+                {isMl ? 'ഫയർ സേഫ്റ്റി & എൻ.ബി.സി (NBC Part IV & Kerala Fire Services)' : 'Fire & Life Safety (NBC Part IV & Kerala Fire & Rescue)'}
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs sm:text-sm">
+              <div className="bg-white p-3 rounded-xl border border-rose-100 flex items-center justify-between">
+                <div>
+                  <span className="font-semibold text-slate-800">{isMl ? 'ഫയർ എൻ.ഒ.സി പ്ലാൻ സമർപ്പിച്ചോ?' : 'Fire NOC Scheme Attached?'}</span>
+                  <p className="text-[10px] text-slate-500">Mandatory for &gt;16m / Assembly</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={!!data.hasFireNoc}
+                  onChange={(e) => onChange({ hasFireNoc: e.target.checked })}
+                  className="w-5 h-5 text-rose-600 rounded"
+                />
+              </div>
+
+              <div className="bg-white p-3 rounded-xl border border-rose-100 flex items-center justify-between">
+                <div>
+                  <span className="font-semibold text-slate-800">{isMl ? 'പുറം ഫയർ എസ്കേപ്പ് സ്റ്റെയർകേസ്?' : 'External Fire Escape Stair?'}</span>
+                  <p className="text-[10px] text-slate-500">Direct discharge to ground</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={!!data.hasExternalFireEscapeStair}
+                  onChange={(e) => onChange({ hasExternalFireEscapeStair: e.target.checked })}
+                  className="w-5 h-5 text-rose-600 rounded"
+                />
+              </div>
+
+              <div className="bg-white p-3 rounded-xl border border-rose-100">
+                <label className="block text-slate-700 font-semibold mb-1">
+                  {isMl ? 'ഫയർ എഞ്ചിൻ പാത (Fire Way in m):' : 'Fire Tender Way Width (m):'}
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={data.clearFirePassageWidthM}
+                  onChange={(e) => onChange({ clearFirePassageWidthM: parseFloat(e.target.value) || 0 })}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 font-bold"
+                />
+                <span className="text-[10px] text-rose-800 font-medium">Min 5.0m clear around high-rise</span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Floor-wise Area Table */}
