@@ -15,6 +15,10 @@ export type TabType =
 export type BuildingFormData = AreaStatementData;
 
 export const SUPER_ADMIN_EMAIL = 'sanoop.amrita@gmail.com';
+export const SUPER_ADMIN_EMAILS = [
+  'sanoop.amrita@gmail.com',
+  'sanoopsadanandhan@gmail.com',
+];
 
 export type UserRole = 'super_admin' | 'user';
 
@@ -80,6 +84,9 @@ export interface SystemConfig {
   systemPromptModifier: string;
   kbrVersionKmbr: string;
   kbrVersionKpbr: string;
+  lastRulesUpdatedDate: string; // e.g. "30-08-2026"
+  syncedKnowledgeSummary?: string;
+  syncedItemsCount?: number;
   baseFarResidentialKmbr: number;
   baseFarResidentialKpbr: number;
   minDrinkingWellDistanceM: number;

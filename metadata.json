@@ -1,6 +1,7 @@
 {
-  "name": "VINYASA - Building Compliance Intelligence",
-  "description": "VINYASA is an international-grade statutory building compliance intelligence engine for Kerala Building Rules (KMBR 2019 & KPBR 2019), blueprint visual scrutiny, and automated defect remediation. Official portal: www.vinyasa.online",
+  "name": "വിന്യാസ | Vinyasa - Kerala Building Rules (KPBR / KMBR) Digital Scrutiny",
+  "description": "Official Kerala Building Rules (KMBR / KPBR) automated statutory compliance and digital blueprint scrutiny engine. കേരള കെട്ടിട നിർമ്മാണ ചട്ടങ്ങൾ പ്രകാരമുള്ള തത്സമയ പ്ലാൻ പരിശോധന, സെറ്റ്ബാക്ക് കണക്കുകൂട്ടലുകൾ, തദ്ദേശ സ്വയംഭരണ സ്ഥാപനങ്ങൾക്കുള്ള ഡിഫെക്ട് ഫ്രീ റിപ്പോർട്ട്.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
+

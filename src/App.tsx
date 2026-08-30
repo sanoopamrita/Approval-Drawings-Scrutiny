@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Navbar } from './components/Navbar';
 import { AuthoritySelector } from './components/AuthoritySelector';
 import { DrawingUploader } from './components/DrawingUploader';
@@ -10,6 +10,7 @@ import { GeminiChatbot } from './components/GeminiChatbot';
 import { AdminPanel } from './components/AdminPanel';
 import { LoginView } from './components/LoginView';
 import { VinyasaLogo } from './components/VinyasaLogo';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Bot, Sparkles, Lock, Bell, EyeOff, ShieldCheck, CheckCircle2, X } from 'lucide-react';
 import {
   AreaStatementData,
@@ -38,93 +39,67 @@ import {
 const initialDefaultFormData: AreaStatementData = {
   jurisdiction: 'KPBR',
   district: 'Ernakulam',
-  localBodyName: 'Kizhakkambalam Grama Panchayat',
-  projectName: 'Proposed Residential Building',
-  applicantName: 'Project Applicant',
-  architectEngineerName: 'Er. Rajesh Kumar, B.Tech (Civil)',
-  licenseNumber: 'LSGD/ENG/A/2024/0984',
-  surveyNumber: '342/1-B',
-  wardNumber: 'Ward 04',
-  villageName: 'Kizhakkambalam',
-  talukName: 'Kunnathunad',
+  localBodyName: '',
+  projectName: '',
+  applicantName: '',
+  architectEngineerName: '',
+  licenseNumber: '',
+  surveyNumber: '',
+  wardNumber: '',
+  villageName: '',
+  talukName: '',
   occupancyGroup: 'A1',
   plotType: 'normal',
-  plotAreaSqM: 202.34,
-  plotAreaCents: 5.0,
-  plotWidthM: 14.0,
-  plotDepthM: 14.5,
-  roadAccessWidthM: 3.0,
-  groundCoverageSqM: 98.5,
-  totalBuiltUpAreaSqM: 185.0,
-  totalFloorAreaSqM: 175.2,
-  totalCarpetAreaSqM: 142.0,
-  numberOfFloors: 2,
-  buildingHeightM: 6.8,
+  plotAreaSqM: 0,
+  plotAreaCents: 0,
+  plotWidthM: 0,
+  plotDepthM: 0,
+  roadAccessWidthM: 0,
+  groundCoverageSqM: 0,
+  totalBuiltUpAreaSqM: 0,
+  totalFloorAreaSqM: 0,
+  totalCarpetAreaSqM: 0,
+  numberOfFloors: 1,
+  buildingHeightM: 0,
   floors: [
-    { floorName: 'Ground Floor', builtUpArea: 98.5, carpetArea: 76.0, occupancy: 'A1', heightFromGround: 0.6 },
-    { floorName: 'First Floor', builtUpArea: 86.5, carpetArea: 66.0, occupancy: 'A1', heightFromGround: 3.6 },
+    { floorName: 'Ground Floor', builtUpArea: 0, carpetArea: 0, occupancy: 'A1', heightFromGround: 0 },
   ],
-  frontSetbackM: 3.2,
-  rearSetbackM: 2.1,
-  sideSetback1M: 1.35,
-  sideSetback2M: 1.25,
-  carParkingProvided: 1,
-  twoWheelerParkingProvided: 2,
+  frontSetbackM: 0,
+  rearSetbackM: 0,
+  sideSetback1M: 0,
+  sideSetback2M: 0,
+  carParkingProvided: 0,
+  twoWheelerParkingProvided: 0,
   disabledParkingProvided: 0,
   loadingBaysProvided: 0,
   parkingBayWidthM: 2.5,
   parkingBayLengthM: 5.0,
   drivewayWidthM: 3.0,
-  openWellInPlot: true,
-  distanceWellToSepticTankM: 7.8,
-  distanceWellToSoakPitM: 8.0,
-  distanceSepticTankToBoundaryM: 1.3,
-  rwhTankCapacityLiters: 5000,
-  solarPvCapacityKwp: 1.5,
-  solidWasteUnitProvided: true,
-  biogasPlantOrCompostProvided: true,
-  mainStaircaseWidthM: 1.0,
-  staircaseTreadCm: 25.0,
-  staircaseRiserCm: 17.0,
-  staircaseHeadroomM: 2.2,
-  minHabitableRoomAreaSqM: 9.5,
-  minHabitableRoomWidthM: 2.4,
-  minHabitableRoomHeightM: 3.0,
-  minKitchenAreaSqM: 5.0,
-  minKitchenWidthM: 1.8,
-  ventilationRatioPercent: 12.0,
-  clearFirePassageWidthM: 1.5,
+  openWellInPlot: false,
+  distanceWellToSepticTankM: 0,
+  distanceWellToSoakPitM: 0,
+  distanceSepticTankToBoundaryM: 0,
+  rwhTankCapacityLiters: 0,
+  solarPvCapacityKwp: 0,
+  solidWasteUnitProvided: false,
+  biogasPlantOrCompostProvided: false,
+  mainStaircaseWidthM: 0,
+  staircaseTreadCm: 0,
+  staircaseRiserCm: 0,
+  staircaseHeadroomM: 0,
+  minHabitableRoomAreaSqM: 0,
+  minHabitableRoomWidthM: 0,
+  minHabitableRoomHeightM: 0,
+  minKitchenAreaSqM: 0,
+  minKitchenWidthM: 0,
+  ventilationRatioPercent: 0,
+  clearFirePassageWidthM: 0,
   hasLift: false,
   hasRampForDisabled: false,
   rampSlopeRatio: 10,
 };
 
-const initialDefaultDrawings: UploadedDrawing[] = [
-  {
-    id: 'dwg-1',
-    category: 'site_plan',
-    name: 'Site_Plan_Cad_Survey_342_1B.pdf',
-    size: 1940000,
-    status: 'verified',
-    scale: '1:200',
-    sheetsCount: 1,
-    extractedLabels: ['PLOT_BOUNDARY', 'SETBACK_FRONT', 'SETBACK_REAR', 'SETBACK_SIDE_1', 'SETBACK_SIDE_2', 'ACCESS_ROAD'],
-    remarks: 'Auto-extracted from CAD layers with verified boundary coordinates.',
-    uploadedAt: Date.now() - 3600000,
-  },
-  {
-    id: 'dwg-2',
-    category: 'floor_plans',
-    name: 'Ground_Floor_and_First_Floor_Plan.pdf',
-    size: 2450000,
-    status: 'verified',
-    scale: '1:100',
-    sheetsCount: 2,
-    extractedLabels: ['PLINTH_AREA', 'ROOM_DIMENSIONS', 'STAIR_CASE', 'DOORS_WINDOWS'],
-    remarks: 'Plinth area and room sizes verified against Kerala Building Rules standards.',
-    uploadedAt: Date.now() - 3000000,
-  },
-];
+const initialDefaultDrawings: UploadedDrawing[] = [];
 
 export function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(getCurrentUser());
@@ -135,6 +110,7 @@ export function App() {
   const [activeTab, setActiveTab] = useState<TabType>('authority');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [floatingChatOpen, setFloatingChatOpen] = useState<boolean>(false);
+  const [isScrutinyRunning, setIsScrutinyRunning] = useState<boolean>(false);
 
   const [formData, setFormData] = useState<AreaStatementData>(initialDefaultFormData);
   const [drawings, setDrawings] = useState<UploadedDrawing[]>(initialDefaultDrawings);
@@ -151,7 +127,7 @@ export function App() {
     return () => unsubscribe();
   }, []);
 
-  // Run scrutiny on initial mount and when requested
+  // Run initial scrutiny
   useEffect(() => {
     executeScrutiny();
   }, []);
@@ -219,6 +195,9 @@ export function App() {
   };
 
   const handleManualRunScrutiny = () => {
+    if (isScrutinyRunning) return;
+    setIsScrutinyRunning(true);
+
     const result = executeScrutiny();
     setActiveTab('scrutiny');
 
@@ -237,6 +216,10 @@ export function App() {
         ? 'ചട്ട പരിശോധന പൂർത്തിയായി! ഫലങ്ങൾ താഴെ നൽകിയിരിക്കുന്നു.'
         : 'Rule Scrutiny Complete! Results updated.'
     );
+
+    setTimeout(() => {
+      setIsScrutinyRunning(false);
+    }, 600);
   };
 
   const handleLogout = () => {
@@ -265,14 +248,16 @@ export function App() {
   // If user is not authenticated, show modern high-converting Sign in view
   if (!currentUser) {
     return (
-      <div className="min-h-screen flex flex-col bg-[#040813] text-slate-100 font-sans selection:bg-cyan-500 selection:text-white">
+      <div className="min-h-screen min-h-[100dvh] flex flex-col bg-[#040813] text-slate-100 font-sans selection:bg-cyan-500 selection:text-white overflow-x-hidden">
         {/* Sleek Brand Header */}
-        <header className="bg-[#030712]/90 backdrop-blur-md border-b border-cyan-950/80 py-3.5 px-6 shadow-lg relative z-20">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <VinyasaLogo variant="full" size="md" theme="dark" showDomain={true} />
+        <header className="bg-[#030712]/95 backdrop-blur-md border-b border-cyan-950/80 py-2.5 sm:py-3.5 px-3.5 sm:px-6 shadow-lg relative z-20 shrink-0">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+            <div className="min-w-0 flex items-center overflow-hidden">
+              <VinyasaLogo variant="full" size="md" theme="dark" showDomain={true} className="scale-[0.85] sm:scale-100 origin-left shrink-0" />
+            </div>
             <button
               onClick={() => setLanguage(language === 'ml' ? 'en' : 'ml')}
-              className="text-xs text-cyan-300 hover:text-white bg-slate-900/90 border border-cyan-500/40 hover:border-cyan-400 px-3.5 py-1.5 rounded-xl cursor-pointer transition-all shadow-sm flex items-center gap-1.5 font-semibold"
+              className="shrink-0 text-xs text-cyan-300 hover:text-white bg-slate-900/90 border border-cyan-500/40 hover:border-cyan-400 px-3 py-1.5 rounded-xl cursor-pointer transition-all shadow-sm flex items-center gap-1.5 font-semibold active:scale-95"
             >
               <span>🌐</span>
               <span>{language === 'ml' ? 'English' : 'മലയാളം'}</span>
@@ -281,14 +266,14 @@ export function App() {
         </header>
 
         {/* Login & Zero Storage Gateway */}
-        <main className="flex-1 flex items-center justify-center">
+        <main className="flex-1 flex items-center justify-center p-3 sm:p-6 lg:p-8">
           <LoginView language={language} onLoginSuccess={handleLoginSuccess} />
         </main>
 
         {/* Minimal Clean Copyright Footer */}
-        <footer className="bg-[#02050e] text-slate-400 text-xs py-5 border-t border-slate-900 text-center relative z-20">
+        <footer className="bg-[#02050e] text-slate-400 text-xs py-3.5 sm:py-4 border-t border-slate-900 text-center relative z-20 shrink-0">
           <div className="max-w-7xl mx-auto px-4">
-            <p className="text-[12px] font-mono text-slate-400 tracking-wide">
+            <p className="text-[11px] sm:text-[12px] font-mono text-slate-400 tracking-wide">
               Copyright © 2026 vinyasa.online - All Rights Reserved.
             </p>
           </div>
@@ -333,165 +318,143 @@ export function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-4">
-        
-        {/* Live System Broadcast Notice (Configurable in real-time by Super Admin) */}
-        {systemConfig.notice.enabled && !dismissNotice && (
-          <div className="bg-gradient-to-r from-amber-500/15 via-yellow-500/10 to-amber-500/15 border border-amber-400/40 rounded-2xl p-3.5 text-amber-950 flex items-center justify-between gap-3 shadow-xs animate-fadeIn">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-amber-400/20 text-amber-900 shrink-0">
-                <Bell className="w-4 h-4" />
-              </div>
-              <div className="text-xs">
-                <span className="font-bold text-amber-950 mr-1.5">
-                  {language === 'ml' ? systemConfig.notice.titleMl : systemConfig.notice.titleEn}:
-                </span>
-                <span className="text-amber-900 font-medium">
-                  {language === 'ml' ? systemConfig.notice.messageMl : systemConfig.notice.messageEn}
-                </span>
-              </div>
-            </div>
-            <button
-              onClick={() => setDismissNotice(true)}
-              className="p-1 text-amber-800 hover:text-amber-950 rounded-lg hover:bg-amber-400/20 transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        )}
+        <ErrorBoundary fallbackTitle="ഘടകങ്ങൾ ലോഡ് ചെയ്യുന്നതിൽ തടസ്സം നേരിട്ടു">
+          {/* Sub-Views */}
+          {activeTab === 'authority' && (
+            <AuthoritySelector
+              data={formData}
+              onChange={handleFormDataChange}
+              language={language}
+              onNext={() => setActiveTab('drawings')}
+            />
+          )}
 
-        {/* Sub-Views */}
-        {activeTab === 'authority' && (
-          <AuthoritySelector
-            data={formData}
-            onChange={handleFormDataChange}
-            language={language}
-            onNext={() => setActiveTab('drawings')}
-          />
-        )}
-
-        {activeTab === 'drawings' && (
-          <DrawingUploader
-            drawings={drawings}
-            onAddDrawing={handleAddDrawing}
-            onRemoveDrawing={handleRemoveDrawing}
-            onUpdateDrawing={handleUpdateDrawing}
-            onPurgeDrawings={handlePurgeDrawings}
-            onApplyExtractedData={(partial) => {
-              handleFormDataChange(partial);
-              showToast(
-                language === 'ml'
-                  ? 'ഡ്രോയിംഗിൽ നിന്ന് കണ്ടെത്തിയ അളവുകൾ ഫോമിലേക്ക് ചേർത്തു!'
-                  : 'Extracted drawing measurements applied to Area Statement!'
-              );
-            }}
-            language={language}
-            onNext={() => setActiveTab('areastatement')}
-            onPrev={() => setActiveTab('authority')}
-          />
-        )}
-
-        {activeTab === 'areastatement' && (
-          <AreaStatementForm
-            data={formData}
-            onChange={handleFormDataChange}
-            language={language}
-            onNext={() => {
-              handleManualRunScrutiny();
-            }}
-            onPrev={() => setActiveTab('drawings')}
-          />
-        )}
-
-        {activeTab === 'scrutiny' && summary && (
-          <ScrutinyResults
-            summary={summary}
-            checks={checks}
-            language={language}
-            onGoToReport={() => {
-              setActiveTab('report');
-              if (currentUser) {
-                recordAccessLog(
-                  currentUser,
-                  'REPORT_DOWNLOADED',
-                  formData.jurisdiction,
-                  summary.overallStatus,
-                  formData.surveyNumber
+          {activeTab === 'drawings' && (
+            <DrawingUploader
+              drawings={drawings}
+              onAddDrawing={handleAddDrawing}
+              onRemoveDrawing={handleRemoveDrawing}
+              onUpdateDrawing={handleUpdateDrawing}
+              onPurgeDrawings={handlePurgeDrawings}
+              onApplyExtractedData={(partial) => {
+                handleFormDataChange(partial);
+                showToast(
+                  language === 'ml'
+                    ? 'ഡ്രോയിംഗിൽ നിന്ന് കണ്ടെത്തിയ അളവുകൾ ഫോമിലേക്ക് ചേർത്തു!'
+                    : 'Extracted drawing measurements applied to Area Statement!'
                 );
-              }
-            }}
-          />
-        )}
+              }}
+              language={language}
+              onNext={() => setActiveTab('areastatement')}
+              onPrev={() => setActiveTab('authority')}
+            />
+          )}
 
-        {activeTab === 'report' && summary && (
-          <ReportGenerator
-            data={formData}
-            summary={summary}
-            checks={checks}
-            drawings={drawings}
-            language={language}
-          />
-        )}
+          {activeTab === 'areastatement' && (
+            <AreaStatementForm
+              data={formData}
+              onChange={handleFormDataChange}
+              language={language}
+              onNext={() => {
+                handleManualRunScrutiny();
+              }}
+              onPrev={() => setActiveTab('drawings')}
+            />
+          )}
 
-        {activeTab === 'rulebook' && <RulesExplorer language={language} />}
+          {activeTab === 'scrutiny' && summary && (
+            <ScrutinyResults
+              summary={summary}
+              checks={checks}
+              language={language}
+              onGoToReport={() => {
+                setActiveTab('report');
+                if (currentUser) {
+                  recordAccessLog(
+                    currentUser,
+                    'REPORT_DOWNLOADED',
+                    formData.jurisdiction,
+                    summary.overallStatus,
+                    formData.surveyNumber
+                  );
+                }
+              }}
+            />
+          )}
 
-        {activeTab === 'chatbot' && (
-          <div className="space-y-4">
-            <div className="bg-[#0A1326] border border-cyan-900/50 rounded-2xl p-5 text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
-              <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-600 via-sky-500 to-blue-600 flex items-center justify-center text-slate-950 font-bold shadow-[0_0_15px_rgba(0,229,255,0.4)]">
-                  <Bot className="w-6 h-6 text-slate-950" />
+          {activeTab === 'report' && summary && (
+            <ReportGenerator
+              data={formData}
+              summary={summary}
+              checks={checks}
+              drawings={drawings}
+              language={language}
+            />
+          )}
+
+          {activeTab === 'rulebook' && <RulesExplorer language={language} />}
+
+          {activeTab === 'chatbot' && (
+            <div className="space-y-4">
+              <div className="bg-[#0A1326] border border-cyan-900/50 rounded-2xl p-5 text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-600 via-sky-500 to-blue-600 flex items-center justify-center text-slate-950 font-bold shadow-[0_0_15px_rgba(0,229,255,0.4)]">
+                    <Bot className="w-6 h-6 text-slate-950" />
+                  </div>
+                  <div>
+                    <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2 font-['Outfit',sans-serif]">
+                      {language === 'ml' ? 'വിന്യാസ AI സാങ്കേതിക ഉപദേശകൻ' : 'VINYASA AI Compliance Advisor'}
+                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-mono">
+                        Gemini 2.5 Multi-turn
+                      </span>
+                    </h2>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {language === 'ml'
+                        ? 'KMBR / KPBR ചട്ട സംശയങ്ങൾ, സെറ്റ്ബാക്ക് കണക്കുകൂട്ടലുകൾ, പ്ലാനിലെ അപാകതകൾ, കെ-സ്മാർട്ട് നടപടിക്രമങ്ങൾ എന്നിവ തത്സമയം ചോദിക്കാം.'
+                        : 'Real-time multi-turn building rules scrutiny, setback verification, defect diagnosis & K-Smart filing support.'}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2 font-['Outfit',sans-serif]">
-                    {language === 'ml' ? 'വിന്യാസ AI സാങ്കേതിക ഉപദേശകൻ' : 'VINYASA AI Compliance Advisor'}
-                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-mono">
-                      Gemini 2.5 Multi-turn
-                    </span>
-                  </h2>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    {language === 'ml'
-                      ? 'KMBR / KPBR ചട്ട സംശയങ്ങൾ, സെറ്റ്ബാക്ക് കണക്കുകൂട്ടലുകൾ, പ്ലാനിലെ അപാകതകൾ, കെ-സ്മാർട്ട് നടപടിക്രമങ്ങൾ എന്നിവ തത്സമയം ചോദിക്കാം.'
-                      : 'Real-time multi-turn building rules scrutiny, setback verification, defect diagnosis & K-Smart filing support.'}
-                  </p>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-cyan-300 bg-cyan-950/80 px-3 py-1.5 rounded-lg border border-cyan-800/60 font-mono font-medium">
+                    {formData.jurisdiction === 'KMBR' ? '🏛️ KMBR 2019' : '🏡 KPBR 2019'}
+                  </span>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-cyan-300 bg-cyan-950/80 px-3 py-1.5 rounded-lg border border-cyan-800/60 font-mono font-medium">
-                  {formData.jurisdiction === 'KMBR' ? '🏛️ KMBR 2019' : '🏡 KPBR 2019'}
-                </span>
+
+              <div className="h-[750px]">
+                <GeminiChatbot
+                  language={language}
+                  jurisdiction={formData.jurisdiction}
+                  projectData={formData}
+                  mode="embedded"
+                />
               </div>
             </div>
+          )}
 
-            <div className="h-[750px]">
-              <GeminiChatbot
-                language={language}
-                jurisdiction={formData.jurisdiction}
-                projectData={formData}
-                mode="embedded"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Super Admin Dashboard (Accessible ONLY to sanoop.amrita@gmail.com) */}
-        {activeTab === 'admin' && (
-          <AdminPanel
-            currentUser={currentUser}
-            language={language}
-            onToast={showToast}
-          />
-        )}
+          {/* Super Admin Dashboard (Accessible ONLY to super admins) */}
+          {activeTab === 'admin' && (
+            <AdminPanel
+              currentUser={currentUser}
+              language={language}
+              onToast={showToast}
+            />
+          )}
+        </ErrorBoundary>
       </main>
 
       {/* Floating Chatbot Widget and Launcher Button */}
       {floatingChatOpen && (
-        <GeminiChatbot
-          language={language}
-          jurisdiction={formData.jurisdiction}
-          projectData={formData}
-          mode="floating"
-          onClose={() => setFloatingChatOpen(false)}
-        />
+        <ErrorBoundary fallbackTitle="Chatbot Error">
+          <GeminiChatbot
+            language={language}
+            jurisdiction={formData.jurisdiction}
+            projectData={formData}
+            mode="floating"
+            onClose={() => setFloatingChatOpen(false)}
+          />
+        </ErrorBoundary>
       )}
 
       {/* Floating Action Button */}

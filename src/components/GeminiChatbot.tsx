@@ -23,6 +23,7 @@ import {
 import Markdown from 'react-markdown';
 import { AreaStatementData, JurisdictionType, Language } from '../types';
 import { ChatMessage, sendChatMessage } from '../services/geminiService';
+import { getSystemConfig, getFormattedRulesTag } from '../services/configService';
 
 interface GeminiChatbotProps {
   language: Language;
@@ -36,7 +37,7 @@ const QUICK_PROMPTS_ML = [
   'ചെറിയ പ്ലോട്ട് ഇളവുകൾ (Rule 60/62) പ്രകാരം സെറ്റ്ബാക്ക് എത്ര?',
   'കുടിവെള്ള കിണറും സെപ്റ്റിക് ടാങ്കും തമ്മിൽ എത്ര അകലം വേണം?',
   '150 ച.മീ താഴെയുള്ള വീടിന് കാർ പാർക്കിംഗ് നിർബന്ധമാണോ?',
-  'KMBR & KPBR തമ്മിലുള്ള പ്രധാന വ്യത്യാസങ്ങൾ എന്തെല്ലാം?',
+  'കെ-സ്മാർട്ട് ഓൺലൈൻ പെർമിറ്റിന് എന്തൊക്കെ ഡ്രോയിംഗുകൾ വേണം?',
   'മഴവെള്ള സംഭരണിയുടെ കപ്പാസിറ്റി എങ്ങനെ കണക്കാക്കാം?',
   'റോഡ് വീതിക്കനുസരിച്ച് അനുവദനീയമായ പരമാവധി ഉയരം എത്ര?',
   'എന്റെ പ്ലാനിലെ അപാകതകൾ എങ്ങനെ പെട്ടെന്ന് തിരുത്താം?',
@@ -46,7 +47,7 @@ const QUICK_PROMPTS_EN = [
   'What are small plot concessions (Rule 60/62) for setbacks & coverage?',
   'Minimum clearance required between drinking well and septic tank?',
   'Is car parking required for residential houses below 150 sq.m?',
-  'Key differences between KMBR 2019 and KPBR 2019?',
+  'What drawings & CAD layers are required for K-Smart submission?',
   'How to calculate Rainwater Harvesting (RWH) tank capacity?',
   'Maximum permissible building height based on access road width?',
   'How can I rectify setback violations on my plan for K-Smart?',
@@ -270,27 +271,26 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
             <RotateCcw className="w-4 h-4" />
           </button>
 
-          {mode === 'floating' && (
-            <>
-              <button
-                id="chat-expand-btn"
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-md transition-colors"
-                title={isExpanded ? 'Minimize' : 'Maximize'}
-              >
-                {isExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-              </button>
-              {onClose && (
-                <button
-                  id="chat-close-btn"
-                  onClick={onClose}
-                  className="p-1.5 text-slate-400 hover:text-rose-300 hover:bg-slate-800 rounded-md transition-colors"
-                  title="Close Chat"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </>
+          {/* Expand/Minimize Control */}
+          <button
+            id="chat-expand-btn"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-md transition-colors"
+            title={isExpanded ? 'Minimize' : 'Maximize'}
+          >
+            {isExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          </button>
+
+          {/* Close Control */}
+          {onClose && (
+            <button
+              id="chat-close-btn"
+              onClick={onClose}
+              className="p-1.5 text-slate-400 hover:text-rose-300 hover:bg-rose-950/40 rounded-md transition-colors"
+              title={isMl ? 'ചാറ്റ് ക്ലോസ് ചെയ്യുക' : 'Close Chat'}
+            >
+              <X className="w-4 h-4" />
+            </button>
           )}
         </div>
       </div>
@@ -299,7 +299,9 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
       {projectData && (
         <div className="bg-slate-950/60 px-4 py-1.5 border-b border-slate-800/80 text-[11px] text-slate-300 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
-            <span className="text-emerald-400 font-medium">{jurisdiction} 2019</span>
+            <span className="text-emerald-400 font-medium">
+              {getFormattedRulesTag(jurisdiction)}
+            </span>
             <span>•</span>
             <span>Plot: {projectData.plotAreaSqM} m² ({projectData.plotAreaCents} Cents)</span>
             <span>•</span>

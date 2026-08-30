@@ -3,18 +3,13 @@ import {
   Lock,
   Mail,
   ArrowRight,
-  Sparkles,
   Shield,
   EyeOff,
-  Building2,
-  CheckCircle2,
   HardDrive,
   User,
   X,
-  FileCheck2,
 } from 'lucide-react';
 import { Language, User as UserType } from '../types';
-import { VinyasaLogo } from './VinyasaLogo';
 import { loginWithGoogle, loginWithEmail } from '../services/authService';
 
 interface LoginViewProps {
@@ -35,7 +30,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ language, onLoginSuccess }
   const [googleNameInput, setGoogleNameInput] = useState('');
 
   const handleOpenGoogleModal = () => {
-    // If the user already typed an email into the main form, pre-fill it
     if (email.trim()) {
       setGoogleEmailInput(email.trim());
     }
@@ -89,27 +83,18 @@ export const LoginView: React.FC<LoginViewProps> = ({ language, onLoginSuccess }
   };
 
   return (
-    <div className="w-full min-h-[calc(100vh-140px)] flex items-center justify-center py-8 px-4 sm:px-6 relative">
-      {/* Background Architectural Grid & Neon Glow Elements */}
+    <div className="w-full max-w-6xl mx-auto flex items-center justify-center py-2 sm:py-6 relative">
+      {/* Subtle Background Glow Elements */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-40 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-10 right-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl" />
-        <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage: `linear-gradient(to right, #00e5ff 1px, transparent 1px), linear-gradient(to bottom, #00e5ff 1px, transparent 1px)`,
-            backgroundSize: '40px 40px',
-          }}
-        />
+        <div className="absolute -top-32 left-1/4 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-5 right-1/4 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl" />
       </div>
 
-      <div className="max-w-5xl w-full grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center relative z-10">
-        {/* Left Side: Brand Visual & High-Contrast Typography */}
-        <div className="lg:col-span-6 space-y-6 text-left">
-          <div className="space-y-4">
-            <VinyasaLogo size="xl" theme="dark" showDomain={true} />
-
-            <h1 className="text-2xl sm:text-4xl font-extrabold text-white leading-tight tracking-tight">
+      <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-center relative z-10">
+        {/* Left Side: Value Proposition & Privacy Highlights (No duplicate logo) */}
+        <div className="lg:col-span-6 space-y-4 sm:space-y-6 text-left">
+          <div className="space-y-2.5 sm:space-y-3.5">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white leading-tight tracking-tight">
               {isMl ? (
                 <>
                   കെട്ടിട ചട്ട പരിശോധനയും <br />
@@ -135,9 +120,9 @@ export const LoginView: React.FC<LoginViewProps> = ({ language, onLoginSuccess }
           </div>
 
           {/* Privacy & Zero File Retention Guarantee Box */}
-          <div className="bg-gradient-to-br from-slate-900/90 to-slate-950/90 border border-cyan-500/30 rounded-2xl p-4 sm:p-5 text-slate-300 space-y-3.5 shadow-[0_0_30px_rgba(0,229,255,0.07)] backdrop-blur-md">
+          <div className="bg-gradient-to-br from-slate-900/90 to-slate-950/90 border border-cyan-500/30 rounded-2xl p-4 sm:p-5 text-slate-300 space-y-3 shadow-[0_0_30px_rgba(0,229,255,0.07)] backdrop-blur-md">
             <div className="flex items-center gap-2 text-cyan-400 font-bold text-xs uppercase tracking-wider">
-              <EyeOff className="w-4 h-4 text-cyan-400" />
+              <EyeOff className="w-4 h-4 text-cyan-400 shrink-0" />
               <span>{isMl ? 'സീറോ-ഫയൽ റിട്ടൻഷൻ & പ്രൈവസി സുരക്ഷ' : 'Zero-File Retention & Privacy Architecture'}</span>
             </div>
 
@@ -156,41 +141,29 @@ export const LoginView: React.FC<LoginViewProps> = ({ language, onLoginSuccess }
               </div>
             </div>
           </div>
-
-          {/* Key statutory features */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs text-slate-300 pt-1">
-            <div className="flex items-center gap-2 bg-slate-900/50 px-3 py-2 rounded-xl border border-slate-800">
-              <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0" />
-              <span>{isMl ? 'സെറ്റ്ബാക്ക്, FAR, കവറേജ് പരിശോധന' : 'Setback, FAR & Coverage Audit'}</span>
-            </div>
-            <div className="flex items-center gap-2 bg-slate-900/50 px-3 py-2 rounded-xl border border-slate-800">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>{isMl ? 'K-Smart പോർട്ടൽ റിപ്പോർട്ട്' : 'K-Smart & LSGD Scrutiny Sync'}</span>
-            </div>
-          </div>
         </div>
 
         {/* Right Side: Sleek Glassmorphic Authentication Card */}
-        <div className="lg:col-span-6">
-          <div className="bg-slate-900/85 backdrop-blur-xl border border-cyan-500/30 rounded-3xl p-6 sm:p-8 shadow-[0_0_50px_rgba(0,229,255,0.12)] relative overflow-hidden text-left">
+        <div className="lg:col-span-6 w-full max-w-md mx-auto lg:max-w-none">
+          <div className="bg-slate-900/85 backdrop-blur-xl border border-cyan-500/30 rounded-3xl p-5 sm:p-7 lg:p-8 shadow-[0_0_50px_rgba(0,229,255,0.12)] relative overflow-hidden text-left">
             <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none" />
 
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-800">
+            <div className="flex items-center justify-between mb-5 pb-3.5 border-b border-slate-800">
               <div>
-                <h2 className="text-xl sm:text-2xl font-extrabold text-white">
+                <h2 className="text-lg sm:text-xl font-extrabold text-white">
                   {isMl ? 'ലോഗിൻ ചെയ്യുക' : 'Sign In'}
                 </h2>
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-slate-400 mt-0.5">
                   {isMl ? 'നിങ്ങളുടെ അക്കൗണ്ട് ഉപയോഗിച്ച് പ്രവേശിക്കുക' : 'Sign in to access drawing scrutiny & reports'}
                 </p>
               </div>
-              <div className="w-11 h-11 rounded-2xl bg-cyan-950/80 border border-cyan-500/40 flex items-center justify-center shadow-[0_0_15px_rgba(0,229,255,0.2)]">
-                <Lock className="w-5 h-5 text-cyan-400" />
+              <div className="w-10 h-10 rounded-2xl bg-cyan-950/80 border border-cyan-500/40 flex items-center justify-center shadow-[0_0_15px_rgba(0,229,255,0.2)] shrink-0">
+                <Lock className="w-4.5 h-4.5 text-cyan-400" />
               </div>
             </div>
 
             {error && (
-              <div className="mb-5 p-3.5 bg-rose-950/60 border border-rose-500/50 rounded-xl text-rose-200 text-xs font-semibold flex items-center gap-2.5 animate-fadeIn">
+              <div className="mb-4 p-3 bg-rose-950/60 border border-rose-500/50 rounded-xl text-rose-200 text-xs font-semibold flex items-center gap-2.5 animate-fadeIn">
                 <span className="text-base">⚠️</span>
                 <span>{error}</span>
               </div>
@@ -202,7 +175,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ language, onLoginSuccess }
               id="google-signin-btn"
               onClick={handleOpenGoogleModal}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-sm shadow-lg transition-all hover:shadow-cyan-500/20 active:scale-[0.99] cursor-pointer disabled:opacity-50 group"
+              className="w-full min-h-[48px] flex items-center justify-center gap-3 py-3 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-sm shadow-lg transition-all hover:shadow-cyan-500/20 active:scale-[0.99] cursor-pointer disabled:opacity-50 group"
             >
               <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
                 <path
@@ -225,21 +198,21 @@ export const LoginView: React.FC<LoginViewProps> = ({ language, onLoginSuccess }
               <span>{isMl ? 'Google ഉപയോഗിച്ച് തുടരുക' : 'Continue with Google'}</span>
             </button>
 
-            <div className="relative my-5">
+            <div className="relative my-4">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-slate-800" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-slate-900 px-3 text-slate-500 font-semibold tracking-wider">
+                <span className="bg-slate-900 px-3 text-slate-500 font-semibold tracking-wider text-[11px]">
                   {isMl ? 'അല്ലെങ്കിൽ ഇമെയിൽ നൽകുക' : 'Or sign in with email'}
                 </span>
               </div>
             </div>
 
             {/* Email / Password Direct Login Form */}
-            <form onSubmit={handleEmailSubmit} className="space-y-4">
+            <form onSubmit={handleEmailSubmit} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
                   {isMl ? 'ഇമെയിൽ വിലാസം' : 'Email Address'}
                 </label>
                 <div className="relative">
@@ -251,13 +224,13 @@ export const LoginView: React.FC<LoginViewProps> = ({ language, onLoginSuccess }
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="architect@domain.com"
                     required
-                    className="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-950/90 border border-slate-700/80 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400 outline-none transition-all"
+                    className="w-full min-h-[44px] pl-10 pr-4 py-2 text-sm bg-slate-950/90 border border-slate-700/80 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400 outline-none transition-all"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
                   {isMl ? 'പാസ്‌വേഡ്' : 'Password'}
                 </label>
                 <div className="relative">
@@ -269,7 +242,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ language, onLoginSuccess }
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     required
-                    className="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-950/90 border border-slate-700/80 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400 outline-none transition-all"
+                    className="w-full min-h-[44px] pl-10 pr-4 py-2 text-sm bg-slate-950/90 border border-slate-700/80 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400 outline-none transition-all"
                   />
                 </div>
               </div>
@@ -278,7 +251,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ language, onLoginSuccess }
                 type="submit"
                 id="auth-submit-btn"
                 disabled={loading}
-                className="w-full py-3 px-4 bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 font-bold text-sm rounded-xl shadow-[0_0_20px_rgba(0,229,255,0.3)] transition-all active:scale-[0.99] cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
+                className="w-full min-h-[48px] py-3 px-4 bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 font-bold text-sm rounded-xl shadow-[0_0_20px_rgba(0,229,255,0.3)] transition-all active:scale-[0.99] cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
               >
                 <span>{isMl ? 'ലോഗിൻ ചെയ്യുക' : 'Sign In'}</span>
                 <ArrowRight className="w-4 h-4" />
@@ -291,16 +264,16 @@ export const LoginView: React.FC<LoginViewProps> = ({ language, onLoginSuccess }
       {/* Google Interactive Account Prompt Modal */}
       {showGoogleModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
-          <div className="bg-slate-900 border border-cyan-500/40 rounded-2xl max-w-md w-full p-6 shadow-[0_0_40px_rgba(0,229,255,0.2)] relative text-left">
+          <div className="bg-slate-900 border border-cyan-500/40 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-[0_0_40px_rgba(0,229,255,0.2)] relative text-left">
             <button
               onClick={() => setShowGoogleModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
 
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-md">
+              <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-md shrink-0">
                 <svg className="w-6 h-6" viewBox="0 0 24 24">
                   <path
                     fill="#4285F4"
@@ -330,9 +303,9 @@ export const LoginView: React.FC<LoginViewProps> = ({ language, onLoginSuccess }
               </div>
             </div>
 
-            <form onSubmit={handlePerformGoogleLogin} className="space-y-4 mt-2">
+            <form onSubmit={handlePerformGoogleLogin} className="space-y-3.5 mt-2">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
                   {isMl ? 'ഗൂഗിൾ ഇമെയിൽ' : 'Google Email'}
                 </label>
                 <div className="relative">
@@ -343,14 +316,14 @@ export const LoginView: React.FC<LoginViewProps> = ({ language, onLoginSuccess }
                     value={googleEmailInput}
                     onChange={(e) => setGoogleEmailInput(e.target.value)}
                     placeholder="yourname@gmail.com"
-                    className="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-950 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-400 outline-none"
+                    className="w-full min-h-[44px] pl-10 pr-4 py-2 text-sm bg-slate-950 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-400 outline-none"
                     autoFocus
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
                   {isMl ? 'പേര് (ഓപ്ഷണൽ)' : 'Display Name (Optional)'}
                 </label>
                 <div className="relative">
@@ -360,7 +333,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ language, onLoginSuccess }
                     value={googleNameInput}
                     onChange={(e) => setGoogleNameInput(e.target.value)}
                     placeholder="Er. Rajesh Kumar"
-                    className="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-950 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-400 outline-none"
+                    className="w-full min-h-[44px] pl-10 pr-4 py-2 text-sm bg-slate-950 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-400 outline-none"
                   />
                 </div>
               </div>
@@ -369,7 +342,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ language, onLoginSuccess }
                 <button
                   type="button"
                   onClick={() => setShowGoogleModal(false)}
-                  className="px-4 py-2 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors cursor-pointer"
+                  className="min-h-[40px] px-4 py-2 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors cursor-pointer"
                 >
                   {isMl ? 'റദ്ദാക്കുക' : 'Cancel'}
                 </button>
@@ -377,7 +350,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ language, onLoginSuccess }
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-5 py-2 text-xs font-bold text-slate-950 bg-gradient-to-r from-cyan-400 to-sky-400 hover:from-cyan-300 hover:to-sky-300 rounded-xl transition-all shadow-md cursor-pointer disabled:opacity-50"
+                  className="min-h-[40px] px-5 py-2 text-xs font-bold text-slate-950 bg-gradient-to-r from-cyan-400 to-sky-400 hover:from-cyan-300 hover:to-sky-300 rounded-xl transition-all shadow-md cursor-pointer disabled:opacity-50"
                 >
                   {loading ? (isMl ? 'ലോഗിൻ ചെയ്യുന്നു...' : 'Signing in...') : (isMl ? 'തുടരുക' : 'Proceed')}
                 </button>
@@ -389,3 +362,4 @@ export const LoginView: React.FC<LoginViewProps> = ({ language, onLoginSuccess }
     </div>
   );
 };
+

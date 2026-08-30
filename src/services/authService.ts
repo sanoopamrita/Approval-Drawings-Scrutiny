@@ -1,84 +1,31 @@
-import { User, UserRole, AccessLogMetadata, JurisdictionType, SUPER_ADMIN_EMAIL } from '../types';
+import { User, UserRole, AccessLogMetadata, JurisdictionType, SUPER_ADMIN_EMAIL, SUPER_ADMIN_EMAILS } from '../types';
 
 const AUTH_USER_STORAGE_KEY = 'vinyasa_kbr_auth_user_v1';
 const ACCESS_LOGS_STORAGE_KEY = 'vinyasa_kbr_access_logs_v1';
 const SESSION_START_KEY = 'vinyasa_kbr_session_start_v1';
 
-// Seed demo access logs if empty for rich admin analytics
-const INITIAL_DEMO_LOGS: AccessLogMetadata[] = [
-  {
-    id: 'log-001',
-    userEmail: 'sanoop.amrita@gmail.com',
-    userName: 'Sanoop Sadanandhan (Super Admin)',
-    role: 'super_admin',
-    timestamp: Date.now() - 7200000,
-    sessionDurationSeconds: 1420,
-    actionType: 'USER_LOGIN',
-    jurisdiction: 'KMBR',
-    deviceInfo: 'Chrome / macOS (Desktop)',
-  },
-  {
-    id: 'log-002',
-    userEmail: 'architect.kerala@vinyasa.com',
-    userName: 'Er. Rajesh Kumar (Registered Architect)',
-    role: 'user',
-    timestamp: Date.now() - 5400000,
-    sessionDurationSeconds: 2180,
-    actionType: 'SCRUTINY_EXECUTED',
-    jurisdiction: 'KPBR',
-    referenceId: 'REF-2026-KPBR-0492',
-    complianceStatus: 'APPROVED',
-    deviceInfo: 'Edge / Windows (Desktop)',
-  },
-  {
-    id: 'log-003',
-    userEmail: 'architect.kerala@vinyasa.com',
-    userName: 'Er. Rajesh Kumar (Registered Architect)',
-    role: 'user',
-    timestamp: Date.now() - 4800000,
-    sessionDurationSeconds: 2400,
-    actionType: 'REPORT_DOWNLOADED',
-    jurisdiction: 'KPBR',
-    referenceId: 'REF-2026-KPBR-0492',
-    complianceStatus: 'APPROVED',
-    deviceInfo: 'Edge / Windows (Desktop)',
-  },
-  {
-    id: 'log-004',
-    userEmail: 'kerala.planner@lsgd.gov.in',
-    userName: 'Ar. Ananya Nair, AITP',
-    role: 'user',
-    timestamp: Date.now() - 3600000,
-    sessionDurationSeconds: 840,
-    actionType: 'SCRUTINY_EXECUTED',
-    jurisdiction: 'KMBR',
-    referenceId: 'REF-2026-KMBR-1082',
-    complianceStatus: 'REJECTED_DEFECTIVE',
-    deviceInfo: 'Safari / iPad OS (Tablet)',
-  },
-  {
-    id: 'log-005',
-    userEmail: 'sanoop.amrita@gmail.com',
-    userName: 'Sanoop Sadanandhan (Super Admin)',
-    role: 'super_admin',
-    timestamp: Date.now() - 1800000,
-    sessionDurationSeconds: 600,
-    actionType: 'RULE_CONFIG_UPDATED',
-    jurisdiction: 'KMBR',
-    deviceInfo: 'Chrome / macOS (Desktop)',
-  },
-];
+// Clean empty initial access logs for production
+const INITIAL_DEMO_LOGS: AccessLogMetadata[] = [];
 
 type AuthListener = (user: User | null) => void;
 const authListeners: Set<AuthListener> = new Set();
+
+export function checkIsSuperAdminEmail(email?: string): boolean {
+  if (!email) return false;
+  const clean = email.toLowerCase().trim();
+  return (
+    clean === SUPER_ADMIN_EMAIL.toLowerCase().trim() ||
+    SUPER_ADMIN_EMAILS.some((e) => e.toLowerCase().trim() === clean)
+  );
+}
 
 export function getCurrentUser(): User | null {
   try {
     const saved = localStorage.getItem(AUTH_USER_STORAGE_KEY);
     if (saved) {
       const parsed: User = JSON.parse(saved);
-      // Ensure super admin flag is always strictly checked against the authorized email
-      const isSuper = parsed.email.toLowerCase().trim() === SUPER_ADMIN_EMAIL.toLowerCase().trim();
+      // Ensure super admin flag is always strictly checked against authorized emails
+      const isSuper = checkIsSuperAdminEmail(parsed.email);
       return {
         ...parsed,
         role: isSuper ? 'super_admin' : 'user',
@@ -93,7 +40,7 @@ export function getCurrentUser(): User | null {
 
 export function isUserSuperAdmin(user: User | null): boolean {
   if (!user) return false;
-  return user.email.toLowerCase().trim() === SUPER_ADMIN_EMAIL.toLowerCase().trim();
+  return user.isSuperAdmin === true || checkIsSuperAdminEmail(user.email);
 }
 
 export function subscribeAuth(listener: AuthListener): () => void {
@@ -121,7 +68,7 @@ export function loginWithGoogle(
   return new Promise((resolve) => {
     // Determine user parameters
     const email = (customEmail || 'sanoop.amrita@gmail.com').toLowerCase().trim();
-    const isSuper = email === SUPER_ADMIN_EMAIL.toLowerCase().trim();
+    const isSuper = checkIsSuperAdminEmail(email);
     const name = customName || (isSuper ? 'Sanoop Sadanandhan' : email.split('@')[0].replace('.', ' '));
 
     const user: User = {
@@ -167,7 +114,7 @@ export function loginWithEmail(
 ): Promise<User> {
   return new Promise((resolve) => {
     const cleanEmail = email.toLowerCase().trim();
-    const isSuper = cleanEmail === SUPER_ADMIN_EMAIL.toLowerCase().trim();
+    const isSuper = checkIsSuperAdminEmail(cleanEmail);
     const defaultName = isSuper ? 'Sanoop Sadanandhan' : cleanEmail.split('@')[0];
 
     const user: User = {

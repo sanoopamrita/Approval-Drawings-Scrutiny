@@ -3,9 +3,12 @@ import { SystemConfig } from '../types';
 const CONFIG_STORAGE_KEY = 'vinyasa_kbr_system_config_v1';
 
 export const DEFAULT_SYSTEM_CONFIG: SystemConfig = {
-  systemPromptModifier: `Enforce standard Kerala Building Rules 2019 provisions with 2024/2026 LSGD amendments. Ensure clear citations of KMBR / KPBR rule numbers for any discrepancy detected. Always explain rectification in practical engineering steps.`,
-  kbrVersionKmbr: 'KMBR 2019 (incorporating 2026 LSGD Gazette amendments)',
-  kbrVersionKpbr: 'KPBR 2019 (incorporating 2026 LSGD Gazette amendments)',
+  systemPromptModifier: `Enforce standard Kerala Building Rules provisions with latest LSGD Gazette amendments. Ensure clear citations of KMBR / KPBR rule numbers for any discrepancy detected. Always explain rectification in practical engineering steps.`,
+  kbrVersionKmbr: 'KMBR (Latest amended)',
+  kbrVersionKpbr: 'KPBR (Latest amended)',
+  lastRulesUpdatedDate: '30-08-2026',
+  syncedKnowledgeSummary: 'Verified & indexed 2026 LSGD Gazette notifications, K-Smart self-certification circulars, NBC Part IV fire safety, and small plot concessions.',
+  syncedItemsCount: 14,
   baseFarResidentialKmbr: 3.0,
   baseFarResidentialKpbr: 2.75,
   minDrinkingWellDistanceM: 7.5,
@@ -13,7 +16,7 @@ export const DEFAULT_SYSTEM_CONFIG: SystemConfig = {
   maxSmallPlotAreaSqM: 125.0,
   notice: {
     id: 'notice-2026-01',
-    enabled: true,
+    enabled: false,
     type: 'info',
     titleEn: 'LSGD Digital Building Scrutiny System (Stateless Mode Active)',
     titleMl: 'ഡിജിറ്റൽ കെട്ടിട ചട്ട പരിശോധന - സീറോ-സ്റ്റോറേജ് പ്രൈവസി സുരക്ഷ സജീവം',
@@ -38,6 +41,12 @@ export const DEFAULT_SYSTEM_CONFIG: SystemConfig = {
 
 type ConfigListener = (config: SystemConfig) => void;
 const listeners: Set<ConfigListener> = new Set();
+
+export function getFormattedRulesTag(jurisdiction: 'KMBR' | 'KPBR', config?: SystemConfig): string {
+  const cfg = config || getSystemConfig();
+  const dateStr = cfg.lastRulesUpdatedDate || '30-08-2026';
+  return `${jurisdiction} (Latest amended | Updated on: ${dateStr})`;
+}
 
 export function getSystemConfig(): SystemConfig {
   try {

@@ -28,6 +28,7 @@ import {
 import Markdown from 'react-markdown';
 import { DrawingCategory, Language, UploadedDrawing } from '../types';
 import { analyzeDrawingWithGemini } from '../services/geminiService';
+import { validateDrawingFile } from '../utils/sanitize';
 
 interface DrawingUploaderProps {
   drawings: UploadedDrawing[];
@@ -223,14 +224,24 @@ export const DrawingUploader: React.FC<DrawingUploaderProps> = ({
     setTimeout(() => setAppliedDataToast(false), 2500);
   };
 
+  const [fileValidationError, setFileValidationError] = useState<string | null>(null);
+
   const handleFiles = (files: FileList | null) => {
     if (!files || files.length === 0) return;
+    setFileValidationError(null);
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
+      const validation = validateDrawingFile(file);
+      if (!validation.isValid) {
+        setFileValidationError(isMl ? validation.errorMl || 'അസാധുവായ ഫയൽ' : validation.errorEn || 'Invalid file');
+        setTimeout(() => setFileValidationError(null), 4000);
+        continue;
+      }
+
       const config = DRAWING_TYPES_CONFIG.find((c) => c.category === selectedCategory);
 
-      // Create synthetic preview url if image/pdf
+      // Create synthetic in-memory preview url for verified drawings
       const newDrawing: UploadedDrawing = {
         id: `dwg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         category: selectedCategory,
