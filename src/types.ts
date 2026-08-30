@@ -1,4 +1,20 @@
-export type JurisdictionType = 'KMBR' | 'KPBR'; // KMBR: Municipality/Corp, KPBR: Grama Panchayat
+export type JurisdictionType = 'KMBR' | 'KPBR'; // KMBR: Municipality/Corp, KPBR: Grama/Block/District Panchayat
+
+export type LocalBodyType = 
+  | 'District Panchayat'
+  | 'Block Panchayat'
+  | 'Municipality'
+  | 'Corporation'
+  | 'Grama Panchayat';
+
+export interface LocalBodyItem {
+  nameEn: string;
+  nameMl: string;
+  code?: string;
+  type: LocalBodyType;
+  district: string;
+  website?: string;
+}
 
 export type Language = 'ml' | 'en';
 
@@ -155,12 +171,14 @@ export interface AreaStatementData {
   preparedByDesignation: string; // Prepared by (Designation)
   architectEngineerName?: string; // Optional backwards compatibility
   licenseNumber?: string; // Optional backwards compatibility
+  district: string;
+  localBodyType?: LocalBodyType;
   localBodyName: string;
+  localBodyCode?: string;
   wardNumber: string;
   surveyNumber: string;
   villageName: string;
   talukName: string;
-  district: string;
   jurisdiction: JurisdictionType;
   occupancyGroup: OccupancyGroup;
   plotType: PlotType;

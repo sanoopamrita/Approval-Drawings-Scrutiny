@@ -12,12 +12,19 @@ import {
   Search,
   RefreshCw,
   Info,
+  Landmark,
+  Building2,
+  Home,
+  Check,
+  Compass,
 } from 'lucide-react';
-import { AreaStatementData, Language, OccupancyGroup } from '../types';
+import { AreaStatementData, Language, OccupancyGroup, LocalBodyType, JurisdictionType } from '../types';
 import {
   KERALA_ADMINISTRATIVE_DATA,
   KERALA_DISTRICT_NAMES,
+  ALL_LOCAL_BODY_TYPES,
   STANDARD_WARD_OPTIONS,
+  getApplicableJurisdiction,
 } from '../data/keralaAdministrativeData';
 import { adminDataService } from '../services/adminDataService';
 
@@ -130,6 +137,10 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
     });
   }, []);
 
+  // Determine current active Local Body Type (default to Grama Panchayat or Municipality based on jurisdiction)
+  const currentLbType: LocalBodyType =
+    data.localBodyType || (data.jurisdiction === 'KMBR' ? 'Municipality' : 'Grama Panchayat');
+
   // Fallback / manual input mode toggles for fields
   const [customLocalBodyMode, setCustomLocalBodyMode] = useState(false);
   const [customTalukMode, setCustomTalukMode] = useState(false);
@@ -144,13 +155,15 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
   // Computed options from dynamic administrative service
   const currentDistrict = data.district || 'Ernakulam';
   const allDistricts = adminDataService.getAllDistricts();
-  const allLocalBodies = adminDataService.getLocalBodies(currentDistrict, data.jurisdiction);
   const taluks = adminDataService.getTaluks(currentDistrict);
   const villages = adminDataService.getVillages(currentDistrict, data.talukName);
   const lastSyncInfo = adminDataService.getLastSyncInfo();
 
+  // Get local bodies specifically filtered by district AND selected local body type
+  const localBodiesForType = adminDataService.getLocalBodiesByType(currentDistrict, currentLbType);
+
   // Filtered local bodies based on user's quick search
-  const filteredLocalBodies = allLocalBodies.filter((lb) => {
+  const filteredLocalBodies = localBodiesForType.filter((lb) => {
     if (!localBodySearch.trim()) return true;
     const q = localBodySearch.toLowerCase();
     return lb.nameEn.toLowerCase().includes(q) || lb.nameMl.includes(q);
@@ -164,8 +177,8 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
       const res = await adminDataService.syncWithInternet(currentDistrict);
       setSyncStatusMsg(
         isMl
-          ? `✓ ${currentDistrict} ജില്ലയിലെ ${allLocalBodies.length} തദ്ദേശ സ്ഥാപനങ്ങൾ സിങ്ക് ചെയ്തു`
-          : `✓ Synced ${allLocalBodies.length} local bodies for ${currentDistrict}`
+          ? `✓ ${currentDistrict} ജില്ലയിലെ ${localBodiesForType.length} തദ്ദേശ സ്ഥാപനങ്ങൾ സിങ്ക് ചെയ്തു`
+          : `✓ Synced ${localBodiesForType.length} local bodies for ${currentDistrict}`
       );
       setTimeout(() => setSyncStatusMsg(null), 4000);
     } catch {
@@ -176,18 +189,21 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
     }
   };
 
-  // Initialize or align local body / taluk / village on district or jurisdiction change
+  // Handle District Change
   const handleDistrictChange = (newDistrict: string) => {
-    const newLocalBodies = adminDataService.getLocalBodies(newDistrict, data.jurisdiction);
+    const bodies = adminDataService.getLocalBodiesByType(newDistrict, currentLbType);
     const newTaluks = adminDataService.getTaluks(newDistrict);
-    const firstLocalBody = newLocalBodies.length > 0 ? (isMl ? newLocalBodies[0].nameMl : newLocalBodies[0].nameEn) : '';
+    const firstLocalBody = bodies.length > 0 ? (isMl ? bodies[0].nameMl : bodies[0].nameEn) : '';
+    const firstLocalBodyCode = bodies.length > 0 ? bodies[0].code : '';
     const firstTaluk = newTaluks.length > 0 ? (isMl ? newTaluks[0].nameMl : newTaluks[0].nameEn) : '';
     const newVillages = adminDataService.getVillages(newDistrict, firstTaluk);
     const firstVillage = newVillages.length > 0 ? (isMl ? newVillages[0].nameMl : newVillages[0].nameEn) : '';
 
     onChange({
       district: newDistrict,
+      localBodyType: currentLbType,
       localBodyName: firstLocalBody,
+      localBodyCode: firstLocalBodyCode,
       talukName: firstTaluk,
       villageName: firstVillage,
       wardNumber: data.wardNumber || 'Ward 01',
@@ -198,12 +214,18 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
     setLocalBodySearch('');
   };
 
-  const handleJurisdictionChange = (newJurisdiction: 'KMBR' | 'KPBR') => {
-    const newLocalBodies = adminDataService.getLocalBodies(currentDistrict, newJurisdiction);
-    const firstLocalBody = newLocalBodies.length > 0 ? (isMl ? newLocalBodies[0].nameMl : newLocalBodies[0].nameEn) : '';
+  // Handle Local Body Type Change (e.g. Grama Panchayat, Municipality, Corporation, Block Panchayat, District Panchayat)
+  const handleLocalBodyTypeChange = (newType: LocalBodyType) => {
+    const applicableJurisdiction = getApplicableJurisdiction(newType);
+    const bodies = adminDataService.getLocalBodiesByType(currentDistrict, newType);
+    const firstLocalBody = bodies.length > 0 ? (isMl ? bodies[0].nameMl : bodies[0].nameEn) : '';
+    const firstCode = bodies.length > 0 ? bodies[0].code : '';
+
     onChange({
-      jurisdiction: newJurisdiction,
+      localBodyType: newType,
+      jurisdiction: applicableJurisdiction,
       localBodyName: firstLocalBody,
+      localBodyCode: firstCode,
     });
     setCustomLocalBodyMode(false);
     setLocalBodySearch('');
@@ -221,17 +243,24 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
 
   return (
     <div className="space-y-6 animate-fadeIn">
-      {/* Introduction Card */}
+      {/* Introduction Card with Ruleset and Sync Badge */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border border-slate-700/80 rounded-2xl p-5 text-white shadow-md">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs px-2.5 py-0.5 rounded-full font-mono font-medium">
-                {data.jurisdiction === 'KMBR' ? 'KMBR 2019 (നഗരസഭ / കോർപ്പറേഷൻ)' : 'KPBR 2019 (ഗ്രാമപഞ്ചായത്ത്)'}
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+              <span
+                className={`text-xs px-3 py-1 rounded-full font-mono font-bold flex items-center gap-1.5 border shadow-xs ${
+                  data.jurisdiction === 'KMBR'
+                    ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                    : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                }`}
+              >
+                <Compass className="w-3.5 h-3.5" />
+                {data.jurisdiction === 'KMBR' ? 'KMBR 2019 (നഗരസഭ / കോർപ്പറേഷൻ)' : 'KPBR 2019 (പഞ്ചായത്ത് പരിധി)'}
               </span>
-              <span className="text-xs bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-2 py-0.5 rounded-full flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3 text-cyan-400" />
-                {isMl ? 'തദ്ദേശ സ്ഥാപന മാസ്റ്റർ ഡാറ്റ സിങ്ക് ചെയ്തു' : 'LSGD Master Data Synced'}
+              <span className="text-xs bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-2.5 py-1 rounded-full flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
+                {isMl ? 'കേരള LSGD സമ്പൂർണ്ണ ഡയറക്ടറി (14 ജില്ലകൾ)' : 'Kerala LSGD Master Directory Active'}
               </span>
             </div>
             <h2 className="text-xl font-bold tracking-tight">
@@ -239,20 +268,28 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
             </h2>
             <p className="text-xs sm:text-sm text-slate-300 mt-1">
               {isMl
-                ? 'ജില്ല, തദ്ദേശ സ്വയംഭരണ സ്ഥാപനം, താലൂക്ക്, വില്ലേജ്, വാർഡ് എന്നിവ സെലക്ട് ചെയ്യുക.'
-                : 'Select the District, Local Body, Taluk, Revenue Village, Ward, and Project details.'}
+                ? 'ജില്ല, തദ്ദേശ സ്ഥാപന വിഭാഗം (പഞ്ചായത്ത്/മുനിസിപ്പാലിറ്റി/കോർപ്പറേഷൻ), താലൂക്ക്, വില്ലേജ്, വാർഡ് എന്നിവ സെലക്ട് ചെയ്യുക.'
+                : 'Select District, Local Body Type (Grama Panchayat / Municipality / Corporation / Block / District), Taluk, and Village.'}
             </p>
           </div>
 
-          <div className="bg-slate-950/60 border border-slate-700/60 rounded-xl p-3 text-xs flex flex-col gap-1 min-w-[220px]">
+          <div className="bg-slate-950/70 border border-slate-700/70 rounded-xl p-3 text-xs flex flex-col gap-1 min-w-[220px]">
             <span className="text-slate-400 font-medium">
-              {isMl ? 'നിലവിലെ ചട്ട ബാധ്യത:' : 'Applicable Ruleset:'}
+              {isMl ? 'ബാധകമായ നിർമ്മാണ ചട്ടം:' : 'Applicable Building Rules:'}
             </span>
-            <span className="text-emerald-400 font-bold text-sm">
-              {data.jurisdiction === 'KMBR' ? 'KMBR 2019 (മുനിസിപ്പാലിറ്റി/കോർപ്പറേഷൻ)' : 'KPBR 2019 (പഞ്ചായത്ത്)'}
+            <span className={`font-bold text-sm ${data.jurisdiction === 'KMBR' ? 'text-blue-400' : 'text-emerald-400'}`}>
+              {data.jurisdiction === 'KMBR' ? 'KMBR 2019 (Kerala Municipality Building Rules)' : 'KPBR 2019 (Kerala Panchayat Building Rules)'}
             </span>
             <span className="text-slate-400 text-[11px]">
-              {data.jurisdiction === 'KMBR' ? 'Corporations & Municipalities' : 'Grama Panchayats in Kerala'}
+              {currentLbType === 'Corporation'
+                ? isMl ? 'കോർപ്പറേഷൻ പരിധി' : 'Municipal Corporation Area'
+                : currentLbType === 'Municipality'
+                ? isMl ? 'മുനിസിപ്പാലിറ്റി പരിധി' : 'Municipality Area'
+                : currentLbType === 'District Panchayat'
+                ? isMl ? 'ജില്ലാ പഞ്ചായത്ത് പരിധി' : 'District Panchayat Level'
+                : currentLbType === 'Block Panchayat'
+                ? isMl ? 'ബ്ലോക്ക് പഞ്ചായത്ത് പരിധി' : 'Block Panchayat Level'
+                : isMl ? 'ഗ്രാമപഞ്ചായത്ത് പരിധി' : 'Grama Panchayat Area'}
             </span>
           </div>
         </div>
@@ -260,219 +297,229 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
 
       {/* Grid: Authority & Project Details */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Card 1: Jurisdiction & Local Body & Revenue Particulars */}
+        {/* Card 1: Local Self Government Jurisdiction & Administrative Levels */}
         <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div className="flex items-center gap-2">
               <Building className="w-5 h-5 text-emerald-600" />
               <h3 className="font-bold text-slate-900 text-sm sm:text-base">
-                {isMl ? '1. തദ്ദേശ സ്വയംഭരണ സ്ഥാപനം & പരിധി' : '1. Local Self Government Jurisdiction'}
+                {isMl ? '1. തദ്ദേശ സ്വയംഭരണ സ്ഥാപനം & പരിധി' : '1. Local Self Government Institution (LSGI)'}
               </h3>
             </div>
             <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-              {isMl ? 'ഓട്ടോ-സെലക്ഷൻ ലഭ്യമാണ്' : 'Auto-Select Enabled'}
+              {isMl ? 'ഡൈനാമിക് ഫിൽട്ടർ സജീവം' : 'Dynamic Hierarchy Active'}
             </span>
           </div>
 
           <div className="space-y-4 text-xs sm:text-sm">
-            {/* Jurisdiction Switcher Box */}
+            {/* Step 1: District Selection */}
             <div>
-              <label className="block text-slate-700 font-semibold mb-1.5">
-                {isMl ? 'ചട്ട വിഭാഗം (Jurisdiction Type):' : 'Statutory Building Rules:'}
+              <label className="block text-slate-700 font-semibold mb-1 flex items-center justify-between">
+                <span>{isMl ? 'റവന്യൂ ജില്ല (District):' : 'Revenue District:'}</span>
+                <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
+                  14 Districts
+                </span>
               </label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  id="auth-select-kmbr"
-                  onClick={() => handleJurisdictionChange('KMBR')}
-                  className={`p-3 rounded-xl border text-left transition-all ${
-                    data.jurisdiction === 'KMBR'
-                      ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-500/20 text-slate-900'
-                      : 'border-slate-200 hover:border-slate-300 text-slate-600'
-                  }`}
-                >
-                  <div className="font-bold text-emerald-800 flex items-center justify-between">
-                    <span>KMBR 2019</span>
-                    {data.jurisdiction === 'KMBR' && (
-                      <span className="text-xs bg-emerald-600 text-white px-1.5 py-0.5 rounded font-mono">
-                        Active
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-[11px] text-slate-500 mt-1">
-                    {isMl ? 'മുനിസിപ്പൽ കോർപ്പറേഷൻ & മുനിസിപ്പാലിറ്റി' : 'Municipal Corporations & Municipalities'}
-                  </div>
-                </button>
+              <select
+                id="auth-district"
+                value={currentDistrict}
+                onChange={(e) => handleDistrictChange(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium text-sm transition-all"
+              >
+                {allDistricts.map((d) => (
+                  <option key={d.district} value={d.district}>
+                    {isMl ? `${d.districtMl} (${d.district})` : `${d.district} (${d.districtMl})`}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-                <button
-                  type="button"
-                  id="auth-select-kpbr"
-                  onClick={() => handleJurisdictionChange('KPBR')}
-                  className={`p-3 rounded-xl border text-left transition-all ${
-                    data.jurisdiction === 'KPBR'
-                      ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-500/20 text-slate-900'
-                      : 'border-slate-200 hover:border-slate-300 text-slate-600'
-                  }`}
-                >
-                  <div className="font-bold text-emerald-800 flex items-center justify-between">
-                    <span>KPBR 2019</span>
-                    {data.jurisdiction === 'KPBR' && (
-                      <span className="text-xs bg-emerald-600 text-white px-1.5 py-0.5 rounded font-mono">
-                        Active
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-[11px] text-slate-500 mt-1">
-                    {isMl ? 'ഗ്രാമപഞ്ചായത്തുകൾ' : 'Grama Panchayats in Kerala'}
-                  </div>
-                </button>
+            {/* Step 2: Local Body Type Selector (5 Types as requested: District Panchayat, Block Panchayat, Municipality, Corporation, Grama Panchayat) */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-slate-700 font-semibold">
+                  {isMl ? 'തദ്ദേശ സ്ഥാപന വിഭാഗം (Local Body Type):' : 'Local Body Administrative Level:'}
+                </label>
+                <span className="text-[11px] text-slate-500">
+                  {isMl ? 'ബാധകമായ ചട്ടമനുസരിച്ച്' : 'Ruleset-Specific'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {ALL_LOCAL_BODY_TYPES.map((lbt) => {
+                  const isSelected = currentLbType === lbt.type;
+                  const isKmbr = lbt.jurisdiction === 'KMBR';
+
+                  return (
+                    <button
+                      key={lbt.type}
+                      type="button"
+                      id={`auth-lbtype-${lbt.type.toLowerCase().replace(/\s+/g, '-')}`}
+                      onClick={() => handleLocalBodyTypeChange(lbt.type)}
+                      className={`p-2.5 rounded-xl border text-left transition-all relative flex flex-col justify-between ${
+                        isSelected
+                          ? isKmbr
+                            ? 'border-blue-600 bg-blue-50/80 ring-2 ring-blue-500/30 text-slate-900 shadow-xs'
+                            : 'border-emerald-600 bg-emerald-50/80 ring-2 ring-emerald-500/30 text-slate-900 shadow-xs'
+                          : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/70 text-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-1 mb-1">
+                        <span className="font-bold text-xs leading-tight">
+                          {isMl ? lbt.nameMl : lbt.nameEn}
+                        </span>
+                        {isSelected && (
+                          <Check className={`w-3.5 h-3.5 shrink-0 ${isKmbr ? 'text-blue-600' : 'text-emerald-600'}`} />
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between mt-1 pt-1 border-t border-slate-200/60">
+                        <span
+                          className={`text-[10px] font-mono px-1.5 py-0.2 rounded font-semibold ${
+                            isKmbr
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-emerald-100 text-emerald-800'
+                          }`}
+                        >
+                          {lbt.jurisdiction}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            {/* District & Local Body Name */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* District Dropdown */}
-              <div>
-                <label className="block text-slate-700 font-medium mb-1 flex items-center justify-between">
-                  <span>{isMl ? 'ജില്ല (District):' : 'District:'}</span>
-                  <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200/60">
-                    14 Districts
+            {/* Step 3: Local Body Name Dropdown with Search, Count, Code and Custom Entry */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-slate-700 font-semibold flex items-center gap-1.5">
+                  <span>
+                    {isMl ? `${currentLbType} തിരഞ്ഞെടുക്കുക:` : `Select ${currentLbType}:`}
+                  </span>
+                  <span className="text-[10px] text-emerald-800 font-bold bg-emerald-100 px-2 py-0.5 rounded-full">
+                    {localBodiesForType.length} {isMl ? 'എണ്ണം' : 'Available'}
                   </span>
                 </label>
-                <select
-                  id="auth-district"
-                  value={currentDistrict}
-                  onChange={(e) => handleDistrictChange(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium"
-                >
-                  {allDistricts.map((d) => (
-                    <option key={d.district} value={d.district}>
-                      {isMl ? `${d.districtMl} (${d.district})` : d.district}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleQuickSync}
+                    disabled={isSyncing}
+                    title={isMl ? 'ഇന്റർനെറ്റിൽ നിന്ന് തദ്ദേശ സ്ഥാപനങ്ങൾ സിങ്ക് ചെയ്യുക' : 'Sync local bodies from web'}
+                    className="text-[11px] text-cyan-700 hover:text-cyan-800 bg-cyan-50 border border-cyan-200/60 px-2 py-0.5 rounded flex items-center gap-1 transition-all disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin text-cyan-600' : ''}`} />
+                    <span>{isMl ? 'സിങ്ക്' : 'Sync'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCustomLocalBodyMode(!customLocalBodyMode)}
+                    className="text-[11px] text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1"
+                  >
+                    {customLocalBodyMode ? (
+                      <span>📋 {isMl ? 'ലിസ്റ്റ്' : 'List'}</span>
+                    ) : (
+                      <span>✏️ {isMl ? 'ടൈപ്പ്' : 'Custom'}</span>
+                    )}
+                  </button>
+                </div>
               </div>
 
-              {/* Local Body Name Dropdown with Search, Count and Custom Entry */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-slate-700 font-medium flex items-center gap-1.5">
-                    <span>{isMl ? 'തദ്ദേശ സ്ഥാപനം:' : 'Local Body Name:'}</span>
-                    <span className="text-[10px] text-emerald-700 font-bold bg-emerald-100/70 px-1.5 py-0.2 rounded">
-                      {allLocalBodies.length} {data.jurisdiction === 'KMBR' ? (isMl ? 'നഗരസഭകൾ' : 'Mun/Corp') : (isMl ? 'പഞ്ചായത്തുകൾ' : 'Panchayats')}
-                    </span>
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleQuickSync}
-                      disabled={isSyncing}
-                      title={isMl ? 'ഇന്റർനെറ്റിൽ നിന്ന് തദ്ദേശ സ്ഥാപനങ്ങൾ സിങ്ക് ചെയ്യുക' : 'Sync local bodies from web'}
-                      className="text-[11px] text-cyan-700 hover:text-cyan-800 bg-cyan-50 border border-cyan-200/60 px-1.5 py-0.5 rounded flex items-center gap-1 transition-all disabled:opacity-50"
-                    >
-                      <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin text-cyan-600' : ''}`} />
-                      <span>{isMl ? 'സിങ്ക്' : 'Sync'}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCustomLocalBodyMode(!customLocalBodyMode)}
-                      className="text-[11px] text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1"
-                    >
-                      {customLocalBodyMode ? (
-                        <span>📋 {isMl ? 'ലിസ്റ്റ്' : 'List'}</span>
-                      ) : (
-                        <span>✏️ {isMl ? 'ടൈപ്പ്' : 'Custom'}</span>
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Quick Search filter if there are multiple local bodies */}
-                {!customLocalBodyMode && allLocalBodies.length > 5 && (
-                  <div className="relative mb-1.5">
-                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      value={localBodySearch}
-                      onChange={(e) => setLocalBodySearch(e.target.value)}
-                      placeholder={
-                        isMl
-                          ? `ലിസ്റ്റിൽ തിരയുക (${allLocalBodies.length} എണ്ണം)...`
-                          : `Filter ${allLocalBodies.length} ${data.jurisdiction === 'KMBR' ? 'municipalities' : 'panchayats'}...`
-                      }
-                      className="w-full text-xs bg-white border border-slate-200 rounded-md pl-8 pr-2.5 py-1 text-slate-700 placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
-                    />
-                    {localBodySearch && (
-                      <button
-                        type="button"
-                        onClick={() => setLocalBodySearch('')}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                {customLocalBodyMode ? (
+              {/* Quick Search filter if there are multiple local bodies */}
+              {!customLocalBodyMode && localBodiesForType.length > 6 && (
+                <div className="relative mb-1.5">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
-                    id="auth-localbody-custom"
-                    value={data.localBodyName}
-                    onChange={(e) => onChange({ localBodyName: e.target.value })}
+                    value={localBodySearch}
+                    onChange={(e) => setLocalBodySearch(e.target.value)}
                     placeholder={
-                      data.jurisdiction === 'KMBR'
-                        ? isMl ? 'ഉദാ: കൊച്ചി കോർപ്പറേഷൻ' : 'e.g. Kochi Corporation'
-                        : isMl ? 'ഉദാ: കിഴക്കമ്പലം ഗ്രാമപഞ്ചായത്ത്' : 'e.g. Kizhakkambalam Grama Panchayat'
+                      isMl
+                        ? `${currentDistrict} ജില്ലയിലെ ലിസ്റ്റിൽ തിരയുക (${localBodiesForType.length} എണ്ണം)...`
+                        : `Filter in ${currentDistrict} (${localBodiesForType.length} items)...`
                     }
-                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    className="w-full text-xs bg-white border border-slate-200 rounded-md pl-8 pr-2.5 py-1 text-slate-700 placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
                   />
-                ) : (
-                  <select
-                    id="auth-localbody"
-                    value={data.localBodyName}
-                    onChange={(e) => {
-                      if (e.target.value === '__custom__') {
-                        setCustomLocalBodyMode(true);
-                      } else {
-                        onChange({ localBodyName: e.target.value });
-                      }
-                    }}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium"
-                  >
-                    {filteredLocalBodies.length > 0 ? (
-                      filteredLocalBodies.map((lb) => {
-                        const label = isMl ? lb.nameMl : lb.nameEn;
-                        return (
-                          <option key={lb.nameEn} value={label}>
-                            {label}
-                          </option>
-                        );
-                      })
-                    ) : (
-                      <option value="" disabled>
-                        {isMl ? 'സ്ഥാപനങ്ങൾ കണ്ടെത്തിയില്ല' : 'No matching local bodies'}
-                      </option>
-                    )}
-                    <option value="__custom__">+ {isMl ? 'മറ്റ് തദ്ദേശ സ്ഥാപനത്തിന്റെ പേര് നൽകുക...' : 'Add Custom Local Body...'}</option>
-                  </select>
-                )}
+                  {localBodySearch && (
+                    <button
+                      type="button"
+                      onClick={() => setLocalBodySearch('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              )}
 
-                {syncStatusMsg && (
-                  <div className="mt-1 text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2 py-0.5 rounded flex items-center gap-1 animate-fadeIn">
-                    <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
-                    <span>{syncStatusMsg}</span>
-                  </div>
-                )}
-              </div>
+              {customLocalBodyMode ? (
+                <input
+                  type="text"
+                  id="auth-localbody-custom"
+                  value={data.localBodyName}
+                  onChange={(e) => onChange({ localBodyName: e.target.value })}
+                  placeholder={
+                    currentLbType === 'Corporation'
+                      ? isMl ? 'ഉദാ: കൊച്ചി കോർപ്പറേഷൻ' : 'e.g. Kochi Municipal Corporation'
+                      : currentLbType === 'Municipality'
+                      ? isMl ? 'ഉദാ: തൃപ്പൂണിത്തുറ നഗരസഭ' : 'e.g. Tripunithura Municipality'
+                      : isMl ? 'ഉദാ: കിഴക്കമ്പലം ഗ്രാമപഞ്ചായത്ത്' : 'e.g. Kizhakkambalam Grama Panchayat'
+                  }
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
+                />
+              ) : (
+                <select
+                  id="auth-localbody"
+                  value={data.localBodyName}
+                  onChange={(e) => {
+                    if (e.target.value === '__custom__') {
+                      setCustomLocalBodyMode(true);
+                    } else {
+                      const selectedItem = localBodiesForType.find(
+                        (lb) => (isMl ? lb.nameMl : lb.nameEn) === e.target.value || lb.nameEn === e.target.value
+                      );
+                      onChange({
+                        localBodyName: e.target.value,
+                        localBodyCode: selectedItem?.code || '',
+                      });
+                    }
+                  }}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium text-sm"
+                >
+                  {filteredLocalBodies.length > 0 ? (
+                    filteredLocalBodies.map((lb) => {
+                      const label = isMl ? `${lb.nameMl} (${lb.nameEn})` : `${lb.nameEn} (${lb.nameMl})`;
+                      const value = isMl ? lb.nameMl : lb.nameEn;
+                      return (
+                        <option key={lb.code || lb.nameEn} value={value}>
+                          {label}
+                        </option>
+                      );
+                    })
+                  ) : (
+                    <option value="" disabled>
+                      {isMl ? 'ഈ വിഭാഗത്തിൽ സ്ഥാപനങ്ങൾ ലഭ്യമല്ല' : 'No local bodies found in this category'}
+                    </option>
+                  )}
+                  <option value="__custom__">+ {isMl ? 'മറ്റ് സ്ഥാപനത്തിന്റെ പേര് നൽകുക...' : 'Add Custom Local Body Name...'}</option>
+                </select>
+              )}
+
+              {syncStatusMsg && (
+                <div className="mt-1 text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2 py-0.5 rounded flex items-center gap-1 animate-fadeIn">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                  <span>{syncStatusMsg}</span>
+                </div>
+              )}
             </div>
 
             {/* Taluk & Revenue Village Dropdowns */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               {/* Taluk Dropdown */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-slate-700 font-medium">
+                  <label className="block text-slate-700 font-semibold">
                     {isMl ? 'താലൂക്ക് (Taluk):' : 'Taluk:'}
                   </label>
                   <button
@@ -491,7 +538,7 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
                     value={data.talukName}
                     onChange={(e) => onChange({ talukName: e.target.value })}
                     placeholder="e.g. Kunnathunad"
-                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
                   />
                 ) : (
                   <select
@@ -504,13 +551,13 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
                         handleTalukChange(e.target.value);
                       }
                     }}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm font-medium"
                   >
                     {taluks.map((t) => {
                       const val = isMl ? t.nameMl : t.nameEn;
                       return (
                         <option key={t.nameEn} value={val}>
-                          {isMl ? `${t.nameMl} (${t.nameEn})` : t.nameEn}
+                          {isMl ? `${t.nameMl} (${t.nameEn})` : `${t.nameEn} (${t.nameMl})`}
                         </option>
                       );
                     })}
@@ -522,7 +569,7 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
               {/* Revenue Village Dropdown */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-slate-700 font-medium">
+                  <label className="block text-slate-700 font-semibold">
                     {isMl ? 'വില്ലേജ് (Revenue Village):' : 'Revenue Village:'}
                   </label>
                   <button
@@ -541,7 +588,7 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
                     value={data.villageName}
                     onChange={(e) => onChange({ villageName: e.target.value })}
                     placeholder="e.g. Kizhakkambalam"
-                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
                   />
                 ) : (
                   <select
@@ -554,13 +601,13 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
                         onChange({ villageName: e.target.value });
                       }
                     }}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm font-medium"
                   >
                     {villages.map((v) => {
                       const val = isMl ? v.nameMl : v.nameEn;
                       return (
                         <option key={v.nameEn} value={val}>
-                          {isMl ? `${v.nameMl} (${v.nameEn})` : v.nameEn}
+                          {isMl ? `${v.nameMl} (${v.nameEn})` : `${v.nameEn} (${v.nameMl})`}
                         </option>
                       );
                     })}
@@ -575,7 +622,7 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
               {/* Ward / Division Dropdown */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-slate-700 font-medium">
+                  <label className="block text-slate-700 font-semibold">
                     {isMl ? 'വാർഡ് / ഡിവിഷൻ (Ward):' : 'Ward / Division:'}
                   </label>
                   <button
@@ -594,7 +641,7 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
                     value={data.wardNumber}
                     onChange={(e) => onChange({ wardNumber: e.target.value })}
                     placeholder="e.g. Ward 08 (Kallumala)"
-                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
                   />
                 ) : (
                   <select
@@ -607,7 +654,7 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
                         onChange({ wardNumber: e.target.value });
                       }
                     }}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
                   >
                     {STANDARD_WARD_OPTIONS.map((w) => (
                       <option key={w.value} value={isMl ? w.labelMl : w.labelEn}>
@@ -621,7 +668,7 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
 
               {/* Survey Number */}
               <div>
-                <label className="block text-slate-700 font-medium mb-1 flex items-center justify-between">
+                <label className="block text-slate-700 font-semibold mb-1 flex items-center justify-between">
                   <span>{isMl ? 'റീ-സർവേ നമ്പർ & ബ്ലോക്ക്:' : 'Re-Survey No & Block:'}</span>
                   <span className="text-[10px] text-slate-500 font-normal font-mono">e.g. 142/3-B, Blk 12</span>
                 </label>
@@ -631,7 +678,7 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
                   value={data.surveyNumber}
                   onChange={(e) => onChange({ surveyNumber: e.target.value })}
                   placeholder="e.g. 142/3-B, Block 12"
-                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-mono"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-mono text-sm"
                 />
               </div>
             </div>
@@ -649,7 +696,7 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
 
           <div className="space-y-3.5 text-xs sm:text-sm">
             <div>
-              <label className="block text-slate-700 font-medium mb-1">
+              <label className="block text-slate-700 font-semibold mb-1">
                 {isMl ? 'പ്രോജക്റ്റിന്റെ പേര്:' : 'Project Name:'}
               </label>
               <input
@@ -658,12 +705,12 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
                 value={data.projectName}
                 onChange={(e) => onChange({ projectName: e.target.value })}
                 placeholder="e.g. Green Villa Residential Project"
-                className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium"
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium text-sm"
               />
             </div>
 
             <div>
-              <label className="block text-slate-700 font-medium mb-1">
+              <label className="block text-slate-700 font-semibold mb-1">
                 {isMl ? 'അപേക്ഷകന്റെ പേര് (Applicant / Owner):' : 'Applicant / Owner Name:'}
               </label>
               <input
@@ -672,13 +719,13 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
                 value={data.applicantName}
                 onChange={(e) => onChange({ applicantName: e.target.value })}
                 placeholder="e.g. Sanoop Sadanandhan"
-                className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-slate-700 font-medium mb-1">
+                <label className="block text-slate-700 font-semibold mb-1">
                   {isMl ? 'തയ്യാറാക്കിയത് - പേര് (Prepared by - Name):' : 'Prepared by (Name):'}
                 </label>
                 <input
@@ -687,12 +734,12 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
                   value={data.preparedByName}
                   onChange={(e) => onChange({ preparedByName: e.target.value })}
                   placeholder="e.g. Sanoop Sadanandhan"
-                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-700 font-medium mb-1">
+                <label className="block text-slate-700 font-semibold mb-1">
                   {isMl ? 'തയ്യാറാക്കിയത് - പദവി (Prepared by - Designation):' : 'Prepared by (Designation):'}
                 </label>
                 <input
@@ -701,7 +748,7 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
                   value={data.preparedByDesignation}
                   onChange={(e) => onChange({ preparedByDesignation: e.target.value })}
                   placeholder="e.g. Scrutiny Engineer / Senior Architect"
-                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
                 />
               </div>
             </div>
@@ -718,9 +765,9 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
                   type="button"
                   id="plot-type-normal"
                   onClick={() => onChange({ plotType: 'normal' })}
-                  className={`p-2.5 rounded-lg border text-left text-xs transition-all ${
+                  className={`p-2.5 rounded-xl border text-left text-xs transition-all ${
                     data.plotType === 'normal'
-                      ? 'border-emerald-600 bg-emerald-50 font-semibold text-emerald-900'
+                      ? 'border-emerald-600 bg-emerald-50 font-semibold text-emerald-900 ring-1 ring-emerald-500/30'
                       : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}
                 >
@@ -732,19 +779,19 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
                   type="button"
                   id="plot-type-small"
                   onClick={() => onChange({ plotType: 'small_plot' })}
-                  className={`p-2.5 rounded-lg border text-left text-xs transition-all ${
+                  className={`p-2.5 rounded-xl border text-left text-xs transition-all ${
                     data.plotType === 'small_plot'
-                      ? 'border-emerald-600 bg-emerald-50 font-semibold text-emerald-900 ring-1 ring-emerald-500/30'
+                      ? 'border-emerald-600 bg-emerald-50 font-semibold text-emerald-900 ring-2 ring-emerald-500/30'
                       : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}
                 >
                   <div className="font-bold flex items-center justify-between">
                     <span>{isMl ? 'ചെറിയ പ്ലോട്ട് (≤ 125 ച.മീ)' : 'Small Plot (≤ 125 sq.m / 3 Cents)'}</span>
-                    <span className="text-[10px] bg-amber-100 text-amber-800 px-1 py-0.2 rounded font-mono">
+                    <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-mono font-bold">
                       {data.jurisdiction === 'KMBR' ? 'Rule 60' : 'Rule 62'}
                     </span>
                   </div>
-                  <div className="text-[11px] text-slate-500">
+                  <div className="text-[11px] text-slate-500 mt-0.5">
                     {isMl ? 'ഫ്രണ്ട് 1.8m, റിയർ 1.0m ഇളവുകൾ' : 'Concessional setbacks: 1.8m FOS, 1.0m ROS'}
                   </div>
                 </button>
@@ -821,7 +868,7 @@ export const AuthoritySelector: React.FC<AuthoritySelectorProps> = ({
           type="button"
           id="btn-proceed-drawings"
           onClick={onNext}
-          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-6 py-2.5 rounded-xl shadow-sm transition-all transform active:scale-95 text-sm"
+          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-6 py-2.5 rounded-xl shadow-sm transition-all transform active:scale-95 text-sm cursor-pointer"
         >
           <span>{isMl ? 'അടുത്ത ഘട്ടം: ഡ്രോയിംഗുകൾ അപ്‌ലോഡ് ചെയ്യുക' : 'Proceed to Step 2: Drawing Uploads'}</span>
           <ArrowRight className="w-4 h-4" />
