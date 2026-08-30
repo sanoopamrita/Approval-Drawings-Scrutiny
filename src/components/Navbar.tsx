@@ -19,6 +19,11 @@ import {
   LogOut,
   Sliders,
   Crown,
+  Mail,
+  Check,
+  Copy,
+  Shield,
+  ChevronDown,
 } from 'lucide-react';
 import { TabType, Language, JurisdictionType, ScrutinyReportSummary, User } from '../types';
 import { VinyasaLogo } from './VinyasaLogo';
@@ -56,18 +61,32 @@ export const Navbar: React.FC<NavbarProps> = ({
   const isSuper = isUserSuperAdmin(currentUser);
   const [globalSearch, setGlobalSearch] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [copiedEmail, setCopiedEmail] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
 
-  // Close search suggestions on click outside
+  // Close search suggestions & profile menu on click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
         setIsSearchOpen(false);
       }
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+        setIsProfileMenuOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const handleCopyEmail = () => {
+    if (currentUser?.email) {
+      navigator.clipboard.writeText(currentUser.email);
+      setCopiedEmail(true);
+      setTimeout(() => setCopiedEmail(false), 2000);
+    }
+  };
 
   // Filter search results across rules & amendments
   const searchResults = globalSearch.trim() === '' ? [] : [
@@ -245,23 +264,54 @@ export const Navbar: React.FC<NavbarProps> = ({
             <RotateCcw className="w-4 h-4" />
           </button>
 
-          {/* User Account & Logout */}
+          {/* User Account with Interactive Email Dropdown & Logout */}
           {currentUser && (
-            <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
-              <div className="flex items-center gap-2 bg-slate-900/90 border border-slate-800 py-1 px-2.5 rounded-xl">
-                <div className="w-6 h-6 rounded-full bg-cyan-950 border border-cyan-500/40 text-cyan-300 flex items-center justify-center text-[10px] font-bold">
-                  {currentUser.isSuperAdmin ? '👑' : (currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U')}
+            <div ref={profileMenuRef} className="relative flex items-center gap-1.5 pl-2 border-l border-slate-800">
+              <button
+                type="button"
+                id="user-profile-menu-btn"
+                onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                className={`flex items-center gap-2 py-1 px-2.5 rounded-xl border transition-all cursor-pointer group ${
+                  isProfileMenuOpen
+                    ? 'bg-cyan-950/80 border-cyan-500/60 shadow-[0_0_15px_rgba(0,229,255,0.2)]'
+                    : 'bg-slate-900/90 hover:bg-slate-850 border-slate-800 hover:border-cyan-700/50'
+                }`}
+                title={isMl ? 'അക്കൗണ്ട് വിവരങ്ങളും ഇമെയിലും കാണുക' : 'View account details & email'}
+              >
+                {/* Avatar */}
+                <div className="relative">
+                  {currentUser.avatar ? (
+                    <img
+                      src={currentUser.avatar}
+                      alt={currentUser.name}
+                      className="w-6 h-6 rounded-full object-cover border border-cyan-500/40"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-cyan-950 border border-cyan-500/40 text-cyan-300 flex items-center justify-center text-[10px] font-bold">
+                      {currentUser.isSuperAdmin ? '👑' : (currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U')}
+                    </div>
+                  )}
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-1 ring-slate-950" />
                 </div>
-                <div className="hidden xl:block text-left">
-                  <div className="text-[11px] font-bold text-slate-200 truncate max-w-[120px]">
+
+                <div className="hidden sm:block text-left">
+                  <div className="text-[11px] font-bold text-slate-200 group-hover:text-cyan-300 transition-colors truncate max-w-[130px]">
                     {currentUser.name || currentUser.email}
                   </div>
-                  <div className="text-[9px] text-cyan-400 font-mono">
-                    {currentUser.isSuperAdmin ? 'Super Admin' : (currentUser.licenseNumber || 'Registered User')}
+                  <div className="text-[9px] text-cyan-400 font-mono flex items-center gap-1">
+                    <span>{currentUser.isSuperAdmin ? '👑 Super Admin' : (currentUser.licenseNumber || 'Verified User')}</span>
                   </div>
                 </div>
-              </div>
 
+                <ChevronDown
+                  className={`w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-transform ${
+                    isProfileMenuOpen ? 'rotate-180 text-cyan-400' : ''
+                  }`}
+                />
+              </button>
+
+              {/* Direct Quick Logout Button */}
               <button
                 type="button"
                 id="user-logout-btn"
@@ -271,6 +321,164 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 <LogOut className="w-4 h-4" />
               </button>
+
+              {/* Interactive Profile Details Popover Menu */}
+              {isProfileMenuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-80 sm:w-88 bg-[#091122] border border-cyan-500/40 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.8),0_0_20px_rgba(0,229,255,0.15)] overflow-hidden z-50 animate-scaleUp text-left">
+                  {/* Top Header Card */}
+                  <div className="p-4 bg-gradient-to-br from-slate-900 via-[#0C162D] to-slate-950 border-b border-slate-800/80 relative">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="relative shrink-0">
+                          {currentUser.avatar ? (
+                            <img
+                              src={currentUser.avatar}
+                              alt={currentUser.name}
+                              className="w-12 h-12 rounded-full object-cover border-2 border-cyan-400/60 shadow-[0_0_15px_rgba(0,229,255,0.3)]"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-full bg-cyan-950 border-2 border-cyan-400/60 text-cyan-300 flex items-center justify-center text-lg font-bold">
+                              {currentUser.isSuperAdmin ? '👑' : (currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U')}
+                            </div>
+                          )}
+                          {/* Google G icon Badge */}
+                          <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white flex items-center justify-center shadow-md border border-slate-200">
+                            <svg className="w-3 h-3" viewBox="0 0 24 24">
+                              <path
+                                fill="#4285F4"
+                                d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
+                              />
+                              <path
+                                fill="#34A853"
+                                d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
+                              />
+                              <path
+                                fill="#FBBC05"
+                                d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+                              />
+                              <path
+                                fill="#EA4335"
+                                d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+                              />
+                            </svg>
+                          </div>
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className="text-sm font-bold text-white truncate flex items-center gap-1.5">
+                            <span>{currentUser.name}</span>
+                            {currentUser.isSuperAdmin && (
+                              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-semibold shrink-0">
+                                Super Admin
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-emerald-400 flex items-center gap-1 mt-0.5 font-medium">
+                            <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                            <span>{isMl ? 'ഗൂഗിൾ വെരിഫൈഡ് അക്കൗണ്ട്' : 'Google Verified Account'}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => setIsProfileMenuOpen(false)}
+                        className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 rounded-lg transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Prominent Email Address Card */}
+                  <div className="p-4 space-y-3 bg-[#070D1B]">
+                    <div className="bg-slate-900/90 border border-cyan-500/30 rounded-xl p-3 space-y-1.5 shadow-inner">
+                      <div className="flex items-center justify-between text-[10px] uppercase font-bold text-cyan-400 tracking-wider">
+                        <span className="flex items-center gap-1.5">
+                          <Mail className="w-3.5 h-3.5 text-cyan-400" />
+                          <span>{isMl ? 'ഇമെയിൽ വിലാസം (Email ID)' : 'Registered Email Address'}</span>
+                        </span>
+                        <span className="text-emerald-400 font-mono text-[9px] bg-emerald-950/80 px-1.5 py-0.5 rounded border border-emerald-500/30">
+                          VERIFIED
+                        </span>
+                      </div>
+
+                      {/* Display Real Email ID */}
+                      <div className="flex items-center justify-between gap-2 pt-1">
+                        <span className="text-xs font-mono font-bold text-slate-100 truncate selection:bg-cyan-500">
+                          {currentUser.email}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleCopyEmail}
+                          className="p-1.5 bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white rounded-lg border border-slate-700 transition-colors shrink-0 flex items-center gap-1 text-[10px] font-semibold cursor-pointer"
+                          title="Copy email to clipboard"
+                        >
+                          {copiedEmail ? (
+                            <>
+                              <Check className="w-3 h-3 text-emerald-400" />
+                              <span className="text-emerald-400">{isMl ? 'കോപ്പി ചെയ്തു' : 'Copied'}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3" />
+                              <span>{isMl ? 'കോപ്പി' : 'Copy'}</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Metadata Specs */}
+                    <div className="space-y-1.5 text-xs">
+                      <div className="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800/60 text-slate-300">
+                        <span className="text-slate-400">{isMl ? 'അക്കൗണ്ട് പദവി' : 'Role / Authorization'}:</span>
+                        <span className="font-semibold text-slate-200">
+                          {currentUser.isSuperAdmin
+                            ? (isMl ? '👑 സൂപ്പർ അഡ്മിനിസ്ട്രേറ്റർ' : '👑 Super Administrator')
+                            : (isMl ? 'സ്ഥിരീകരിച്ച ആർക്കിടെക്റ്റ് / എൻജിനീയർ' : 'Verified Professional User')}
+                        </span>
+                      </div>
+
+                      {currentUser.licenseNumber && (
+                        <div className="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800/60 text-slate-300">
+                          <span className="text-slate-400">{isMl ? 'ലൈസൻസ് നമ്പർ' : 'LSGD License'}:</span>
+                          <span className="font-mono text-cyan-300 text-[11px]">{currentUser.licenseNumber}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Action Links */}
+                    <div className="pt-2 border-t border-slate-800/80 space-y-2">
+                      {isSuper && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveTab('admin');
+                            setIsProfileMenuOpen(false);
+                          }}
+                          className="w-full py-2 px-3 bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                          <Crown className="w-3.5 h-3.5 text-amber-400" />
+                          <span>{isMl ? 'സൂപ്പർ അഡ്മിൻ കൺട്രോൾ പാനൽ' : 'Open Super Admin Panel'}</span>
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsProfileMenuOpen(false);
+                          onLogout();
+                        }}
+                        className="w-full py-2 px-3 bg-rose-950/40 hover:bg-rose-900/50 text-rose-300 hover:text-rose-200 border border-rose-800/50 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <LogOut className="w-3.5 h-3.5 text-rose-400" />
+                        <span>{isMl ? 'അക്കൗണ്ടിൽ നിന്ന് ലോഗ് ഔട്ട് ചെയ്യുക' : 'Sign Out of Account'}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

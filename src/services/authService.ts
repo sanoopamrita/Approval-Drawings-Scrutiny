@@ -211,29 +211,39 @@ export async function verifyCodeAndLogin(params: {
 }
 
 export function loginWithGoogle(
-  customEmail?: string,
-  customName?: string
+  email: string,
+  name?: string,
+  avatar?: string
 ): Promise<User> {
-  return new Promise((resolve) => {
-    // Determine user parameters
-    const email = (customEmail || '').toLowerCase().trim() || 'registered.architect@kerala.gov.in';
-    const isSuper = checkIsSuperAdminEmail(email);
-    const name = customName?.trim() || (isSuper ? 'Sanoop Sadanandhan (Super Admin)' : email.split('@')[0].replace('.', ' '));
+  return new Promise((resolve, reject) => {
+    const cleanEmail = (email || '').toLowerCase().trim();
+    if (!cleanEmail || !cleanEmail.includes('@') || !cleanEmail.includes('.')) {
+      reject(new Error('Invalid Google account email address provided.'));
+      return;
+    }
+
+    const isSuper = checkIsSuperAdminEmail(cleanEmail);
+    const defaultName = cleanEmail.split('@')[0].replace(/[._-]/g, ' ');
+    const formattedName = name?.trim() || (isSuper ? 'Sanoop Sadanandhan (Super Admin)' : defaultName);
 
     const user: User = {
-      id: `usr-${Date.now()}`,
-      email,
-      name,
+      id: `usr-google-${Date.now()}`,
+      email: cleanEmail,
+      name: formattedName,
       role: isSuper ? 'super_admin' : 'user',
-      avatar: isSuper
-        ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'
-        : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
-      organization: isSuper ? 'VINYASA Core Architecture Authority' : 'Kerala Engineering Association',
-      licenseNumber: isSuper ? 'SUPER-ADMIN-01' : 'LSGD/E-A/2026/9821',
+      avatar:
+        avatar ||
+        (isSuper
+          ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80'
+          : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&auto=format&fit=crop&q=80'),
+      organization: isSuper ? 'VINYASA Core Architecture Authority' : 'Kerala Engineering & Architecture Forum',
+      licenseNumber: isSuper ? 'SUPER-ADMIN-01' : 'LSGD/E-A/2026/REGISTERED',
       provider: 'google',
-      createdAt: Date.now() - 86400000 * 30,
+      createdAt: Date.now(),
       lastLoginAt: Date.now(),
       isSuperAdmin: isSuper,
+      emailVerified: true,
+      sessionToken: `gauth-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
     };
 
     localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(user));

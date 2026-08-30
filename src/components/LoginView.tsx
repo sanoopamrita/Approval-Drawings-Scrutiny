@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { Language, User as UserType } from '../types';
 import { loginWithGoogle } from '../services/authService';
+import { GoogleSignInModal } from './GoogleSignInModal';
 
 interface LoginViewProps {
   language: Language;
@@ -21,21 +22,29 @@ export const LoginView: React.FC<LoginViewProps> = ({ language, onLoginSuccess }
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isGoogleModalOpen, setIsGoogleModalOpen] = useState(false);
 
-  // 1-Click Verified Google Account Sign-In
-  const handleGoogleSignIn = async () => {
+  // Trigger Google OAuth Account Selection & Verification
+  const handleOpenGoogleAuth = () => {
+    setError(null);
+    setIsGoogleModalOpen(true);
+  };
+
+  const handleSelectGoogleAccount = async (email: string, name?: string, avatar?: string) => {
     setLoading(true);
     setError(null);
 
     try {
-      // Direct authenticated login through Google identity
-      const user = await loginWithGoogle();
+      // Direct authenticated login through verified Google identity
+      const user = await loginWithGoogle(email, name, avatar);
+      setIsGoogleModalOpen(false);
       onLoginSuccess(user);
     } catch (err: any) {
       setError(
         err?.message ||
           (isMl ? 'ഗൂഗിൾ ലോഗിൻ പരാജയപ്പെട്ടു. ദയവായി വീണ്ടും ശ്രമിക്കുക.' : 'Google Sign-In failed. Please try again.')
       );
+      throw err;
     } finally {
       setLoading(false);
     }
@@ -57,8 +66,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ language, onLoginSuccess }
               <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
               <span>
                 {isMl
-                  ? '100% സൗജന്യ സർവീസ് — ഗൂഗിൾ ലോഗിൻ'
-                  : '100% Free Service — Google Authentication'}
+                  ? '100% സൗജന്യ സർവീസ് — ഗൂഗിൾ ഒതന്റിക്കേഷൻ'
+                  : '100% Free Service — Google OAuth Verification'}
               </span>
             </div>
 
@@ -82,8 +91,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ language, onLoginSuccess }
 
             <p className="text-sm sm:text-base text-slate-300 font-medium leading-relaxed">
               {isMl
-                ? 'ഒടിപിയോ പാസ്‌വേഡുകളോ മാനുവൽ ഫോമുകളോ ഇല്ലാതെ, നിങ്ങളുടെ ഔദ്യോഗിക ഗൂഗിൾ അക്കൗണ്ട് ഉപയോഗിച്ച് നേരിട്ട് ഒരൊറ്റ ക്ലിക്കിൽ സുരക്ഷിതമായി പ്രവേശിക്കാം.'
-                : 'Zero passwords, zero OTPs, and no manual forms. Sign in instantly and securely with your official Google Account to access the free architectural scrutiny engine.'}
+                ? 'ഒടിപിയോ പാസ്‌വേഡുകളോ മാനുവൽ ഫോമുകളോ ഇല്ലാതെ, നിങ്ങളുടെ ഔദ്യോഗിക ഗൂഗിൾ അക്കൗണ്ട് വഴി നേരിട്ട് സുരക്ഷിതമായി ലോഗിൻ ചെയ്ത് ഡാഷ്‌ബോർഡിലേക്ക് പ്രവേശിക്കാം.'
+                : 'Zero passwords, zero OTPs, and no manual forms. Authenticate securely with your Google Account to access the comprehensive building scrutiny dashboard.'}
             </p>
           </div>
 
@@ -126,8 +135,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ language, onLoginSuccess }
               </h2>
               <p className="text-xs text-slate-400">
                 {isMl
-                  ? 'ഗൂഗിൾ അക്കൗണ്ട് വഴി നേരിട്ട് ലോഗിൻ ചെയ്യുക'
-                  : 'Sign in directly with your Google Account'}
+                  ? 'നിങ്ങളുടെ ഗൂഗിൾ അക്കൗണ്ട് വഴി വെരിഫൈ ചെയ്ത് പ്രവേശിക്കുക'
+                  : 'Sign in & verify with your Google Account'}
               </p>
             </div>
 
@@ -145,13 +154,13 @@ export const LoginView: React.FC<LoginViewProps> = ({ language, onLoginSuccess }
                 type="button"
                 id="google-signin-btn"
                 disabled={loading}
-                onClick={handleGoogleSignIn}
+                onClick={handleOpenGoogleAuth}
                 className="w-full min-h-[52px] py-3 px-5 bg-white hover:bg-slate-100 text-slate-900 font-bold text-base rounded-2xl shadow-lg hover:shadow-xl transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-3.5 border border-slate-200"
               >
                 {loading ? (
                   <span className="flex items-center gap-2.5 text-slate-700">
                     <RefreshCw className="w-5 h-5 animate-spin text-cyan-600" />
-                    <span>{isMl ? 'പ്രവേശിക്കുന്നു...' : 'Signing in...'}</span>
+                    <span>{isMl ? 'സ്ഥിരീകരിക്കുന്നു...' : 'Authenticating...'}</span>
                   </span>
                 ) : (
                   <>
@@ -197,8 +206,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ language, onLoginSuccess }
                   <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                   <span>
                     {isMl
-                      ? 'സുരക്ഷിതമായ ഗൂഗിൾ വെരിഫിക്കേഷൻ'
-                      : 'Verified Google OAuth Authentication'}
+                      ? 'സുരക്ഷിതമായ ഗൂഗിൾ ഒതന്റിക്കേഷൻ'
+                      : 'Verified Google OAuth 2.0 Identity'}
                   </span>
                 </div>
               </div>
@@ -206,6 +215,14 @@ export const LoginView: React.FC<LoginViewProps> = ({ language, onLoginSuccess }
           </div>
         </div>
       </div>
+
+      {/* Google OAuth Modal */}
+      <GoogleSignInModal
+        isOpen={isGoogleModalOpen}
+        onClose={() => setIsGoogleModalOpen(false)}
+        language={language}
+        onSelectAccount={handleSelectGoogleAccount}
+      />
     </div>
   );
 };
