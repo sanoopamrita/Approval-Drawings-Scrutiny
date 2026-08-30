@@ -17,7 +17,6 @@ export type BuildingFormData = AreaStatementData;
 export const SUPER_ADMIN_EMAIL = 'sanoop.amrita@gmail.com';
 export const SUPER_ADMIN_EMAILS = [
   'sanoop.amrita@gmail.com',
-  'sanoopsadanandhan@gmail.com',
 ];
 
 export type UserRole = 'super_admin' | 'user';
@@ -30,10 +29,12 @@ export interface User {
   avatar?: string;
   organization?: string;
   licenseNumber?: string;
-  provider: 'google' | 'email' | 'guest';
+  provider: 'google' | 'email' | 'guest' | 'email_verified';
   createdAt: number;
   lastLoginAt: number;
   isSuperAdmin: boolean;
+  emailVerified?: boolean;
+  sessionToken?: string;
 }
 
 export interface AccessLogMetadata {
