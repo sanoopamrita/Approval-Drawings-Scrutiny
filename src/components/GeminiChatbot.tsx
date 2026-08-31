@@ -19,6 +19,8 @@ import {
   Info,
   Maximize2,
   Minimize2,
+  GripHorizontal,
+  Move,
 } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { AreaStatementData, JurisdictionType, Language } from '../types';
@@ -171,6 +173,18 @@ I provide authoritative statutory engineering consultancy strictly grounded in *
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isExpanded, setIsExpanded] = useState(mode === 'embedded');
 
+  // Draggable floating window states
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragRef = useRef<{
+    startX: number;
+    startY: number;
+    initialX: number;
+    initialY: number;
+    active: boolean;
+  }>({ startX: 0, startY: 0, initialX: 0, initialY: 0, active: false });
+
+  const containerRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -179,6 +193,103 @@ I provide authoritative statutory engineering consultancy strictly grounded in *
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
+
+  // Window drag handlers for movable floating window
+  const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+    if (mode !== 'floating' || isExpanded) return;
+
+    // Do not initiate drag if user interacted with a button, input, or control
+    const target = e.target as HTMLElement;
+    if (target.closest('button, input, select, a, textarea, [data-no-drag="true"]')) {
+      return;
+    }
+
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+
+    let currentX = 0;
+    let currentY = 0;
+
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      currentX = rect.left;
+      currentY = rect.top;
+    } else if (position) {
+      currentX = position.x;
+      currentY = position.y;
+    } else {
+      const defaultWidth = window.innerWidth < 640 ? window.innerWidth * 0.94 : 500;
+      currentX = Math.max(16, window.innerWidth - defaultWidth - 16);
+      currentY = Math.max(16, window.innerHeight - 620 - 16);
+    }
+
+    dragRef.current = {
+      startX: clientX,
+      startY: clientY,
+      initialX: currentX,
+      initialY: currentY,
+      active: true,
+    };
+    setIsDragging(true);
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!dragRef.current.active) return;
+      e.preventDefault();
+
+      const deltaX = e.clientX - dragRef.current.startX;
+      const deltaY = e.clientY - dragRef.current.startY;
+
+      const modalWidth = containerRef.current?.offsetWidth || 500;
+      const modalHeight = containerRef.current?.offsetHeight || 620;
+
+      const rawX = dragRef.current.initialX + deltaX;
+      const rawY = dragRef.current.initialY + deltaY;
+
+      const clampedX = Math.max(8, Math.min(window.innerWidth - modalWidth - 8, rawX));
+      const clampedY = Math.max(8, Math.min(window.innerHeight - modalHeight - 8, rawY));
+
+      setPosition({ x: clampedX, y: clampedY });
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!dragRef.current.active || !e.touches[0]) return;
+
+      const deltaX = e.touches[0].clientX - dragRef.current.startX;
+      const deltaY = e.touches[0].clientY - dragRef.current.startY;
+
+      const modalWidth = containerRef.current?.offsetWidth || 500;
+      const modalHeight = containerRef.current?.offsetHeight || 620;
+
+      const rawX = dragRef.current.initialX + deltaX;
+      const rawY = dragRef.current.initialY + deltaY;
+
+      const clampedX = Math.max(8, Math.min(window.innerWidth - modalWidth - 8, rawX));
+      const clampedY = Math.max(8, Math.min(window.innerHeight - modalHeight - 8, rawY));
+
+      setPosition({ x: clampedX, y: clampedY });
+    };
+
+    const handleDragEnd = () => {
+      if (dragRef.current.active) {
+        dragRef.current.active = false;
+        setIsDragging(false);
+      }
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleDragEnd);
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    window.addEventListener('touchend', handleDragEnd);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleDragEnd);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleDragEnd);
+    };
+  }, []);
 
   const handleSendMessage = async (textToSend?: string) => {
     const messageContent = (textToSend || input).trim();
@@ -352,18 +463,49 @@ I provide authoritative statutory engineering consultancy strictly grounded in *
       )}
 
       <div
+        ref={containerRef}
+        style={
+          mode === 'floating' && !isExpanded && position
+            ? {
+                left: `${position.x}px`,
+                top: `${position.y}px`,
+                right: 'auto',
+                bottom: 'auto',
+                margin: 0,
+              }
+            : undefined
+        }
         className={`flex flex-col bg-[#0A0D14] border border-cyan-500/30 text-slate-100 rounded-2xl overflow-hidden shadow-[0_15px_50px_rgba(0,0,0,0.85),0_0_20px_rgba(0,240,255,0.1)] transition-all ${
           mode === 'floating'
             ? isExpanded
               ? 'fixed inset-4 z-50 md:inset-x-auto md:right-6 md:bottom-6 md:top-16 md:w-[720px] md:h-[84vh]'
+              : position
+              ? 'fixed z-50 w-[94vw] sm:w-[500px] h-[620px] max-h-[90vh]'
               : 'fixed bottom-4 right-4 z-50 w-[94vw] sm:w-[500px] h-[620px] max-h-[90vh]'
             : 'w-full h-full min-h-[650px]'
-        }`}
+        } ${isDragging ? 'select-none opacity-95 ring-2 ring-cyan-400 shadow-[0_20px_60px_rgba(0,240,255,0.35)]' : ''}`}
       >
-        {/* Header */}
-        <div className="bg-gradient-to-r from-[#070A12] via-[#0F1420] to-[#070A12] px-4 py-3.5 border-b border-cyan-500/20 flex items-center justify-between gap-2">
+        {/* Draggable Header */}
+        <div
+          onMouseDown={handleDragStart}
+          onTouchStart={handleDragStart}
+          className={`bg-gradient-to-r from-[#070A12] via-[#0F1420] to-[#070A12] px-4 py-3.5 border-b border-cyan-500/20 flex items-center justify-between gap-2 select-none ${
+            mode === 'floating' && !isExpanded
+              ? isDragging
+                ? 'cursor-grabbing'
+                : 'cursor-grab'
+              : ''
+          }`}
+          title={
+            mode === 'floating' && !isExpanded
+              ? isMl
+                ? 'വിൻഡോ ഇഷ്ടമുള്ളിടത്തേക്ക് നീക്കാൻ മുകളിൽ പിടിച്ച് വലിക്കുക'
+                : 'Drag header to move window anywhere on screen'
+              : undefined
+          }
+        >
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 border border-cyan-300/40 flex items-center justify-center text-slate-950 font-bold shadow-[0_0_15px_rgba(0,240,255,0.4)]">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 border border-cyan-300/40 flex items-center justify-center text-slate-950 font-bold shadow-[0_0_15px_rgba(0,240,255,0.4)] shrink-0">
               <Bot className="w-5 h-5 text-slate-950" />
             </div>
             <div>
@@ -375,7 +517,7 @@ I provide authoritative statutory engineering consultancy strictly grounded in *
                   </span>
                 </h3>
               </div>
-              <p className="text-[11px] text-cyan-400/80 truncate max-w-[200px] sm:max-w-xs">
+              <p className="text-[11px] text-cyan-400/80 truncate max-w-[180px] sm:max-w-xs">
                 {isMl
                   ? `${jurisdiction} ചട്ടങ്ങൾ, സെറ്റ്ബാക്ക്, പ്ലാൻ അപാകതകൾ`
                   : `${jurisdiction} Rules, Setbacks & Defect Remediation`}
@@ -384,6 +526,17 @@ I provide authoritative statutory engineering consultancy strictly grounded in *
           </div>
 
           <div className="flex items-center gap-1.5">
+            {/* Movable drag handle pill indicator in floating mode */}
+            {mode === 'floating' && !isExpanded && (
+              <div
+                className="hidden sm:flex items-center gap-1 text-[10px] text-cyan-400/70 bg-cyan-950/60 border border-cyan-500/30 px-2 py-0.5 rounded-md cursor-grab active:cursor-grabbing hover:text-cyan-300 transition-colors"
+                title={isMl ? 'വിൻഡോ നീക്കാൻ പിടിച്ച് വലിക്കുക' : 'Drag to reposition'}
+              >
+                <Move className="w-3 h-3 text-cyan-400" />
+                <span className="text-[9px] font-semibold">{isMl ? 'നീക്കാം' : 'Move'}</span>
+              </div>
+            )}
+
             {projectData && (
               <span className="hidden sm:inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
                 <Building2 className="w-3 h-3 text-cyan-400" />
@@ -394,7 +547,7 @@ I provide authoritative statutory engineering consultancy strictly grounded in *
             <button
               id="chat-export-btn"
               onClick={handleExportChat}
-              className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-md transition-colors"
+              className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-md transition-colors cursor-pointer"
               title="Export Consultation / സേവ് ചെയ്യുക"
             >
               <Download className="w-4 h-4" />
@@ -403,7 +556,7 @@ I provide authoritative statutory engineering consultancy strictly grounded in *
             <button
               id="chat-reset-btn"
               onClick={handleResetChat}
-              className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-md transition-colors"
+              className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-md transition-colors cursor-pointer"
               title="Reset Chat / പുനരാരംഭിക്കുക"
             >
               <RotateCcw className="w-4 h-4" />
@@ -413,7 +566,7 @@ I provide authoritative statutory engineering consultancy strictly grounded in *
             <button
               id="chat-expand-btn"
               onClick={() => setIsExpanded(!isExpanded)}
-              className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-md transition-colors hidden sm:inline-flex"
+              className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-md transition-colors hidden sm:inline-flex cursor-pointer"
               title={isExpanded ? 'Minimize' : 'Maximize'}
             >
               {isExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}

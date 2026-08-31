@@ -124,25 +124,21 @@ export const AdPlayerModal: React.FC<AdPlayerModalProps> = ({ language, currentU
       id="global-ad-container"
       className="fixed bottom-5 right-5 z-50 max-w-sm sm:max-w-md w-full bg-[#080E1A]/95 border border-cyan-500/50 rounded-3xl p-4 shadow-[0_0_40px_rgba(0,240,255,0.3)] backdrop-blur-xl animate-fadeIn text-left"
     >
-      {/* Ad Header Banner */}
-      <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-cyan-500/20">
+      {/* Ad Header Bar */}
+      <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-cyan-500/20">
         <div className="flex items-center gap-2">
           <span className="flex h-2 w-2 relative">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
           </span>
-          <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400 flex items-center gap-1">
+          <span className="text-[10px] font-semibold text-slate-300 tracking-wider uppercase bg-slate-900/90 border border-slate-700/80 px-2 py-0.5 rounded-md select-none flex items-center gap-1">
             <Megaphone className="w-3 h-3 text-cyan-400" />
-            <span>{isMl ? 'പ്രത്യേക അറിയിപ്പ്' : 'Sponsored'}</span>
+            <span>{isMl ? 'അഡ്വർടൈസ്മെന്റ്' : 'Advertisement'}</span>
           </span>
         </div>
 
-        {/* Top Right: Very Small Advertisement Label & Close Button */}
+        {/* Top Right: Timer & Close Button */}
         <div className="flex items-center gap-2">
-          <span className="text-[9px] font-semibold text-slate-400/90 tracking-wider uppercase bg-slate-900/90 border border-slate-700/80 px-2 py-0.5 rounded-md select-none">
-            {isMl ? 'അഡ്വർടൈസ്മെന്റ്' : 'Advertisement'}
-          </span>
-
           {currentAd.mediaType === 'image' && (
             <span className="text-[10px] font-mono text-slate-300 bg-cyan-950/80 border border-cyan-500/30 px-1.5 py-0.5 rounded-md flex items-center gap-1">
               <Clock className="w-2.5 h-2.5 text-cyan-400" />
@@ -153,7 +149,7 @@ export const AdPlayerModal: React.FC<AdPlayerModalProps> = ({ language, currentU
           <button
             onClick={handleManualClose}
             className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800 hover:border-slate-700 transition-colors cursor-pointer flex items-center gap-1 text-[10px]"
-            title={isMl ? 'പരസ്യം ക്ലോസ് ചെയ്യുക' : 'Close advertisement'}
+            title={isMl ? 'ക്ലോസ് ചെയ്യുക' : 'Close'}
             aria-label="Close Advertisement"
           >
             <X className="w-3.5 h-3.5" />
@@ -201,11 +197,7 @@ export const AdPlayerModal: React.FC<AdPlayerModalProps> = ({ language, currentU
           {isMl ? (currentAd.descriptionMl || currentAd.description) : currentAd.description}
         </p>
 
-        <div className="flex items-center justify-between pt-1">
-          <span className="text-[10px] text-slate-400">
-            {isMl ? `പരസ്യം ${currentAdIndex + 1} / ${activeAds.length}` : `Ad ${currentAdIndex + 1} of ${activeAds.length}`}
-          </span>
-
+        <div className="flex items-center justify-end pt-1">
           {currentAd.linkUrl && (
             <button
               onClick={() => handleAdClick(currentAd)}

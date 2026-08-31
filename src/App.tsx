@@ -115,6 +115,105 @@ export function App() {
   const [floatingChatOpen, setFloatingChatOpen] = useState<boolean>(false);
   const [isScrutinyRunning, setIsScrutinyRunning] = useState<boolean>(false);
 
+  // Draggable FAB button position
+  const [fabPosition, setFabPosition] = useState<{ x: number; y: number } | null>(null);
+  const [, setIsFabDragging] = useState(false);
+  const fabDragRef = useRef<{
+    startX: number;
+    startY: number;
+    initialX: number;
+    initialY: number;
+    hasMoved: boolean;
+    active: boolean;
+  }>({ startX: 0, startY: 0, initialX: 0, initialY: 0, hasMoved: false, active: false });
+  const fabButtonRef = useRef<HTMLButtonElement>(null);
+
+  const handleFabDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+
+    let currentX = 0;
+    let currentY = 0;
+
+    if (fabButtonRef.current) {
+      const rect = fabButtonRef.current.getBoundingClientRect();
+      currentX = rect.left;
+      currentY = rect.top;
+    } else if (fabPosition) {
+      currentX = fabPosition.x;
+      currentY = fabPosition.y;
+    } else {
+      currentX = window.innerWidth - 200;
+      currentY = window.innerHeight - 80;
+    }
+
+    fabDragRef.current = {
+      startX: clientX,
+      startY: clientY,
+      initialX: currentX,
+      initialY: currentY,
+      hasMoved: false,
+      active: true,
+    };
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!fabDragRef.current.active) return;
+      const deltaX = e.clientX - fabDragRef.current.startX;
+      const deltaY = e.clientY - fabDragRef.current.startY;
+
+      if (Math.hypot(deltaX, deltaY) > 4) {
+        fabDragRef.current.hasMoved = true;
+        setIsFabDragging(true);
+        const btnWidth = fabButtonRef.current?.offsetWidth || 180;
+        const btnHeight = fabButtonRef.current?.offsetHeight || 48;
+        const rawX = fabDragRef.current.initialX + deltaX;
+        const rawY = fabDragRef.current.initialY + deltaY;
+        const clampedX = Math.max(10, Math.min(window.innerWidth - btnWidth - 10, rawX));
+        const clampedY = Math.max(10, Math.min(window.innerHeight - btnHeight - 10, rawY));
+        setFabPosition({ x: clampedX, y: clampedY });
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!fabDragRef.current.active || !e.touches[0]) return;
+      const deltaX = e.touches[0].clientX - fabDragRef.current.startX;
+      const deltaY = e.touches[0].clientY - fabDragRef.current.startY;
+
+      if (Math.hypot(deltaX, deltaY) > 4) {
+        fabDragRef.current.hasMoved = true;
+        setIsFabDragging(true);
+        const btnWidth = fabButtonRef.current?.offsetWidth || 180;
+        const btnHeight = fabButtonRef.current?.offsetHeight || 48;
+        const rawX = fabDragRef.current.initialX + deltaX;
+        const rawY = fabDragRef.current.initialY + deltaY;
+        const clampedX = Math.max(10, Math.min(window.innerWidth - btnWidth - 10, rawX));
+        const clampedY = Math.max(10, Math.min(window.innerHeight - btnHeight - 10, rawY));
+        setFabPosition({ x: clampedX, y: clampedY });
+      }
+    };
+
+    const handleMouseUp = () => {
+      if (fabDragRef.current.active) {
+        fabDragRef.current.active = false;
+        setTimeout(() => setIsFabDragging(false), 50);
+      }
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('touchmove', handleTouchMove);
+    window.addEventListener('touchend', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleMouseUp);
+    };
+  }, []);
+
   const [formData, setFormData] = useState<AreaStatementData>(initialDefaultFormData);
   const [drawings, setDrawings] = useState<UploadedDrawing[]>(initialDefaultDrawings);
 
@@ -703,11 +802,15 @@ export function App() {
         </ErrorBoundary>
       )}
 
-      {/* Floating Action Button - Always available on all screens */}
+      {/* Floating Action Button - Draggable & Always available on all screens */}
       {!floatingChatOpen && (
         <button
+          ref={fabButtonRef}
           id="floating-ai-chat-btn"
+          onMouseDown={handleFabDragStart}
+          onTouchStart={handleFabDragStart}
           onClick={() => {
+            if (fabDragRef.current.hasMoved) return;
             setFloatingChatOpen(true);
             if (currentUser) {
               recordAccessLog(
@@ -719,16 +822,33 @@ export function App() {
               );
             }
           }}
-          className="fixed bottom-6 right-6 z-40 bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 px-4 py-3 rounded-full shadow-[0_0_25px_rgba(0,229,255,0.4)] flex items-center gap-2.5 font-bold text-xs sm:text-sm border-2 border-white/20 transition-all transform hover:scale-105 active:scale-95 group cursor-pointer"
-          title={language === 'ml' ? 'വിന്യാസ AI കെട്ടിട നിർമ്മാണ ചട്ട ഉപദേശകൻ' : 'Open VINYASA AI Building Rules Advisor'}
+          style={
+            fabPosition
+              ? {
+                  left: `${fabPosition.x}px`,
+                  top: `${fabPosition.y}px`,
+                  right: 'auto',
+                  bottom: 'auto',
+                  margin: 0,
+                }
+              : undefined
+          }
+          className={`fixed z-40 bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 px-4 py-3 rounded-full shadow-[0_0_25px_rgba(0,229,255,0.4)] flex items-center gap-2.5 font-bold text-xs sm:text-sm border-2 border-white/20 transition-all transform hover:scale-105 active:scale-95 group cursor-grab active:cursor-grabbing select-none ${
+            !fabPosition ? 'bottom-6 right-6' : ''
+          }`}
+          title={
+            language === 'ml'
+              ? 'വിന്യാസ AI കെട്ടിട നിർമ്മാണ ചട്ട ഉപദേശകൻ (നീക്കാൻ ഡ്രാഗ് ചെയ്യാം)'
+              : 'Open VINYASA AI Building Rules Advisor (Drag to reposition)'
+          }
         >
-          <div className="relative flex items-center justify-center">
+          <div className="relative flex items-center justify-center pointer-events-none">
             <Bot className="w-5 h-5 text-slate-950" />
             <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full animate-ping"></span>
             <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full"></span>
           </div>
-          <span>{language === 'ml' ? 'വിന്യാസ AI അസിസ്റ്റന്റ്' : 'Ask VINYASA AI'}</span>
-          <Sparkles className="w-3.5 h-3.5 opacity-70 group-hover:rotate-12 transition-transform text-slate-950" />
+          <span className="pointer-events-none">{language === 'ml' ? 'വിന്യാസ AI അസിസ്റ്റന്റ്' : 'Ask VINYASA AI'}</span>
+          <Sparkles className="w-3.5 h-3.5 opacity-70 group-hover:rotate-12 transition-transform text-slate-950 pointer-events-none" />
         </button>
       )}
 
