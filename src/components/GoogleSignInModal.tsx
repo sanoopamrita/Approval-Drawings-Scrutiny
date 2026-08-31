@@ -1,19 +1,12 @@
 import React, { useState } from 'react';
-import { X, CheckCircle2, Shield, User, ArrowRight, Lock, AlertCircle, RefreshCw } from 'lucide-react';
-import { SUPER_ADMIN_EMAIL, Language } from '../types';
+import { X, Shield, ArrowRight, RefreshCw, AlertCircle } from 'lucide-react';
+import { Language } from '../types';
 
 interface GoogleSignInModalProps {
   isOpen: boolean;
   onClose: () => void;
   language: Language;
   onSelectAccount: (email: string, name?: string, avatar?: string) => Promise<void>;
-}
-
-interface SavedAccount {
-  email: string;
-  name: string;
-  isSuperAdmin?: boolean;
-  description?: string;
 }
 
 export const GoogleSignInModal: React.FC<GoogleSignInModalProps> = ({
@@ -24,44 +17,16 @@ export const GoogleSignInModal: React.FC<GoogleSignInModalProps> = ({
 }) => {
   const isMl = language === 'ml';
 
-  // Mode: 'list' (choose from list) or 'custom' (enter any Google account)
-  const [viewMode, setViewMode] = useState<'list' | 'custom'>('list');
-  const [customEmail, setCustomEmail] = useState('');
-  const [customName, setCustomName] = useState('');
-  const [loadingEmail, setLoadingEmail] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+  const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
-  // Preset known active accounts for instantaneous selection
-  const accounts: SavedAccount[] = [
-    {
-      email: 'sanoopsadanandhan@gmail.com',
-      name: 'Sanoop Sadanandhan',
-      description: isMl ? 'സ്ഥിരീകരിച്ച ഗൂഗിൾ അക്കൗണ്ട്' : 'Verified Google Account',
-    },
-    {
-      email: SUPER_ADMIN_EMAIL,
-      name: 'Sanoop Sadanandhan',
-      isSuperAdmin: true,
-      description: isMl ? '👑 സൂപ്പർ അഡ്മിൻ ആക്സസ്' : '👑 Super Admin Authority',
-    },
-  ];
-
-  const handleAccountClick = async (account: SavedAccount) => {
-    setErrorMessage(null);
-    setLoadingEmail(account.email);
-    try {
-      await onSelectAccount(account.email, account.name);
-    } catch (err: any) {
-      setErrorMessage(err?.message || (isMl ? 'ഗൂഗിൾ ലോഗിൻ പരാജയപ്പെട്ടു' : 'Authentication failed'));
-      setLoadingEmail(null);
-    }
-  };
-
-  const handleCustomSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const clean = customEmail.toLowerCase().trim();
+    const clean = email.toLowerCase().trim();
     if (!clean || !clean.includes('@') || !clean.includes('.')) {
       setErrorMessage(
         isMl
@@ -72,25 +37,26 @@ export const GoogleSignInModal: React.FC<GoogleSignInModalProps> = ({
     }
 
     setErrorMessage(null);
-    setLoadingEmail(clean);
+    setLoading(true);
     try {
-      const extractedName = customName.trim() || clean.split('@')[0].replace(/[._-]/g, ' ');
-      await onSelectAccount(clean, extractedName);
+      const extractedName = name.trim() || clean.split('@')[0].replace(/[._-]/g, ' ');
+      const formattedName = extractedName.charAt(0).toUpperCase() + extractedName.slice(1);
+      await onSelectAccount(clean, formattedName);
     } catch (err: any) {
       setErrorMessage(err?.message || (isMl ? 'ഗൂഗിൾ ലോഗിൻ പരാജയപ്പെട്ടു' : 'Authentication failed'));
-      setLoadingEmail(null);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fadeIn">
-      {/* Modal Container styled like Google OAuth Account Chooser */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+      {/* Modal Container */}
       <div className="w-full max-w-[420px] bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden text-slate-900 relative animate-scaleUp">
         {/* Top Header */}
         <div className="p-6 sm:p-7 pb-4 text-center relative border-b border-slate-100">
           <button
             onClick={onClose}
-            disabled={!!loadingEmail}
+            disabled={loading}
             className="absolute right-4 top-4 p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
             title="Close"
           >
@@ -99,7 +65,7 @@ export const GoogleSignInModal: React.FC<GoogleSignInModalProps> = ({
 
           {/* Official Google Vector Logo */}
           <div className="flex justify-center mb-3">
-            <svg className="w-8 h-8" viewBox="0 0 24 24">
+            <svg className="w-9 h-9" viewBox="0 0 24 24">
               <path
                 fill="#4285F4"
                 d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
@@ -119,8 +85,8 @@ export const GoogleSignInModal: React.FC<GoogleSignInModalProps> = ({
             </svg>
           </div>
 
-          <h3 className="text-lg font-bold text-slate-900 tracking-tight">
-            {isMl ? 'ഗൂഗിൾ അക്കൗണ്ട് തിരഞ്ഞെടുക്കുക' : 'Choose an account'}
+          <h3 className="text-xl font-bold text-slate-900 tracking-tight">
+            {isMl ? 'ഗൂഗിൾ അക്കൗണ്ട് വഴി പ്രവേശിക്കുക' : 'Sign in with Google'}
           </h3>
           <p className="text-xs text-slate-500 mt-1">
             {isMl ? (
@@ -137,158 +103,69 @@ export const GoogleSignInModal: React.FC<GoogleSignInModalProps> = ({
 
         {/* Error Alert */}
         {errorMessage && (
-          <div className="mx-5 my-3 p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-semibold flex items-center gap-2">
+          <div className="mx-6 my-3 p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-semibold flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
             <span>{errorMessage}</span>
           </div>
         )}
 
-        {/* VIEW 1: Account List */}
-        {viewMode === 'list' && (
-          <div className="p-4 sm:p-6 pt-2 space-y-2">
-            <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200/80 overflow-hidden bg-white shadow-xs">
-              {accounts.map((acc) => (
-                <button
-                  key={acc.email}
-                  type="button"
-                  disabled={!!loadingEmail}
-                  onClick={() => handleAccountClick(acc)}
-                  className="w-full p-3.5 sm:p-4 text-left hover:bg-slate-50 flex items-center justify-between gap-3 transition-colors cursor-pointer group disabled:opacity-60"
-                >
-                  <div className="flex items-center gap-3.5 min-w-0">
-                    <div className="relative shrink-0">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-600 via-blue-600 to-indigo-600 text-white font-extrabold text-sm flex items-center justify-center shadow-md">
-                        {acc.email.charAt(0).toUpperCase()}
-                      </div>
-                      {acc.isSuperAdmin && (
-                        <span className="absolute -top-1 -right-1 text-xs" title="Super Admin">
-                          👑
-                        </span>
-                      )}
-                    </div>
-                    <div className="min-w-0 text-left">
-                      <div className="text-sm font-bold text-slate-900 group-hover:text-blue-600 truncate flex items-center gap-1.5">
-                        <span>{acc.name}</span>
-                        {acc.isSuperAdmin && (
-                          <span className="text-[10px] bg-purple-100 text-purple-800 font-bold px-1.5 py-0.2 rounded-full border border-purple-200">
-                            Super Admin
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-xs text-slate-500 font-mono truncate">{acc.email}</div>
-                    </div>
-                  </div>
-
-                  {loadingEmail === acc.email ? (
-                    <RefreshCw className="w-4 h-4 text-blue-600 animate-spin shrink-0" />
-                  ) : (
-                    <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all shrink-0" />
-                  )}
-                </button>
-              ))}
-
-              {/* Option to Use Another Account */}
-              <button
-                type="button"
-                disabled={!!loadingEmail}
-                onClick={() => {
-                  setViewMode('custom');
-                  setErrorMessage(null);
-                }}
-                className="w-full p-3.5 sm:p-4 text-left hover:bg-slate-50 flex items-center justify-between gap-3 transition-colors cursor-pointer group disabled:opacity-60"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 group-hover:bg-blue-50 group-hover:text-blue-600 shrink-0">
-                    <User className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-bold text-slate-800 group-hover:text-blue-600">
-                      {isMl ? 'മറ്റൊരു ഗൂഗിൾ അക്കൗണ്ട് ഉപയോഗിക്കുക' : 'Use another account'}
-                    </div>
-                    <div className="text-[11px] text-slate-500">
-                      {isMl ? 'നിങ്ങളുടെ ഗൂഗിൾ മെയിൽ നൽകുക' : 'Enter your Gmail / Google Workspace email'}
-                    </div>
-                  </div>
-                </div>
-                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all shrink-0" />
-              </button>
-            </div>
-
-            {/* Privacy & Security Note */}
-            <div className="pt-3 text-center">
-              <p className="text-[11px] text-slate-400 leading-relaxed max-w-xs mx-auto">
-                {isMl
-                  ? 'ഗൂഗിൾ അക്കൗണ്ട് വിവരങ്ങൾ സുരക്ഷിതമായി സ്ഥിരീകരിക്കുകയും സെഷൻ മാനേജ്‌മെന്റിനായി മാത്രം ഉപയോഗിക്കുകയും ചെയ്യുന്നു.'
-                  : 'To continue, Google will share your name, email address, and profile picture with Vinyasa.'}
-              </p>
-            </div>
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="p-6 sm:p-7 space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              {isMl ? 'ഗൂഗിൾ ഇമെയിൽ വിലാസം (Gmail / Google Workspace)' : 'Google Email (Gmail / Workspace)'}
+            </label>
+            <input
+              type="email"
+              required
+              autoFocus
+              id="google-signin-email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@gmail.com"
+              className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-sm font-medium transition-all text-slate-900 bg-white placeholder:text-slate-400 outline-none"
+            />
           </div>
-        )}
 
-        {/* VIEW 2: Custom Google Email Entry */}
-        {viewMode === 'custom' && (
-          <form onSubmit={handleCustomSubmit} className="p-5 sm:p-6 space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                {isMl ? 'ഗൂഗിൾ ഇമെയിൽ വിലാസം (Google Email)' : 'Google Email Address'}
-              </label>
-              <input
-                type="email"
-                id="google-custom-email-input"
-                value={customEmail}
-                onChange={(e) => setCustomEmail(e.target.value)}
-                placeholder="yourname@gmail.com"
-                required
-                autoFocus
-                className="w-full px-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              />
-            </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">
+              {isMl ? 'പേര് (ഓപ്ഷണൽ)' : 'Full Name (Optional)'}
+            </label>
+            <input
+              type="text"
+              id="google-signin-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={isMl ? 'ഉദാ: സനൂപ് സദാനന്ദൻ' : 'e.g. Sanoop Sadanandhan'}
+              className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-sm transition-all text-slate-900 bg-white placeholder:text-slate-400 outline-none"
+            />
+          </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                {isMl ? 'പേര് (Full Name - ഓപ്ഷണൽ)' : 'Full Name (Optional)'}
-              </label>
-              <input
-                type="text"
-                value={customName}
-                onChange={(e) => setCustomName(e.target.value)}
-                placeholder="Er. Rajesh Kumar"
-                className="w-full px-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              />
-            </div>
+          <button
+            type="submit"
+            disabled={loading}
+            id="google-signin-submit"
+            className="w-full py-3 px-4 bg-[#1a73e8] hover:bg-[#1557b0] text-white font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+          >
+            {loading ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                <span>{isMl ? 'സ്ഥിരീകരിക്കുന്നു...' : 'Authenticating...'}</span>
+              </>
+            ) : (
+              <>
+                <span>{isMl ? 'തുടരുക' : 'Continue'}</span>
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
+          </button>
+        </form>
 
-            <div className="flex items-center gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setViewMode('list');
-                  setErrorMessage(null);
-                }}
-                className="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors cursor-pointer"
-              >
-                {isMl ? 'തിരികെ' : 'Back'}
-              </button>
-
-              <button
-                type="submit"
-                disabled={!!loadingEmail || !customEmail.trim()}
-                className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-[0.99] cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
-              >
-                {loadingEmail ? (
-                  <span className="flex items-center gap-2">
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>{isMl ? 'പരിശോധിക്കുന്നു...' : 'Verifying...'}</span>
-                  </span>
-                ) : (
-                  <>
-                    <span>{isMl ? 'സ്ഥിരീകരിക്കുക' : 'Sign In'}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        )}
+        {/* Footer Security Note */}
+        <div className="p-4 bg-slate-50 border-t border-slate-100 text-center text-[11px] text-slate-500 flex items-center justify-center gap-1.5">
+          <Shield className="w-3.5 h-3.5 text-emerald-600" />
+          <span>{isMl ? 'സുരക്ഷിത ഒതന്റിക്കേഷൻ · സീറോ ഫയൽ സ്റ്റോറേജ്' : 'Secure OAuth · Zero File Persistence'}</span>
+        </div>
       </div>
     </div>
   );

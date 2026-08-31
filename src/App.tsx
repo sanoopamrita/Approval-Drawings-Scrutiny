@@ -8,13 +8,13 @@ import { ReportGenerator } from './components/ReportGenerator';
 import { BoqEstimator } from './components/BoqEstimator';
 import { CADRedlineVisualizer } from './components/CADRedlineVisualizer';
 import { RfiGenerator } from './components/RfiGenerator';
-import { RulesExplorer } from './components/RulesExplorer';
 import { GeminiChatbot } from './components/GeminiChatbot';
 import { AdminPanel } from './components/AdminPanel';
+import { AdPlayerModal } from './components/AdPlayerModal';
 import { LoginView } from './components/LoginView';
 import { VinyasaLogo } from './components/VinyasaLogo';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { Bot, Sparkles, Lock, Bell, EyeOff, ShieldCheck, CheckCircle2, X } from 'lucide-react';
+import { Bot, Sparkles, Lock, Bell, EyeOff, ShieldCheck, CheckCircle2, X, Mail } from 'lucide-react';
 import {
   AreaStatementData,
   JurisdictionType,
@@ -372,24 +372,26 @@ export function App() {
                 </div>
               </div>
 
-              {/* Card 2: KMBR & KPBR Regulatory Framework */}
+              {/* Card 2: നോട്ടീസ് & മറുപടികൾ */}
               <div 
-                onClick={() => setActiveTab('rulebook')}
+                onClick={() => setActiveTab('rfi')}
                 className="super-card p-5 cursor-pointer flex flex-col justify-between group"
               >
                 <div className="space-y-3">
                   <div className="w-10 h-10 rounded-xl bg-blue-950/80 border border-blue-500/40 flex items-center justify-center text-blue-400 group-hover:scale-110 group-hover:border-blue-400 transition-all">
-                    <span className="text-lg">⚖️</span>
+                    <span className="text-lg">📑</span>
                   </div>
                   <h3 className="text-base font-bold text-white group-hover:text-cyan-300 transition-colors">
-                    KMBR & KPBR Regulatory Framework
+                    {language === 'ml' ? 'നോട്ടീസ് & ഔദ്യോഗിക മറുപടികൾ' : 'Notices, RFI & Replies'}
                   </h3>
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    Grounded in Kerala Municipality and Panchayat Building Rules (2019–2026 amendments archive).
+                    {language === 'ml'
+                      ? 'കെ-സ്മാർട്ട് ഒബ്ജക്ഷൻ നിവാരണ കത്തുകൾ, റൂൾ 60 ഇളവ് അപേക്ഷകൾ, സത്യവാങ്മൂലങ്ങൾ.'
+                      : 'K-Smart defect memo replies, Rule 60/62 exemption petitions, and affidavits.'}
                   </p>
                 </div>
                 <div className="pt-4 flex items-center gap-1.5 text-xs font-semibold text-cyan-400 group-hover:translate-x-1 transition-transform">
-                  <span>{language === 'ml' ? 'ചട്ട പുസ്തകം കാണുക' : 'Explore Rulebook'}</span>
+                  <span>{language === 'ml' ? 'കത്തുകൾ തയ്യാറാക്കുക' : 'Draft Official Replies'}</span>
                   <span>→</span>
                 </div>
               </div>
@@ -428,11 +430,11 @@ export function App() {
               </button>
 
               <button
-                onClick={() => setActiveTab('redline')}
+                onClick={() => setActiveTab('drawings')}
                 className="px-5 py-3 rounded-xl font-semibold text-xs bg-slate-900/90 hover:bg-slate-850 text-cyan-300 border border-cyan-500/40 hover:border-cyan-400 transition-all flex items-center gap-2 cursor-pointer"
               >
                 <span>📐</span>
-                <span>{language === 'ml' ? 'സ്പ്ലിറ്റ്-സ്ക്രീൻ CAD സ്റ്റുഡിയോ' : 'Split-Screen CAD Studio'}</span>
+                <span>{language === 'ml' ? 'ഡ്രോയിംഗ് & പരിശോധന സ്റ്റുഡിയോ' : 'Drawings & Scrutiny Studio'}</span>
               </button>
             </div>
           </div>
@@ -445,8 +447,8 @@ export function App() {
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
               <span className="text-xs font-bold text-slate-200 tracking-wide uppercase">
                 {language === 'ml'
-                  ? 'വിന്യാസ AI ആർക്കിടെക്ചറൽ കോ-വർക്കർ സ്യൂട്ട്'
-                  : 'Vinyasa AI Architectural Co-Worker Suite'}
+                  ? 'വിന്യാസ AI ആർക്കിടെക്ചറൽ കോ-വർക്കർ സ്യൂട്ട് (Superbuilt AEC Model)'
+                  : 'Vinyasa AI Architectural Co-Worker Suite (Superbuilt AEC Model)'}
               </span>
               <span className="hidden md:inline-flex px-2 py-0.5 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 text-[10px] font-extrabold uppercase">
                 100% Free Lifetime
@@ -454,7 +456,7 @@ export function App() {
             </div>
 
             <div className="flex items-center gap-3 text-[11px] text-slate-400 font-mono">
-              <span className="text-cyan-400">⚡ 8 Specialized Agents Ready</span>
+              <span className="text-cyan-400">⚡ 9 Full AEC Workflows</span>
               <span className="hidden sm:inline text-slate-600">|</span>
               <span className="hidden sm:inline text-emerald-400">🔒 Zero Cloud Retention</span>
             </div>
@@ -463,96 +465,113 @@ export function App() {
           {/* Quick-Jump Agent Chips */}
           <div className="flex items-center gap-2 overflow-x-auto pt-2.5 scrollbar-none text-xs">
             <button
+              onClick={() => setActiveTab('authority')}
+              className={`px-3 py-2 rounded-xl font-medium whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'authority'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_15px_rgba(0,240,255,0.25)] font-bold'
+                  : 'bg-[#0B1120] hover:bg-slate-800/80 text-slate-400 hover:text-slate-200 border border-slate-800'
+              }`}
+            >
+              <span>🏛️</span>
+              <span>{language === 'ml' ? '1. പ്രോജക്റ്റ്' : '1. Project'}</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('drawings')}
-              className={`px-3.5 py-2 rounded-xl font-medium whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+              className={`px-3 py-2 rounded-xl font-medium whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeTab === 'drawings'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_15px_rgba(0,240,255,0.25)]'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_15px_rgba(0,240,255,0.25)] font-bold'
                   : 'bg-[#0B1120] hover:bg-slate-800/80 text-slate-400 hover:text-slate-200 border border-slate-800'
               }`}
             >
               <span>📐</span>
-              <span>{language === 'ml' ? 'ഡ്രോയിംഗ് അപ്‌ലോഡ്' : '1. Drawing Ingest'}</span>
+              <span>{language === 'ml' ? '2. ഡ്രോയിംഗ്' : '2. Drawings'}</span>
             </button>
 
             <button
               onClick={() => setActiveTab('redline')}
-              className={`px-3.5 py-2 rounded-xl font-medium whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+              className={`px-3 py-2 rounded-xl font-medium whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeTab === 'redline'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_15px_rgba(0,240,255,0.25)]'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_15px_rgba(0,240,255,0.25)] font-bold'
                   : 'bg-[#0B1120] hover:bg-slate-800/80 text-slate-400 hover:text-slate-200 border border-slate-800'
               }`}
             >
               <span>🔍</span>
-              <span>{language === 'ml' ? 'ഓട്ടോ-റെഡ്‌ലൈൻ തിരുത്തൽ' : '2. CAD Auto-Fix'}</span>
-              <span className="px-1 py-0.2 bg-cyan-400 text-slate-950 font-black rounded text-[9px]">AI</span>
+              <span>{language === 'ml' ? '3. CAD റെഡ്‌ലൈൻ' : '3. CAD Redline'}</span>
             </button>
 
             <button
               onClick={() => setActiveTab('areastatement')}
-              className={`px-3.5 py-2 rounded-xl font-medium whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+              className={`px-3 py-2 rounded-xl font-medium whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeTab === 'areastatement'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_15px_rgba(0,240,255,0.25)]'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_15px_rgba(0,240,255,0.25)] font-bold'
                   : 'bg-[#0B1120] hover:bg-slate-800/80 text-slate-400 hover:text-slate-200 border border-slate-800'
               }`}
             >
               <span>📋</span>
-              <span>{language === 'ml' ? 'ഏരിയ സ്റ്റേറ്റ്‌മെന്റ്' : '3. Area Statement'}</span>
+              <span>{language === 'ml' ? '4. ഏരിയ സ്റ്റേറ്റ്‌മെന്റ്' : '4. Area Statement'}</span>
             </button>
 
             <button
-              onClick={() => setActiveTab('scrutiny')}
-              className={`px-3.5 py-2 rounded-xl font-medium whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+              onClick={() => {
+                executeScrutiny();
+                setActiveTab('scrutiny');
+              }}
+              className={`px-3 py-2 rounded-xl font-medium whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeTab === 'scrutiny'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_15px_rgba(0,240,255,0.25)]'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_15px_rgba(0,240,255,0.25)] font-bold'
                   : 'bg-[#0B1120] hover:bg-slate-800/80 text-slate-400 hover:text-slate-200 border border-slate-800'
               }`}
             >
               <span>⚖️</span>
-              <span>{language === 'ml' ? 'KMBR/KPBR സ്ക്രൂട്ടിനി' : '4. Rule Scrutiny'}</span>
+              <span>{language === 'ml' ? '5. ചട്ട സ്ക്രൂട്ടിനി' : '5. Code Scrutiny'}</span>
             </button>
 
             <button
               onClick={() => setActiveTab('rfi')}
-              className={`px-3.5 py-2 rounded-xl font-medium whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+              className={`px-3 py-2 rounded-xl font-medium whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeTab === 'rfi'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_15px_rgba(0,240,255,0.25)]'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_15px_rgba(0,240,255,0.25)] font-bold'
                   : 'bg-[#0B1120] hover:bg-slate-800/80 text-slate-400 hover:text-slate-200 border border-slate-800'
               }`}
             >
               <span>📑</span>
-              <span>{language === 'ml' ? 'RFI & നോട്ടീസ്' : '5. RFI & Notices'}</span>
+              <span>{language === 'ml' ? '6. നോട്ടീസ് & RFI' : '6. Notice & RFI'}</span>
             </button>
 
             <button
               onClick={() => setActiveTab('boq')}
-              className={`px-3.5 py-2 rounded-xl font-medium whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+              className={`px-3 py-2 rounded-xl font-medium whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeTab === 'boq'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_15px_rgba(0,240,255,0.25)]'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_15px_rgba(0,240,255,0.25)] font-bold'
                   : 'bg-[#0B1120] hover:bg-slate-800/80 text-slate-400 hover:text-slate-200 border border-slate-800'
               }`}
             >
               <span>💰</span>
-              <span>{language === 'ml' ? 'സ്മാർട്ട് BOQ' : '6. BOQ Estimator'}</span>
+              <span>{language === 'ml' ? '7. സ്മാർട്ട് BOQ' : '7. Smart BOQ'}</span>
             </button>
 
             <button
-              onClick={() => setActiveTab('report')}
-              className={`px-3.5 py-2 rounded-xl font-medium whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+              onClick={() => {
+                executeScrutiny();
+                setActiveTab('report');
+              }}
+              className={`px-3 py-2 rounded-xl font-medium whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeTab === 'report'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_15px_rgba(0,240,255,0.25)]'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_15px_rgba(0,240,255,0.25)] font-bold'
                   : 'bg-[#0B1120] hover:bg-slate-800/80 text-slate-400 hover:text-slate-200 border border-slate-800'
               }`}
             >
               <span>📄</span>
-              <span>{language === 'ml' ? 'പെർമിറ്റ് റിപ്പോർട്ട്' : '7. Permit Report'}</span>
+              <span>{language === 'ml' ? '8. പെർമിറ്റ് റിപ്പോർട്ട്' : '8. Permit Report'}</span>
             </button>
 
             <button
               onClick={() => setFloatingChatOpen(true)}
-              className="px-3.5 py-2 rounded-xl font-medium whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer bg-gradient-to-r from-cyan-950 to-blue-950 text-cyan-300 hover:text-white border border-cyan-500/40"
+              className="px-3 py-2 rounded-xl font-medium whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer bg-gradient-to-r from-cyan-950 to-blue-950 text-cyan-300 hover:text-white border border-cyan-500/40"
             >
               <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-              <span>{language === 'ml' ? 'AI കോപൈലറ്റ്' : '8. AI Copilot'}</span>
+              <span>{language === 'ml' ? 'AI വിന്യാസ അസിസ്റ്റന്റ്' : 'AI Assistant'}</span>
             </button>
           </div>
         </div>
@@ -584,7 +603,7 @@ export function App() {
                 );
               }}
               language={language}
-              onNext={() => setActiveTab('areastatement')}
+              onNext={() => setActiveTab('redline')}
               onPrev={() => setActiveTab('authority')}
             />
           )}
@@ -610,10 +629,10 @@ export function App() {
             />
           )}
 
-          {activeTab === 'scrutiny' && summary && (
+          {activeTab === 'scrutiny' && (
             <ScrutinyResults
-              summary={summary}
-              checks={checks}
+              summary={summary || runKeralaBuildingRulesScrutiny(formData, drawings).summary}
+              checks={checks.length > 0 ? checks : runKeralaBuildingRulesScrutiny(formData, drawings).checks}
               language={language}
               onGoToReport={() => {
                 setActiveTab('report');
@@ -622,7 +641,7 @@ export function App() {
                     currentUser,
                     'REPORT_DOWNLOADED',
                     formData.jurisdiction,
-                    summary.overallStatus,
+                    (summary || runKeralaBuildingRulesScrutiny(formData, drawings).summary).overallStatus,
                     formData.surveyNumber
                   );
                 }
@@ -634,11 +653,11 @@ export function App() {
             <RfiGenerator data={formData} language={language} />
           )}
 
-          {activeTab === 'report' && summary && (
+          {activeTab === 'report' && (
             <ReportGenerator
               data={formData}
-              summary={summary}
-              checks={checks}
+              summary={summary || runKeralaBuildingRulesScrutiny(formData, drawings).summary}
+              checks={checks.length > 0 ? checks : runKeralaBuildingRulesScrutiny(formData, drawings).checks}
               drawings={drawings}
               language={language}
             />
@@ -648,7 +667,17 @@ export function App() {
             <BoqEstimator data={formData} language={language} />
           )}
 
-          {activeTab === 'rulebook' && <RulesExplorer language={language} />}
+          {activeTab === 'chatbot' && (
+            <div className="max-w-4xl mx-auto py-6">
+              <GeminiChatbot
+                language={language}
+                jurisdiction={formData.jurisdiction}
+                projectData={formData}
+                mode="embedded"
+                onClose={() => setActiveTab('authority')}
+              />
+            </div>
+          )}
 
           {/* Super Admin Dashboard (Accessible ONLY to super admins) */}
           {activeTab === 'admin' && (
@@ -703,6 +732,9 @@ export function App() {
         </button>
       )}
 
+      {/* Global Promotional & Informational Ad Player Modal */}
+      <AdPlayerModal currentUser={currentUser} language={language} />
+
       {/* Footer */}
       <footer className="bg-[#030712] text-slate-400 text-xs py-6 border-t border-slate-800/80 mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 space-y-4">
@@ -716,8 +748,20 @@ export function App() {
               </div>
             </div>
 
-            <div className="text-[11px] text-slate-400 font-mono">
-              Copyright © 2026 vinyasa.online - All Rights Reserved.
+            <div className="flex flex-col items-center md:items-end gap-1.5">
+              <div className="flex items-center gap-1.5 text-xs text-cyan-300/90 font-medium">
+                <Mail className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="text-slate-400">{language === 'ml' ? 'ഇമെയിൽ ഐഡി:' : 'Email ID:'}</span>
+                <a
+                  href="mailto:vinyasaonline.ai@gmail.com"
+                  className="text-cyan-300 hover:text-cyan-200 underline decoration-cyan-500/40 hover:decoration-cyan-300 transition-colors font-mono"
+                >
+                  vinyasaonline.ai@gmail.com
+                </a>
+              </div>
+              <div className="text-[11px] text-slate-400 font-mono">
+                Copyright © 2026 vinyasa.online - All Rights Reserved.
+              </div>
             </div>
           </div>
         </div>

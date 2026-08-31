@@ -720,6 +720,222 @@ export const AreaStatementForm: React.FC<AreaStatementFormProps> = ({
             </div>
           </div>
         )}
+
+        {/* Section 10: Allied Statutory Acts & Special Clearances (CRZ / Wetland / PCB / AAI / Highway / RPwD) */}
+        <div className="bg-gradient-to-br from-indigo-50/40 via-purple-50/30 to-blue-50/40 rounded-2xl border border-indigo-200/80 p-5 shadow-sm space-y-4 lg:col-span-2">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-3 border-b border-indigo-200/60">
+            <div className="flex items-center gap-2">
+              <Compass className="w-5 h-5 text-indigo-600" />
+              <h3 className="font-bold text-indigo-950 text-sm sm:text-base">
+                {isMl ? '10. അനുബന്ധ നിയമങ്ങളും പ്രത്യേക ക്ലിയറൻസുകളും (Allied Statutory Clearances)' : '10. Allied Statutory Clearances (CRZ / Wetland / PCB / AAI / PWD / RPwD)'}
+              </h3>
+            </div>
+            <span className="text-xs bg-indigo-100 text-indigo-800 font-medium px-2.5 py-1 rounded-full">
+              {isMl ? 'കെ-സ്മാർട്ട് & സർക്കാർ അനുമതികൾ' : 'K-Smart & Inter-Department NOCs'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs sm:text-sm">
+            {/* CRZ 2019 */}
+            <div className="bg-white p-3.5 rounded-xl border border-indigo-100 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-slate-800">{isMl ? 'തീരദേശ നിയമം (CRZ ബാധകമാണോ)?' : 'CRZ 2019 Applicable?'}</span>
+                <input
+                  type="checkbox"
+                  checked={!!data.isCrzApplicable}
+                  onChange={(e) => onChange({ isCrzApplicable: e.target.checked })}
+                  className="w-4 h-4 text-indigo-600 rounded"
+                />
+              </div>
+              {data.isCrzApplicable && (
+                <div className="space-y-1.5 pt-1 border-t border-slate-100">
+                  <div className="flex justify-between items-center text-[11px]">
+                    <span className="text-slate-600">CRZ Category:</span>
+                    <select
+                      value={data.crzCategory || 'CRZ-II'}
+                      onChange={(e) => onChange({ crzCategory: e.target.value as any })}
+                      className="bg-slate-50 border border-slate-200 rounded px-2 py-0.5 font-medium"
+                    >
+                      <option value="CRZ-II">CRZ-II (Urban / Built-up)</option>
+                      <option value="CRZ-III-A">CRZ-III-A (Rural High Density - 50m NDZ)</option>
+                      <option value="CRZ-III-B">CRZ-III-B (Rural Low Density - 200m NDZ)</option>
+                      <option value="CRZ-I">CRZ-I (Ecologically Sensitive - 500m)</option>
+                    </select>
+                  </div>
+                  <div className="flex justify-between items-center text-[11px]">
+                    <span className="text-slate-600">Distance from HTL (m):</span>
+                    <input
+                      type="number"
+                      value={data.distanceFromHtlM || 0}
+                      onChange={(e) => onChange({ distanceFromHtlM: parseFloat(e.target.value) || 0 })}
+                      className="w-16 bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-right font-medium"
+                    />
+                  </div>
+                  <label className="flex items-center gap-2 text-[11px] text-slate-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!!data.hasKczmaClearance}
+                      onChange={(e) => onChange({ hasKczmaClearance: e.target.checked })}
+                      className="w-3.5 h-3.5 text-indigo-600 rounded"
+                    />
+                    <span>KCZMA Recommendation Obtained</span>
+                  </label>
+                </div>
+              )}
+            </div>
+
+            {/* Paddy Land & Wetland Data Bank */}
+            <div className="bg-white p-3.5 rounded-xl border border-indigo-100 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-slate-800">{isMl ? 'നെൽവയൽ / ഡാറ്റാ ബാങ്ക് സ്ഥിതി' : 'Paddy Land / Wetland Status'}</span>
+                <input
+                  type="checkbox"
+                  checked={!!data.isPaddyOrWetland}
+                  onChange={(e) => onChange({ isPaddyOrWetland: e.target.checked })}
+                  className="w-4 h-4 text-indigo-600 rounded"
+                />
+              </div>
+              <div className="space-y-1.5 pt-1 border-t border-slate-100 text-[11px]">
+                <select
+                  value={data.dataBankStatus || 'not_in_databank'}
+                  onChange={(e) => onChange({ dataBankStatus: e.target.value as any })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 font-medium text-slate-800"
+                >
+                  <option value="not_in_databank">കരഭൂമി / Not in Data Bank</option>
+                  <option value="in_databank_form5_applied">ഡാറ്റാ ബാങ്കിൽ ഉൾപ്പെട്ടത് (Form 5 Applied)</option>
+                  <option value="in_databank_form5_obtained">ഡാറ്റാ ബാങ്കിൽ നിന്ന് ഒഴിവാക്കിയത് (Form 5 Obtained)</option>
+                  <option value="unnotified_form6_converted">തരംമാറ്റ ഉത്തരവ് ലഭിച്ചത് (Sec 27A / Form 6)</option>
+                </select>
+                {data.dataBankStatus === 'unnotified_form6_converted' && (
+                  <input
+                    type="text"
+                    placeholder="RDO Form 6 Order No."
+                    value={data.form6OrderNumber || ''}
+                    onChange={(e) => onChange({ form6OrderNumber: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-0.5 text-slate-800 text-[10px]"
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Pollution Control Board (KSPCB) */}
+            <div className="bg-white p-3.5 rounded-xl border border-indigo-100 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-slate-800">{isMl ? 'മലിനീകരണ ബോർഡ് (KSPCB / STP)' : 'Pollution Board (KSPCB CTE / STP)'}</span>
+                <input
+                  type="checkbox"
+                  checked={!!data.isPcbApplicable}
+                  onChange={(e) => onChange({ isPcbApplicable: e.target.checked })}
+                  className="w-4 h-4 text-indigo-600 rounded"
+                />
+              </div>
+              <div className="space-y-1.5 pt-1 border-t border-slate-100 text-[11px]">
+                <label className="flex items-center gap-2 text-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={!!data.hasPcbConsentToEstablish}
+                    onChange={(e) => onChange({ hasPcbConsentToEstablish: e.target.checked })}
+                    className="w-3.5 h-3.5 text-indigo-600 rounded"
+                  />
+                  <span>PCB Consent to Establish (CTE)</span>
+                </label>
+                <label className="flex items-center gap-2 text-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={!!data.hasStpEtpProvided}
+                    onChange={(e) => onChange({ hasStpEtpProvided: e.target.checked })}
+                    className="w-3.5 h-3.5 text-indigo-600 rounded"
+                  />
+                  <span>STP / ETP Layout Provided in Plan</span>
+                </label>
+              </div>
+            </div>
+
+            {/* AAI Airport Height Clearance */}
+            <div className="bg-white p-3.5 rounded-xl border border-indigo-100 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-slate-800">{isMl ? 'വിമാനത്താവള ഉയര പരിധി (AAI NOC)' : 'Airport Height NOC (AAI NOCAS)'}</span>
+                <input
+                  type="checkbox"
+                  checked={!!data.isAirportNocApplicable}
+                  onChange={(e) => onChange({ isAirportNocApplicable: e.target.checked })}
+                  className="w-4 h-4 text-indigo-600 rounded"
+                />
+              </div>
+              <div className="space-y-1.5 pt-1 border-t border-slate-100 text-[11px]">
+                <label className="flex items-center gap-2 text-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={!!data.hasAaiNoc}
+                    onChange={(e) => onChange({ hasAaiNoc: e.target.checked })}
+                    className="w-3.5 h-3.5 text-indigo-600 rounded"
+                  />
+                  <span>AAI NOCAS Clearance Certificate Obtained</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Highway / PWD Road Buffer */}
+            <div className="bg-white p-3.5 rounded-xl border border-indigo-100 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-slate-800">{isMl ? 'ദേശീയപാത / PWD റോഡ് ബഫർ' : 'Highway / PWD Boundary'}</span>
+                <input
+                  type="checkbox"
+                  checked={!!data.isNearNationalHighwayOrPwdRoad}
+                  onChange={(e) => onChange({ isNearNationalHighwayOrPwdRoad: e.target.checked })}
+                  className="w-4 h-4 text-indigo-600 rounded"
+                />
+              </div>
+              <div className="space-y-1.5 pt-1 border-t border-slate-100 text-[11px]">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-600">Setback from Highway ROW (m):</span>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={data.distanceFromHighwayBoundaryM || data.frontSetbackM}
+                    onChange={(e) => onChange({ distanceFromHighwayBoundaryM: parseFloat(e.target.value) || 0 })}
+                    className="w-16 bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-right font-medium"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Railways / ASI / RPwD */}
+            <div className="bg-white p-3.5 rounded-xl border border-indigo-100 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-slate-800">{isMl ? 'ഭിന്നശേഷി സൗഹൃദ റാംപ് (RPwD)' : 'Universal Accessibility (RPwD)'}</span>
+                <input
+                  type="checkbox"
+                  checked={!!data.hasRampForDisabled}
+                  onChange={(e) => onChange({ hasRampForDisabled: e.target.checked })}
+                  className="w-4 h-4 text-indigo-600 rounded"
+                />
+              </div>
+              <div className="space-y-1.5 pt-1 border-t border-slate-100 text-[11px]">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-600">Ramp Slope (1:X):</span>
+                  <input
+                    type="number"
+                    value={data.rampSlopeRatio || 12}
+                    onChange={(e) => onChange({ rampSlopeRatio: parseFloat(e.target.value) || 12 })}
+                    className="w-14 bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-right font-medium"
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-1.5 text-slate-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!!data.hasElectricalInspectorateNoc}
+                      onChange={(e) => onChange({ hasElectricalInspectorateNoc: e.target.checked })}
+                      className="w-3.5 h-3.5 text-indigo-600 rounded"
+                    />
+                    <span>Lift Inspectorate NOC</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Floor-wise Area Table */}

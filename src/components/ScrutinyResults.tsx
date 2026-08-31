@@ -55,6 +55,7 @@ export const ScrutinyResults: React.FC<ScrutinyResultsProps> = ({
     { id: 'sanitation_rwh', labelEn: 'Sanitation & RWH', labelMl: 'സാനിറ്റേഷൻ & മഴവെള്ളം' },
     { id: 'architecture', labelEn: 'Architectural Standards', labelMl: 'വാസ്തുശില്പ മാനദണ്ഡങ്ങൾ' },
     { id: 'fire_safety', labelEn: 'Fire & Safety', labelMl: 'ഫയർ സേഫ്റ്റി' },
+    { id: 'allied_statutory', labelEn: 'Allied Acts & Clearances (CRZ / Wetland / PCB / AAI)', labelMl: 'അനുബന്ധ നിയമങ്ങൾ & അനുമതികൾ (CRZ/നെൽവയൽ/PCB/AAI)' },
   ];
 
   const filteredChecks = checks.filter((item) => {

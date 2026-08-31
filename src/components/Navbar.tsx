@@ -107,7 +107,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       id: r.id,
       title: isMl ? r.titleMl : r.titleEn,
       subtitle: `${r.ruleKmbr} / ${r.ruleKpbr} • ${r.chapter}`,
-      targetTab: 'rulebook' as TabType,
+      targetTab: 'scrutiny' as TabType,
     })),
     ...KERALA_AMENDMENTS_FULL_ARCHIVE.filter((a) => {
       const q = globalSearch.toLowerCase();
@@ -120,7 +120,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       id: a.id,
       title: isMl ? a.titleMl : a.titleEn,
       subtitle: `${a.orderNumber} • ${a.notificationDate}`,
-      targetTab: 'rulebook' as TabType,
+      targetTab: 'scrutiny' as TabType,
     })),
   ];
 
@@ -458,75 +458,75 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       {/* Navigation Tabs */}
-      <div className="bg-[#080C16]/95 border-t border-white/5 px-4 sm:px-6 backdrop-blur-md">
+      <div className="bg-[#080C16]/95 border-t border-white/5 px-3 sm:px-6 backdrop-blur-md">
         <div className="max-w-7xl mx-auto flex items-center justify-between overflow-x-auto no-scrollbar">
-          <nav className="flex space-x-1 py-1.5 min-w-max text-xs sm:text-sm font-medium">
+          <nav className="flex space-x-1 sm:space-x-1.5 py-2 min-w-max text-xs sm:text-sm font-medium">
             <button
               id="nav-tab-authority"
               onClick={() => setActiveTab('authority')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
                 activeTab === 'authority'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(0,240,255,0.2)] font-semibold'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(0,240,255,0.2)] font-bold'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-850/60'
               }`}
             >
-              <ShieldCheck className="w-4 h-4 text-cyan-400" />
-              <span>{isMl ? '1. പ്രോജക്റ്റും ചട്ടങ്ങളും' : '1. Authority & Project'}</span>
+              <Building2 className="w-3.5 h-3.5 text-cyan-400" />
+              <span>{isMl ? '1. പ്രോജക്റ്റ്' : '1. Project'}</span>
             </button>
 
             <button
               id="nav-tab-drawings"
               onClick={() => setActiveTab('drawings')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
                 activeTab === 'drawings'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(0,240,255,0.2)] font-semibold'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(0,240,255,0.2)] font-bold'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-850/60'
               }`}
             >
-              <UploadCloud className="w-4 h-4 text-cyan-400" />
-              <span>{isMl ? '2. ഡ്രോയിംഗുകൾ' : '2. Plan Uploads'}</span>
+              <UploadCloud className="w-3.5 h-3.5 text-cyan-400" />
+              <span>{isMl ? '2. ഡ്രോയിംഗ്' : '2. Drawings'}</span>
             </button>
 
             <button
               id="nav-tab-redline"
               onClick={() => setActiveTab('redline')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
                 activeTab === 'redline'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(0,240,255,0.2)] font-semibold'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(0,240,255,0.2)] font-bold'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-850/60'
               }`}
             >
-              <Split className="w-4 h-4 text-cyan-400" />
-              <span>{isMl ? '3. ഓട്ടോ-തിരുത്തൽ' : '3. CAD Redlines & Fix'}</span>
-              <span className="text-[9px] bg-cyan-500/30 text-cyan-300 border border-cyan-400/50 px-1 rounded uppercase font-bold">
-                AI
+              <Split className="w-3.5 h-3.5 text-sky-400" />
+              <span>{isMl ? '3. ഡ്രോയിംഗ് പരിഷ്കരണം' : '3. Drawing Revision'}</span>
+              <span className="text-[9px] bg-sky-500/20 text-sky-300 border border-sky-400/40 px-1 rounded uppercase font-bold">
+                Auto-Fix
               </span>
             </button>
 
             <button
               id="nav-tab-areastatement"
               onClick={() => setActiveTab('areastatement')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
                 activeTab === 'areastatement'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(0,240,255,0.2)] font-semibold'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(0,240,255,0.2)] font-bold'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-850/60'
               }`}
             >
-              <Calculator className="w-4 h-4 text-cyan-400" />
-              <span>{isMl ? '4. ഏരിയ സ്റ്റേറ്റ്മെന്റ്' : '4. Area Statement'}</span>
+              <Calculator className="w-3.5 h-3.5 text-indigo-400" />
+              <span>{isMl ? '4. ഏരിയ സ്റ്റേറ്റ്‌മെന്റ്' : '4. Area Statement'}</span>
             </button>
 
             <button
               id="nav-tab-scrutiny"
               onClick={() => setActiveTab('scrutiny')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
                 activeTab === 'scrutiny'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(0,240,255,0.2)] font-semibold'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(0,240,255,0.2)] font-bold'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-850/60'
               }`}
             >
-              <FileCheck2 className="w-4 h-4 text-cyan-400" />
-              <span>{isMl ? '5. പരിശോധനാ ഫലം' : '5. Rule Scrutiny'}</span>
+              <FileCheck2 className="w-3.5 h-3.5 text-cyan-400" />
+              <span>{isMl ? '5. ചട്ട സ്ക്രൂട്ടിനി' : '5. Code Scrutiny'}</span>
               {summary && (
                 <span
                   className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
@@ -543,53 +543,43 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="nav-tab-rfi"
               onClick={() => setActiveTab('rfi')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
                 activeTab === 'rfi'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(0,240,255,0.2)] font-semibold'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(0,240,255,0.2)] font-bold'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-850/60'
               }`}
             >
-              <FileQuestion className="w-4 h-4 text-emerald-400" />
-              <span>{isMl ? '6. RFI & നോട്ടീസ്' : '6. RFI & Notices'}</span>
+              <FileQuestion className="w-3.5 h-3.5 text-emerald-400" />
+              <span>{isMl ? '6. നോട്ടീസ് & RFI' : '6. Notice & RFI'}</span>
+              <span className="text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 px-1 rounded uppercase font-extrabold">
+                K-SMART
+              </span>
             </button>
 
             <button
               id="nav-tab-boq"
               onClick={() => setActiveTab('boq')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
                 activeTab === 'boq'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(0,240,255,0.2)] font-semibold'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(0,240,255,0.2)] font-bold'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-850/60'
               }`}
             >
-              <Coins className="w-4 h-4 text-amber-400" />
+              <Coins className="w-3.5 h-3.5 text-amber-400" />
               <span>{isMl ? '7. സ്മാർട്ട് BOQ' : '7. Smart BOQ'}</span>
             </button>
 
             <button
               id="nav-tab-report"
               onClick={() => setActiveTab('report')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
                 activeTab === 'report'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(0,240,255,0.2)] font-semibold'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(0,240,255,0.2)] font-bold'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-850/60'
               }`}
             >
-              <FileText className="w-4 h-4 text-cyan-400" />
-              <span>{isMl ? '8. പെർമിറ്റ് റിപ്പോർട്ട്' : '8. Permit Report'}</span>
-            </button>
-
-            <button
-              id="nav-tab-rulebook"
-              onClick={() => setActiveTab('rulebook')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                activeTab === 'rulebook'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(0,240,255,0.2)] font-semibold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-850/60'
-              }`}
-            >
-              <BookOpen className="w-4 h-4 text-cyan-400" />
-              <span>{isMl ? '9. ചട്ട പുസ്തകം' : '9. Rulebook'}</span>
+              <FileText className="w-3.5 h-3.5 text-cyan-400" />
+              <span>{isMl ? '8. റിപ്പോർട്ട്' : '8. Report'}</span>
             </button>
 
             {/* Exclusive Super Admin Tab (sanoop.amrita@gmail.com) */}
@@ -597,16 +587,16 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 id="nav-tab-admin"
                 onClick={() => setActiveTab('admin')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
                   activeTab === 'admin'
                     ? 'bg-gradient-to-r from-amber-500/30 to-yellow-500/30 text-amber-300 border border-amber-400/80 shadow-[0_0_15px_rgba(245,158,11,0.3)] font-bold'
                     : 'text-amber-400 hover:text-amber-200 hover:bg-amber-950/30 border border-amber-500/30'
                 }`}
               >
-                <Crown className="w-4 h-4 text-amber-400" />
+                <Crown className="w-3.5 h-3.5 text-amber-400" />
                 <span>{isMl ? '👑 സൂപ്പർ അഡ്മിൻ' : '👑 Super Admin'}</span>
                 <span className="text-[8px] bg-amber-400 text-slate-950 font-black px-1 rounded uppercase">
-                  Central
+                  Live Sync
                 </span>
               </button>
             )}
@@ -614,9 +604,9 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Quick Result Status Badge */}
           {summary && (
-            <div className="hidden lg:flex items-center gap-2 pl-4 border-l border-slate-800">
+            <div className="hidden xl:flex items-center gap-2 pl-4 border-l border-slate-800">
               <span className="text-xs text-slate-400">
-                {isMl ? 'പരിശോധനാ ഫലം:' : 'Status:'}
+                {isMl ? 'ഫലം:' : 'Status:'}
               </span>
               <span
                 className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${

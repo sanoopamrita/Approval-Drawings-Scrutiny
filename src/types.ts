@@ -266,6 +266,41 @@ export interface AreaStatementData {
   travelDistanceToExitM?: number;
   refugeAreaProvided?: boolean;
   fireHydrantRiserProvided?: boolean;
+
+  // Allied Statutory Regulations & Multi-Department Approvals
+  isCrzApplicable?: boolean;
+  crzCategory?: 'CRZ-I' | 'CRZ-II' | 'CRZ-III-A' | 'CRZ-III-B' | 'CRZ-IV';
+  distanceFromHtlM?: number;
+  hasKczmaClearance?: boolean;
+
+  isPaddyOrWetland?: boolean;
+  dataBankStatus?: 'not_in_databank' | 'in_databank_form5_applied' | 'in_databank_form5_obtained' | 'unnotified_form6_converted';
+  form5OrderNumber?: string;
+  form6OrderNumber?: string;
+
+  isPcbApplicable?: boolean;
+  hasPcbConsentToEstablish?: boolean;
+  hasStpEtpProvided?: boolean;
+  stpCapacityKld?: number;
+
+  isAirportNocApplicable?: boolean;
+  hasAaiNoc?: boolean;
+  topElevationAboveMslM?: number;
+
+  isNearNationalHighwayOrPwdRoad?: boolean;
+  distanceFromHighwayBoundaryM?: number;
+  hasHighwayNoc?: boolean;
+
+  isNearRailwayBoundary?: boolean;
+  distanceFromRailwayBoundaryM?: number;
+  hasRailwayNoc?: boolean;
+
+  isNearAsiMonument?: boolean;
+  distanceFromMonumentM?: number;
+  hasAsiNmaNoc?: boolean;
+
+  isLiftActApplicable?: boolean;
+  hasElectricalInspectorateNoc?: boolean;
 }
 
 export type CheckStatus = 'pass' | 'fail' | 'warning' | 'exempt';
@@ -282,7 +317,8 @@ export interface ScrutinyCheckResult {
     | 'parking'
     | 'sanitation_rwh'
     | 'architecture'
-    | 'fire_safety';
+    | 'fire_safety'
+    | 'allied_statutory';
   ruleNoKmbr: string;
   ruleNoKpbr: string;
   titleEn: string;

@@ -57,7 +57,20 @@ import {
 } from '../services/authService';
 import { syncRulesWithWeb, SyncRulesResult } from '../services/geminiService';
 import { adminDataService, LocalBodySyncResult } from '../services/adminDataService';
-import { DistrictAdminData } from '../data/keralaAdministrativeData';
+import {
+  DistrictAdminData,
+} from '../data/keralaAdministrativeData';
+import { adService, AdItem } from '../services/adService';
+import {
+  Film,
+  Image as ImageIcon,
+  Video,
+  ExternalLink,
+  Play,
+  Eye,
+  MousePointerClick,
+  Megaphone,
+} from 'lucide-react';
 
 interface AdminPanelProps {
   currentUser: User | null;
@@ -74,16 +87,37 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const isSuper = isUserSuperAdmin(currentUser);
 
   // Active Admin Sub-tab
-  const [adminTab, setAdminTab] = useState<'config' | 'features' | 'localBodies' | 'logs'>('config');
+  const [adminTab, setAdminTab] = useState<'config' | 'features' | 'localBodies' | 'ads' | 'logs'>('config');
 
   // Config State
   const [config, setConfig] = useState<SystemConfig>(getSystemConfig());
   const [isConfigDirty, setIsConfigDirty] = useState(false);
 
+  // Comprehensive Database Sync State (/api/sync-entire-database)
+  const [isSyncingEntireDb, setIsSyncingEntireDb] = useState(false);
+  const [entireDbSyncResult, setEntireDbSyncResult] = useState<any>(null);
+
   // Live Rule Sync State
   const [isSyncingRules, setIsSyncingRules] = useState(false);
   const [syncStep, setSyncStep] = useState<number>(0);
   const [syncResult, setSyncResult] = useState<SyncRulesResult | null>(null);
+
+  // Advertisement Management State
+  const [ads, setAds] = useState<AdItem[]>(adService.getAds());
+  const [showAddAdModal, setShowAddAdModal] = useState(false);
+  const [newAdTitle, setNewAdTitle] = useState('');
+  const [newAdTitleMl, setNewAdTitleMl] = useState('');
+  const [newAdDesc, setNewAdDesc] = useState('');
+  const [newAdDescMl, setNewAdDescMl] = useState('');
+  const [newAdMediaType, setNewAdMediaType] = useState<'image' | 'video'>('image');
+  const [newAdMediaUrl, setNewAdMediaUrl] = useState('');
+  const [newAdFileName, setNewAdFileName] = useState('');
+  const [newAdFileSizeMb, setNewAdFileSizeMb] = useState(0);
+  const [newAdLinkUrl, setNewAdLinkUrl] = useState('https://lsgkerala.gov.in');
+  const [newAdCta, setNewAdCta] = useState('Learn More');
+  const [newAdCtaMl, setNewAdCtaMl] = useState('കൂടുതൽ അറിയാൻ');
+  const [newAdDuration, setNewAdDuration] = useState(10);
+  const [previewAd, setPreviewAd] = useState<AdItem | null>(null);
 
   // Local Bodies Management State
   const [, setAdminDataVersion] = useState(0);
@@ -109,10 +143,111 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   useEffect(() => {
     refreshLogs();
     setConfig(getSystemConfig());
-    return adminDataService.subscribe(() => {
+    const unsubAds = adService.subscribe((updatedAds) => {
+      setAds(updatedAds);
+    });
+    const unsubAdmin = adminDataService.subscribe(() => {
       setAdminDataVersion((v) => v + 1);
     });
+    return () => {
+      unsubAds();
+      unsubAdmin();
+    };
   }, []);
+
+  const handleSyncEntireDatabase = async () => {
+    setIsSyncingEntireDb(true);
+    setEntireDbSyncResult(null);
+
+    try {
+      const res = await fetch('/api/sync-entire-database', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP Error ${res.status}`);
+      }
+
+      const result = await res.json();
+      setEntireDbSyncResult(result);
+      onToast(
+        isMl
+          ? 'കേരള കെട്ടിട നിർമ്മാണ ചട്ടങ്ങൾ, തദ്ദേശ സ്ഥാപനങ്ങൾ, PWD DSR നിരക്കുകൾ, ഫയർ സേഫ്റ്റി എന്നിവ സമ്പൂർണ്ണമായി സിങ്ക് ചെയ്തു!'
+          : 'LSGD local bodies, KMBR/KPBR rules, DSR rates, and Fire safety synchronized successfully!'
+      );
+    } catch (err: any) {
+      console.error('[AdminPanel] Entire DB sync error:', err);
+      onToast(isMl ? 'ഡാറ്റാബേസ് സിങ്ക് ചെയ്യുന്നതിൽ തടസ്സം നേരിട്ടു' : 'Failed to complete comprehensive sync');
+    } finally {
+      setIsSyncingEntireDb(false);
+    }
+  };
+
+  const handleAdFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const isVideo = file.type.startsWith('video/');
+    const isImage = file.type.startsWith('image/');
+
+    if (!isImage && !isVideo) {
+      onToast(isMl ? 'ചിത്രങ്ങളോ (JPG/PNG) വീഡിയോകളോ (MP4/WebM) മാത്രം തിരഞ്ഞെടുക്കുക' : 'Please upload an image or video file');
+      return;
+    }
+
+    const fileSizeMb = parseFloat((file.size / (1024 * 1024)).toFixed(2));
+    if (fileSizeMb > 50) {
+      onToast(isMl ? 'ഫയൽ സൈസ് 50MB ൽ താഴെയായിരിക്കണം' : 'File size must be under 50MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      setNewAdMediaUrl(dataUrl);
+      setNewAdMediaType(isVideo ? 'video' : 'image');
+      setNewAdFileName(file.name);
+      setNewAdFileSizeMb(fileSizeMb);
+      if (!newAdTitle) {
+        setNewAdTitle(file.name.replace(/\.[^/.]+$/, ''));
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCreateAd = () => {
+    if (!newAdMediaUrl || !newAdTitle.trim()) {
+      onToast(isMl ? 'ശീർഷകവും പരസ്യ ഫയലും നൽകുക' : 'Please provide a title and upload media file');
+      return;
+    }
+
+    adService.addAd({
+      title: newAdTitle.trim(),
+      titleMl: newAdTitleMl.trim() || newAdTitle.trim(),
+      description: newAdDesc.trim(),
+      descriptionMl: newAdDescMl.trim() || newAdDesc.trim(),
+      mediaType: newAdMediaType,
+      mediaUrl: newAdMediaUrl,
+      fileName: newAdFileName,
+      fileSizeMb: newAdFileSizeMb,
+      linkUrl: newAdLinkUrl.trim() || 'https://lsgkerala.gov.in',
+      ctaText: newAdCta.trim() || 'Learn More',
+      ctaTextMl: newAdCtaMl.trim() || 'കൂടുതൽ അറിയാൻ',
+      active: true,
+      durationSeconds: newAdMediaType === 'image' ? (newAdDuration || 10) : (newAdDuration || 30),
+    });
+
+    onToast(isMl ? 'പുതിയ പരസ്യം വിജയകരമായി ചേർത്തു!' : 'Advertisement added successfully!');
+    setShowAddAdModal(false);
+    // Reset form
+    setNewAdTitle('');
+    setNewAdTitleMl('');
+    setNewAdDesc('');
+    setNewAdDescMl('');
+    setNewAdMediaUrl('');
+    setNewAdFileName('');
+  };
 
   const handleLiveSyncRules = async () => {
     setIsSyncingRules(true);
@@ -461,6 +596,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </button>
 
         <button
+          onClick={() => setAdminTab('ads')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
+            adminTab === 'ads'
+              ? 'bg-slate-900 text-amber-300 shadow-md'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+          }`}
+        >
+          <Megaphone className="w-4 h-4 text-amber-400" />
+          <span>{isMl ? '4. പരസ്യ & പ്രമോഷൻ മാനേജ്‌മെന്റ്' : '4. Ads & Promotions'}</span>
+          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-900 text-amber-300 font-mono">
+            {ads.length}
+          </span>
+        </button>
+
+        <button
           onClick={() => setAdminTab('logs')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
             adminTab === 'logs'
@@ -469,7 +619,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           }`}
         >
           <Activity className="w-4 h-4" />
-          <span>{isMl ? '4. യൂസേജ് ആക്‌സസ് ലോഗുകൾ' : '4. Usage Audit & Analytics'}</span>
+          <span>{isMl ? '5. യൂസേജ് ആക്‌സസ് ലോഗുകൾ' : '5. Usage Audit & Analytics'}</span>
           <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-cyan-900 text-cyan-300 font-mono">
             {logs.length}
           </span>
@@ -503,28 +653,54 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
               </div>
 
-              <button
-                id="admin-sync-rules-btn"
-                onClick={handleLiveSyncRules}
-                disabled={isSyncingRules}
-                className={`flex items-center justify-center gap-2 px-5 py-3 rounded-2xl text-xs sm:text-sm font-black transition-all shadow-xl cursor-pointer shrink-0 ${
-                  isSyncingRules
-                    ? 'bg-slate-800 text-cyan-400 border border-cyan-500/30 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 shadow-[0_0_20px_rgba(6,182,212,0.4)] active:scale-95'
-                }`}
-              >
-                {isSyncingRules ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>{isMl ? 'ചട്ടങ്ങൾ സിങ്ക് ചെയ്യുന്നു...' : 'Syncing Rules from Web...'}</span>
-                  </>
-                ) : (
-                  <>
-                    <Zap className="w-4 h-4 fill-slate-950" />
-                    <span>{isMl ? 'തത്സമയം അപ്‌ഡേറ്റ് ചെയ്യുക' : 'Sync & Update Now'}</span>
-                  </>
-                )}
-              </button>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
+                <button
+                  id="admin-sync-entire-db-btn"
+                  onClick={handleSyncEntireDatabase}
+                  disabled={isSyncingEntireDb}
+                  className={`flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold transition-all shadow-lg cursor-pointer ${
+                    isSyncingEntireDb
+                      ? 'bg-slate-800 text-amber-300 border border-amber-500/30 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 shadow-[0_0_20px_rgba(245,158,11,0.3)] active:scale-95'
+                  }`}
+                  title="Comprehensive Sync: LSGD local bodies, K-Smart circulars, PWD DSR, Fire safety, and Building rules"
+                >
+                  {isSyncingEntireDb ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>{isMl ? 'ഡാറ്റാബേസ് സിങ്ക് ചെയ്യുന്നു...' : 'Syncing All DB...'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Database className="w-4 h-4 text-slate-950" />
+                      <span>{isMl ? 'സമ്പൂർണ്ണ ഡാറ്റാബേസ് സിങ്ക്' : 'Sync Entire Database'}</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  id="admin-sync-rules-btn"
+                  onClick={handleLiveSyncRules}
+                  disabled={isSyncingRules}
+                  className={`flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-xs sm:text-sm font-black transition-all shadow-xl cursor-pointer ${
+                    isSyncingRules
+                      ? 'bg-slate-800 text-cyan-400 border border-cyan-500/30 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 shadow-[0_0_20px_rgba(6,182,212,0.4)] active:scale-95'
+                  }`}
+                >
+                  {isSyncingRules ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>{isMl ? 'ചട്ടങ്ങൾ സിങ്ക് ചെയ്യുന്നു...' : 'Syncing Rules...'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-4 h-4 fill-slate-950" />
+                      <span>{isMl ? 'ചട്ടങ്ങൾ മാത്രം സിങ്ക് ചെയ്യുക' : 'Sync Rules Only'}</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
 
             {/* Sync Progress Steps (Active when syncing or synced) */}
@@ -1350,7 +1526,528 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         );
       })()}
 
-      {/* SUB-TAB 4: USAGE & ACCESS AUDIT LOGS (PRIVACY COMPLIANT) */}
+      {/* SUB-TAB 4: ADVERTISEMENT & PROMOTIONAL BANNER MANAGER */}
+      {adminTab === 'ads' && (
+        <div className="space-y-6">
+          {/* Top Banner with Summary & Timing Architecture */}
+          <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-amber-950/80 border-2 border-amber-500/40 rounded-3xl p-6 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-start sm:items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-amber-400 shrink-0 shadow-[0_0_20px_rgba(245,158,11,0.3)]">
+                <Megaphone className="w-7 h-7 text-amber-400" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-lg sm:text-xl font-black text-white">
+                    {isMl ? 'പ്രൊമോഷണൽ പരസ്യ മാനേജ്‌മെന്റ് സ്റ്റുഡിയോ' : 'Promotional Ads & Banners Studio'}
+                  </h2>
+                  <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-mono font-bold">
+                    Super Admin Controls
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 mt-1 max-w-2xl">
+                  {isMl
+                    ? 'ഉപയോക്താക്കൾ ലോഗിൻ ചെയ്ത് 10 സെക്കൻഡിന് ശേഷം പരസ്യങ്ങൾ സ്വയം പ്ലേ ആകുന്നു. തുടർന്ന് ഓരോ 30 സെക്കൻഡിലും അടുത്ത ഫയൽ പ്ലേ ചെയ്യപ്പെടും. എല്ലാ ഫയലുകളും കഴിഞ്ഞാൽ 50 സെക്കൻഡ് ഇടവേളയ്ക്ക് ശേഷം വീണ്ടും റിപ്പീറ്റ് ചെയ്യുന്നു. ഇമേജുകൾ 10 സെക്കൻഡ്, വീഡിയോകൾ മുഴുവനായും പ്ലേ ചെയ്യും.'
+                    : 'Auto-plays 10s after login. Plays subsequent ads every 30s. Loops after 50s rest when all files complete. Images display for 10s; videos play full duration.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => setShowAddAdModal(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 font-bold text-xs rounded-xl shadow-[0_0_15px_rgba(245,158,11,0.4)] transition-transform active:scale-95 cursor-pointer"
+              >
+                <Plus className="w-4 h-4 text-slate-950" />
+                <span>{isMl ? 'പുതിയ പരസ്യം ചേർക്കുക' : 'Upload New Ad (Img/Vid)'}</span>
+              </button>
+              <button
+                onClick={() => {
+                  adService.resetToDefaults();
+                  onToast(isMl ? 'എല്ലാ പരസ്യങ്ങളും നീക്കം ചെയ്തു' : 'All ads cleared');
+                }}
+                className="p-2.5 bg-slate-900/80 hover:bg-slate-800 border border-slate-700 text-slate-300 rounded-xl transition-colors cursor-pointer"
+                title={isMl ? 'എല്ലാ പരസ്യങ്ങളും നീക്കം ചെയ്യുക' : 'Clear all ads'}
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Ad Playback Stats Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+                <Film className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-[11px] text-slate-500 font-semibold">{isMl ? 'ആകെ പരസ്യങ്ങൾ' : 'Total Ads'}</div>
+                <div className="text-xl font-black text-slate-900">{ads.length}</div>
+              </div>
+            </div>
+
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-[11px] text-slate-500 font-semibold">{isMl ? 'സജീവം (Active)' : 'Active In Loop'}</div>
+                <div className="text-xl font-black text-emerald-600">
+                  {ads.filter((a) => a.active).length}
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center font-bold">
+                <Eye className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-[11px] text-slate-500 font-semibold">{isMl ? 'ആകെ കണ്ടത്' : 'Total Views'}</div>
+                <div className="text-xl font-black text-slate-900">
+                  {ads.reduce((acc, a) => acc + (a.viewsCount || 0), 0)}
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                <MousePointerClick className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-[11px] text-slate-500 font-semibold">{isMl ? 'ക്ലിക്കുകൾ' : 'Total Clicks'}</div>
+                <div className="text-xl font-black text-blue-600">
+                  {ads.reduce((acc, a) => acc + (a.clicksCount || 0), 0)}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Ads List Card Grid */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <span>{isMl ? 'റൊട്ടേഷൻ ക്യൂവിലെ പരസ്യങ്ങൾ' : 'Promotional Ads Rotation Queue'}</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-mono">
+                  {ads.length} Items
+                </span>
+              </h3>
+              <div className="text-xs text-slate-500 flex items-center gap-2">
+                <Clock className="w-3.5 h-3.5" />
+                <span>Sequence: 10s Image / Full Video → 30s Gap → 50s Reset Loop</span>
+              </div>
+            </div>
+
+            {ads.length === 0 ? (
+              <div className="bg-white border border-dashed border-slate-300 rounded-3xl p-12 text-center space-y-3">
+                <Megaphone className="w-12 h-12 text-slate-400 mx-auto" />
+                <h4 className="text-base font-bold text-slate-800">
+                  {isMl ? 'പരസ്യങ്ങളൊന്നും ചേർത്തിട്ടില്ല' : 'No advertisements in queue'}
+                </h4>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                  {isMl
+                    ? 'ഇമേജ് അല്ലെങ്കിൽ വീഡിയോ ഫയലുകൾ (പരമാവധി 50MB) അപ്‌ലോഡ് ചെയ്ത് പരസ്യങ്ങൾ ക്രമീകരിക്കുക.'
+                    : 'Upload images or video files (up to 50MB) to display in the user promotional player loop.'}
+                </p>
+                <button
+                  onClick={() => setShowAddAdModal(true)}
+                  className="px-4 py-2 bg-amber-500 text-slate-950 text-xs font-bold rounded-xl"
+                >
+                  {isMl ? 'പരസ്യം അപ്‌ലോഡ് ചെയ്യുക' : 'Upload First Ad'}
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {ads.map((ad, idx) => (
+                  <div
+                    key={ad.id}
+                    className={`bg-white border rounded-2xl p-4 transition-all shadow-sm flex flex-col justify-between space-y-4 ${
+                      ad.active ? 'border-slate-200' : 'border-slate-200/60 opacity-60 bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3.5">
+                      {/* Media Thumbnail */}
+                      <div className="w-24 h-20 rounded-xl overflow-hidden bg-slate-900 border border-slate-200 shrink-0 relative group flex items-center justify-center">
+                        {ad.mediaType === 'video' ? (
+                          <div className="w-full h-full flex flex-col items-center justify-center bg-slate-950 text-cyan-400">
+                            <Video className="w-6 h-6" />
+                            <span className="text-[9px] font-mono mt-1 text-slate-400">Video MP4</span>
+                          </div>
+                        ) : (
+                          <img
+                            src={ad.mediaUrl}
+                            alt={ad.title}
+                            className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                        )}
+                        <span
+                          className={`absolute top-1 left-1 text-[8px] font-bold px-1.5 py-0.2 rounded font-mono ${
+                            ad.mediaType === 'video'
+                              ? 'bg-rose-600 text-white'
+                              : 'bg-cyan-600 text-white'
+                          }`}
+                        >
+                          {ad.mediaType.toUpperCase()}
+                        </span>
+                      </div>
+
+                      {/* Content Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-bold">
+                            #{idx + 1}
+                          </span>
+                          <h4 className="text-sm font-bold text-slate-900 truncate">
+                            {isMl ? ad.titleMl || ad.title : ad.title}
+                          </h4>
+                        </div>
+
+                        {ad.description && (
+                          <p className="text-xs text-slate-500 line-clamp-2 mt-1">
+                            {isMl ? ad.descriptionMl || ad.description : ad.description}
+                          </p>
+                        )}
+
+                        <div className="flex items-center gap-3 mt-2 text-[11px] text-slate-400 flex-wrap">
+                          <span className="flex items-center gap-1 font-mono">
+                            <Eye className="w-3 h-3 text-cyan-600" />
+                            {ad.viewsCount || 0} views
+                          </span>
+                          <span className="flex items-center gap-1 font-mono">
+                            <MousePointerClick className="w-3 h-3 text-blue-600" />
+                            {ad.clicksCount || 0} clicks
+                          </span>
+                          <span className="flex items-center gap-1 font-mono">
+                            <Clock className="w-3 h-3 text-slate-500" />
+                            {ad.durationSeconds || 10}s
+                          </span>
+                          {ad.fileSizeMb ? (
+                            <span className="text-slate-400 font-mono text-[10px]">
+                              {ad.fileSizeMb}MB
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Actions Bar */}
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 text-xs">
+                      <div className="flex items-center gap-2">
+                        {/* Active / Inactive Toggle Button */}
+                        <button
+                          onClick={() => {
+                            adService.toggleActive(ad.id);
+                            onToast(
+                              ad.active
+                                ? (isMl ? 'പരസ്യം നിർജ്ജീവമാക്കി' : 'Ad deactivated from rotation')
+                                : (isMl ? 'പരസ്യം സജീവമാക്കി' : 'Ad activated in rotation')
+                            );
+                          }}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs cursor-pointer transition-colors ${
+                            ad.active
+                              ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
+                          }`}
+                        >
+                          <span
+                            className={`w-2 h-2 rounded-full ${
+                              ad.active ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
+                            }`}
+                          />
+                          <span>{ad.active ? (isMl ? 'സജീവം (Active)' : 'Active') : (isMl ? 'ഓഫ് (Disabled)' : 'Disabled')}</span>
+                        </button>
+
+                        {/* Test Preview Button */}
+                        <button
+                          onClick={() => setPreviewAd(ad)}
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-cyan-50 hover:bg-cyan-100 text-cyan-800 font-bold text-xs border border-cyan-200 transition-colors cursor-pointer"
+                          title={isMl ? 'പ്രിവ്യൂ കാണുക' : 'Test Preview'}
+                        >
+                          <Play className="w-3.5 h-3.5 fill-cyan-800" />
+                          <span>{isMl ? 'പ്രിവ്യൂ' : 'Preview'}</span>
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {ad.linkUrl && (
+                          <a
+                            href={ad.linkUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                            title="Open Link URL"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        )}
+
+                        <button
+                          onClick={() => {
+                            if (window.confirm(isMl ? 'ഈ പരസ്യം നീക്കം ചെയ്യണോ?' : 'Delete this ad?')) {
+                              adService.deleteAd(ad.id);
+                              onToast(isMl ? 'പരസ്യം നീക്കം ചെയ്തു' : 'Ad deleted');
+                            }
+                          }}
+                          className="p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                          title={isMl ? 'ഡിലീറ്റ്' : 'Delete Ad'}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* CREATE / UPLOAD NEW ADVERTISEMENT MODAL */}
+          {showAddAdModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+              <div className="bg-white rounded-3xl max-w-xl w-full border border-slate-200 shadow-2xl p-6 space-y-5 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-2 text-slate-900 font-bold text-base">
+                    <Megaphone className="w-5 h-5 text-amber-500" />
+                    <span>{isMl ? 'പുതിയ പ്രൊമോഷണൽ പരസ്യം അപ്‌ലോഡ് ചെയ്യുക' : 'Upload New Promotional Ad'}</span>
+                  </div>
+                  <button
+                    onClick={() => setShowAddAdModal(false)}
+                    className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full"
+                  >
+                    <XCircle className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* File Upload Drag & Drop Area */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-slate-700">
+                    {isMl ? 'പരസ്യ മീഡിയ ഫയൽ (Image/Video max 50MB):' : 'Ad Media File (Image/Video max 50MB):'}
+                  </label>
+                  <div className="border-2 border-dashed border-amber-300 hover:border-amber-500 rounded-2xl p-5 text-center bg-amber-50/40 transition-colors">
+                    <input
+                      type="file"
+                      id="admin-ad-media-input"
+                      accept="image/png,image/jpeg,image/webp,video/mp4,video/webm"
+                      onChange={handleAdFileUpload}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="admin-ad-media-input"
+                      className="flex flex-col items-center justify-center cursor-pointer gap-2"
+                    >
+                      {newAdMediaUrl ? (
+                        <div className="space-y-2">
+                          <div className="w-32 h-20 rounded-xl overflow-hidden bg-slate-900 border border-amber-400 mx-auto flex items-center justify-center">
+                            {newAdMediaType === 'video' ? (
+                              <video
+                                src={newAdMediaUrl}
+                                className="w-full h-full object-cover"
+                                autoPlay
+                                muted
+                                loop
+                              />
+                            ) : (
+                              <img
+                                src={newAdMediaUrl}
+                                alt="Preview"
+                                className="w-full h-full object-cover"
+                              />
+                            )}
+                          </div>
+                          <span className="text-xs font-bold text-amber-700 block">
+                            ✓ {newAdFileName} ({newAdFileSizeMb}MB - {newAdMediaType.toUpperCase()})
+                          </span>
+                          <span className="text-[11px] text-slate-500 underline">
+                            {isMl ? 'മറ്റൊരു ഫയൽ തിരഞ്ഞെടുക്കുക' : 'Change media file'}
+                          </span>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center shadow-sm">
+                            <Plus className="w-6 h-6" />
+                          </div>
+                          <div className="text-xs font-bold text-slate-800">
+                            {isMl ? 'ഫയൽ തിരഞ്ഞെടുക്കാൻ ക്ലിക്ക് ചെയ്യുക' : 'Click to select media file'}
+                          </div>
+                          <div className="text-[11px] text-slate-500">
+                            Supports PNG, JPG, WebP images & MP4, WebM videos (up to 50MB)
+                          </div>
+                        </>
+                      )}
+                    </label>
+                  </div>
+                </div>
+
+                {/* Title and Descriptions */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">
+                      {isMl ? 'ശീർഷകം (Title English):' : 'Title (English):'} *
+                    </label>
+                    <input
+                      type="text"
+                      value={newAdTitle}
+                      onChange={(e) => setNewAdTitle(e.target.value)}
+                      placeholder="e.g. Kerala AEC Expo 2026"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl outline-none focus:border-amber-500 font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">
+                      {isMl ? 'ശീർഷകം മലയാളത്തിൽ:' : 'Title (Malayalam):'}
+                    </label>
+                    <input
+                      type="text"
+                      value={newAdTitleMl}
+                      onChange={(e) => setNewAdTitleMl(e.target.value)}
+                      placeholder="e.g. കേരള ആർക്കിടെക്ചറൽ എക്സ്പോ"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl outline-none focus:border-amber-500 font-medium"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1 text-xs">
+                  <label className="block font-bold text-slate-700">
+                    {isMl ? 'വിവരണം (Description):' : 'Description / Offer text:'}
+                  </label>
+                  <textarea
+                    value={newAdDesc}
+                    onChange={(e) => setNewAdDesc(e.target.value)}
+                    rows={2}
+                    placeholder="Short promotional message..."
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                {/* Link URL and CTA */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                  <div className="sm:col-span-2">
+                    <label className="block font-bold text-slate-700 mb-1">
+                      {isMl ? 'ക്ലിക്ക് ലിങ്ക് URL:' : 'Destination URL / Link:'}
+                    </label>
+                    <input
+                      type="url"
+                      value={newAdLinkUrl}
+                      onChange={(e) => setNewAdLinkUrl(e.target.value)}
+                      placeholder="https://example.com"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl outline-none focus:border-amber-500 font-mono text-[11px]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">
+                      {isMl ? 'ബട്ടൺ ടെക്സ്റ്റ് (CTA):' : 'Button Text (CTA):'}
+                    </label>
+                    <input
+                      type="text"
+                      value={newAdCta}
+                      onChange={(e) => setNewAdCta(e.target.value)}
+                      placeholder="Learn More"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl outline-none focus:border-amber-500 font-medium"
+                    />
+                  </div>
+                </div>
+
+                {/* Duration Display */}
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between text-xs">
+                  <span className="text-slate-600 font-medium">
+                    {isMl ? 'പ്രദർശന സമയം (Display Duration):' : 'Display Duration:'}
+                  </span>
+                  <span className="font-mono font-bold text-slate-800">
+                    {newAdMediaType === 'image' ? '10 Seconds (Standard)' : 'Full Video Runtime'}
+                  </span>
+                </div>
+
+                {/* Modal Footer Actions */}
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                  <button
+                    onClick={() => setShowAddAdModal(false)}
+                    className="px-4 py-2 text-slate-600 hover:text-slate-800 text-xs font-semibold rounded-xl"
+                  >
+                    {isMl ? 'റദ്ദാക്കുക' : 'Cancel'}
+                  </button>
+                  <button
+                    onClick={handleCreateAd}
+                    disabled={!newAdMediaUrl || !newAdTitle.trim()}
+                    className={`px-5 py-2.5 rounded-xl text-xs font-bold shadow-lg transition-transform active:scale-95 cursor-pointer ${
+                      !newAdMediaUrl || !newAdTitle.trim()
+                        ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 shadow-[0_0_15px_rgba(245,158,11,0.4)]'
+                    }`}
+                  >
+                    {isMl ? 'പരസ്യം സംരക്ഷിക്കുക' : 'Save & Publish Ad'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ADMIN PREVIEW AD MODAL */}
+          {previewAd && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
+              <div className="relative bg-slate-900 border-2 border-cyan-500/50 rounded-3xl max-w-lg w-full overflow-hidden shadow-[0_0_50px_rgba(6,182,212,0.4)] text-white">
+                <div className="relative h-64 sm:h-72 bg-slate-950 flex items-center justify-center overflow-hidden">
+                  {previewAd.mediaType === 'video' ? (
+                    <video
+                      src={previewAd.mediaUrl}
+                      controls
+                      autoPlay
+                      className="w-full h-full object-contain"
+                    />
+                  ) : (
+                    <img
+                      src={previewAd.mediaUrl}
+                      alt={previewAd.title}
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  )}
+
+                  <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-slate-950/80 backdrop-blur-md border border-cyan-500/40 text-[10px] font-mono text-cyan-300 font-bold">
+                    PREVIEW TEST
+                  </span>
+
+                  <button
+                    onClick={() => setPreviewAd(null)}
+                    className="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-950/80 hover:bg-slate-900 border border-slate-700 flex items-center justify-center text-slate-300 hover:text-white"
+                  >
+                    <XCircle className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="p-5 space-y-3">
+                  <h3 className="text-base font-bold text-white">
+                    {isMl ? previewAd.titleMl || previewAd.title : previewAd.title}
+                  </h3>
+                  {previewAd.description && (
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      {isMl ? previewAd.descriptionMl || previewAd.description : previewAd.description}
+                    </p>
+                  )}
+
+                  <div className="pt-2 flex items-center justify-between gap-3">
+                    <span className="text-[11px] font-mono text-cyan-400">
+                      Duration: {previewAd.mediaType === 'image' ? '10s' : 'Video Duration'}
+                    </span>
+                    {previewAd.linkUrl && (
+                      <a
+                        href={previewAd.linkUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-4 py-2 bg-cyan-400 hover:bg-cyan-300 text-slate-950 text-xs font-bold rounded-xl flex items-center gap-1.5"
+                      >
+                        <span>{isMl ? previewAd.ctaTextMl || previewAd.ctaText || 'തുടരുക' : previewAd.ctaText || 'Learn More'}</span>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* SUB-TAB 5: USAGE & ACCESS AUDIT LOGS (PRIVACY COMPLIANT) */}
       {adminTab === 'logs' && (
         <div className="space-y-6">
           {/* Privacy Statement Banner */}

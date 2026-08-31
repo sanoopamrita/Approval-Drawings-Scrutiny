@@ -33,24 +33,102 @@ interface GeminiChatbotProps {
   onClose?: () => void;
 }
 
-const QUICK_PROMPTS_ML = [
-  'ചെറിയ പ്ലോട്ട് ഇളവുകൾ (Rule 60/62) പ്രകാരം സെറ്റ്ബാക്ക് എത്ര?',
-  'കുടിവെള്ള കിണറും സെപ്റ്റിക് ടാങ്കും തമ്മിൽ എത്ര അകലം വേണം?',
-  '150 ച.മീ താഴെയുള്ള വീടിന് കാർ പാർക്കിംഗ് നിർബന്ധമാണോ?',
-  'കെ-സ്മാർട്ട് ഓൺലൈൻ പെർമിറ്റിന് എന്തൊക്കെ ഡ്രോയിംഗുകൾ വേണം?',
-  'മഴവെള്ള സംഭരണിയുടെ കപ്പാസിറ്റി എങ്ങനെ കണക്കാക്കാം?',
-  'റോഡ് വീതിക്കനുസരിച്ച് അനുവദനീയമായ പരമാവധി ഉയരം എത്ര?',
-  'എന്റെ പ്ലാനിലെ അപാകതകൾ എങ്ങനെ പെട്ടെന്ന് തിരുത്താം?',
+const QUICK_DOMAINS_ML = [
+  {
+    id: 'kmbr',
+    label: '🏛️ KMBR/KPBR',
+    prompts: [
+      'ചെറിയ പ്ലോട്ട് ഇളവുകൾ (Rule 60/62) പ്രകാരം സെറ്റ്ബാക്ക് എത്ര?',
+      'കുടിവെള്ള കിണറും സെപ്റ്റിക് ടാങ്കും തമ്മിൽ എത്ര അകലം വേണം?',
+      '150 ച.മീ താഴെയുള്ള വീടിന് കാർ പാർക്കിംഗ് നിർബന്ധമാണോ?',
+      'മഴവെള്ള സംഭരണിയുടെ കപ്പാസിറ്റി (Rule 48) എങ്ങനെ കണക്കാക്കാം?',
+    ],
+  },
+  {
+    id: 'fire',
+    label: '🚒 ഫയർ & സേഫ്റ്റി (NBC)',
+    prompts: [
+      'ഫയർ NOC (Fire Clearance) ഏതൊക്കെ കെട്ടിടങ്ങൾക്ക് നിർബന്ധമാണ്?',
+      'ഫയർ എഞ്ചിൻ പാതയ്ക്ക് (Fire Tender Access) എത്ര വീതി വേണം?',
+      'എമർജൻസി സ്റ്റെയർകേസിന്റെ അനുവദനീയമായ കുറഞ്ഞ വീതി എത്ര?',
+    ],
+  },
+  {
+    id: 'school',
+    label: '🏫 KER സ്കൂൾ നിയമങ്ങൾ',
+    prompts: [
+      'KER പ്രകാരം ക്ലാസ്റൂമിന്റെ കുറഞ്ഞ വിസ്തീർണ്ണവും ഉയരവും എത്ര?',
+      'സ്കൂളിലെ ആൺകുട്ടികൾക്കും പെൺകുട്ടികൾക്കും ആവശ്യമായ ടോയ്‌ലറ്റ് അനുപാതം എത്ര?',
+      'സ്കൂൾ കെട്ടിടങ്ങളിൽ റാംപും പ്ലേഗ്രൗണ്ടും നിർബന്ധമാണോ?',
+    ],
+  },
+  {
+    id: 'crz',
+    label: '🌊 CRZ & നിലം നിയമം',
+    prompts: [
+      'തീരദേശ മേഖലയിൽ (CRZ) നിർമ്മാണ രഹിത ദൂരപരിധി (NDZ) എത്രയാണ്?',
+      'ഡാറ്റാ ബാങ്കിൽ ഉൾപ്പെട്ട ഭൂമി മാറ്റാൻ ഫോറം 5 അപേക്ഷ എങ്ങനെ നൽകണം?',
+      'പുരയിടം തരംമാറ്റാൻ ഫോറം 6 പ്രകാരമുള്ള നിയമങ്ങൾ എന്തൊക്കെ?',
+    ],
+  },
+  {
+    id: 'ksmart',
+    label: '💻 K-Smart & നോട്ടീസ്',
+    prompts: [
+      '300 ച.മീറ്റർ വരെ സെൽഫ് സർട്ടിഫിക്കേഷൻ വഴി പെർമിറ്റ് എങ്ങനെ ലഭിക്കും?',
+      'കെ-സ്മാർട്ട് നിർദ്ദിഷ്ട CAD ലെയറുകൾ ഏതൊക്കെയാണ്?',
+      'തദ്ദേശ സ്ഥാപനത്തിൽ നിന്ന് ലഭിച്ച ന്യൂനത നോട്ടീസിന് എങ്ങനെ മറുപടി നൽകാം?',
+    ],
+  },
 ];
 
-const QUICK_PROMPTS_EN = [
-  'What are small plot concessions (Rule 60/62) for setbacks & coverage?',
-  'Minimum clearance required between drinking well and septic tank?',
-  'Is car parking required for residential houses below 150 sq.m?',
-  'What drawings & CAD layers are required for K-Smart submission?',
-  'How to calculate Rainwater Harvesting (RWH) tank capacity?',
-  'Maximum permissible building height based on access road width?',
-  'How can I rectify setback violations on my plan for K-Smart?',
+const QUICK_DOMAINS_EN = [
+  {
+    id: 'kmbr',
+    label: '🏛️ KMBR/KPBR',
+    prompts: [
+      'What are small plot concessions (Rule 60/62) for setbacks & coverage?',
+      'Minimum clearance required between drinking well and septic tank?',
+      'Is car parking required for residential houses below 150 sq.m?',
+      'How to calculate Rainwater Harvesting (RWH Rule 48) capacity?',
+    ],
+  },
+  {
+    id: 'fire',
+    label: '🚒 Fire & Life Safety',
+    prompts: [
+      'What are the mandatory Fire NOC thresholds under NBC 2016 & Kerala Fire Dept?',
+      'What is the required fire tender access driveway width and clearance?',
+      'Minimum emergency staircase width and travel distance rules?',
+    ],
+  },
+  {
+    id: 'school',
+    label: '🏫 KER Education Rules',
+    prompts: [
+      'What are mandatory classroom dimensions and ceiling heights under KER?',
+      'What are the required toilet and urinal ratios for schools under KER?',
+      'Are ramps, accessibility tactile guides, and playground mandatory for schools?',
+    ],
+  },
+  {
+    id: 'crz',
+    label: '🌊 CRZ & Wetland Act',
+    prompts: [
+      'What is the No Development Zone (NDZ) buffer distance under CRZ 2019?',
+      'How to apply for Data Bank exclusion under Form 5 of Kerala Wetland Act?',
+      'What is the procedure for Form 6 land conversion under Section 27A?',
+    ],
+  },
+  {
+    id: 'ksmart',
+    label: '💻 K-Smart & Notice',
+    prompts: [
+      'How does instant self-certification work for dwellings <=300 sq.m?',
+      'What are the mandatory K-Smart AutoCAD layer names?',
+      'How to draft a statutory reply for an LSGD objection/defect notice?',
+    ],
+  },
 ];
 
 export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
@@ -61,10 +139,20 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
   onClose,
 }) => {
   const isMl = language === 'ml';
+  const [selectedDomain, setSelectedDomain] = useState('kmbr');
+  const [analysisPreset, setAnalysisPreset] = useState<'plan' | 'notice' | 'setback'>('plan');
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     const welcomeText = isMl
-      ? `നമസ്കാരം! ഞാൻ **വിന്യാസ AI ചട്ട ഉപദേശകൻ (Vinyasa Regulatory Co-Pilot)** ആണ്.\n\nകേരള കെട്ടിട നിർമ്മാണ ചട്ടങ്ങൾ (**KMBR 2019 & KPBR 2019**) പ്രകാരമുള്ള സെറ്റ്ബാക്കുകൾ, FAR & ഗ്രൗണ്ട് കവറേജ്, കിണർ-സെപ്റ്റിക് ടാങ്ക് അകലങ്ങൾ, ചെറിയ പ്ലോട്ട് ഇളവുകൾ (Rule 60/62), റോഡ് വീതി, കെ-സ്മാർട്ട് (K-Smart) ഡിജിറ്റൽ അനുമതി എന്നിവയിലെല്ലാം കൃത്യമായ ചട്ട നമ്പറുകളോടെ (Rule, Chapter & Table) നിങ്ങളെ സഹായിക്കാം.\n\nതാഴെയുള്ള ചോദ്യങ്ങളിൽ ക്ലിക്ക് ചെയ്യുകയോ അല്ലെങ്കിൽ നിങ്ങളുടെ പ്ലാൻ ഫോട്ടോ/ചോദ്യം അയക്കുകയോ ചെയ്യാം.`
-      : `Welcome! I am **വിന്യാസ AI ചട്ട ഉപദേശകൻ (Vinyasa Regulatory Co-Pilot)**.\n\nI provide authoritative compliance guidance strictly grounded in **KMBR 2019 & KPBR 2019** (citing exact Chapters, Rules, and Tables). I can calculate setbacks, verify FAR & ground coverage, check well-to-septic clearances, assess small plot concessions (Rule 60/62), and review K-Smart CAD layers.\n\nAsk any question or upload a plan photo to begin!`;
+      ? `നമസ്കാരം! ഞാൻ **വിന്യാസ AI ചട്ട ഉപദേശകൻ (Vinyasa Regulatory Co-Pilot)** ആണ്.
+
+കേരള കെട്ടിട നിർമ്മാണ ചട്ടങ്ങൾ (**KMBR 2019 & KPBR 2019**), ഫയർ & സേഫ്റ്റി നിയമങ്ങൾ (**NBC 2016 Part 4**), കേരള എജ്യുക്കേഷണൽ റൂൾസ് (**KER**), തീരദേശ പരിപാലന ചട്ടങ്ങൾ (**CRZ 2019**), നെൽവയൽ-തണ്ണീർത്തട നിയമം, കെ-സ്മാർട്ട് (**K-Smart**) സെൽഫ് സർട്ടിഫിക്കേഷൻ, ന്യൂനത നോട്ടീസ് തിരുത്തലുകൾ എന്നിവയിലെല്ലാം കൃത്യമായ ചട്ട നമ്പറുകളോടെ നിങ്ങളെ സഹായിക്കാം.
+
+📷 **പ്ലാനിന്റെയോ നോട്ടീസിന്റെയോ ഫോട്ടോ അറ്റാച്ച് ചെയ്തോ ക്യാമറ വഴി എടുത്തോ നൽകിയാൽ തത്സമയം വിശദമായി പരിശോധിച്ച് റിപ്പോർട്ട് നൽകാം.**`
+      : `Welcome! I am **വിന്യാസ AI ചട്ട ഉപദേശകൻ (Vinyasa Regulatory Co-Pilot)**.
+
+I provide authoritative statutory architectural guidance strictly grounded in **KMBR 2019 & KPBR 2019**, Fire & Life Safety (**NBC 2016 Part 4**), Kerala Education Rules (**KER Chapter IV**), Coastal Regulation Zone (**CRZ 2019**), Kerala Paddy & Wetland Act, and **K-Smart** online permitting.
+
+📷 **Upload or capture a photo of your building plan or municipality defect notice for instant expert analysis and actionable statutory remediation!**`;
 
     return [
       {
@@ -136,13 +224,44 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
     }
   };
 
+  const activeDomains = isMl ? QUICK_DOMAINS_ML : QUICK_DOMAINS_EN;
+  const currentDomainData = activeDomains.find((d) => d.id === selectedDomain) || activeDomains[0];
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = () => {
-      setAttachedImage(reader.result as string);
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        const maxDim = 1600;
+
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.88);
+          setAttachedImage(compressedDataUrl);
+        } else {
+          setAttachedImage(reader.result as string);
+        }
+      };
+      img.src = reader.result as string;
     };
     reader.readAsDataURL(file);
     e.target.value = '';
@@ -209,8 +328,6 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
     a.click();
     URL.revokeObjectURL(url);
   };
-
-  const activeQuickPrompts = isMl ? QUICK_PROMPTS_ML : QUICK_PROMPTS_EN;
 
   // Close on Escape key
   useEffect(() => {
@@ -430,19 +547,37 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
         <div ref={chatEndRef} />
       </div>
 
-      {/* Quick Prompts Carousel */}
-      <div className="bg-[#070A12] border-t border-slate-800/80 px-3 py-2">
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
-          <span className="text-[11px] text-cyan-400 font-medium shrink-0 flex items-center gap-1">
-            <Sparkles className="w-3 h-3" />
-            {isMl ? 'പ്രധാന സംശയങ്ങൾ:' : 'Quick Questions:'}
+      {/* Domain Category Selector & Quick Prompts */}
+      <div className="bg-[#070A12] border-t border-slate-800/80 px-3 py-2 space-y-2">
+        {/* Domain Tabs */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+          {activeDomains.map((dom) => (
+            <button
+              key={dom.id}
+              onClick={() => setSelectedDomain(dom.id)}
+              className={`text-[11px] font-medium shrink-0 px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                selectedDomain === dom.id
+                  ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 shadow-[0_0_10px_rgba(0,240,255,0.15)] font-bold'
+                  : 'bg-[#0D121F] text-slate-400 border-slate-800 hover:text-slate-200 hover:border-slate-700'
+              }`}
+            >
+              {dom.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Selected Domain Prompts Carousel */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+          <span className="text-[10px] text-cyan-400/90 font-medium shrink-0 flex items-center gap-1">
+            <Sparkles className="w-3 h-3 text-cyan-400" />
+            {isMl ? 'ചോദ്യങ്ങൾ:' : 'Suggested:'}
           </span>
-          {activeQuickPrompts.map((prompt, idx) => (
+          {currentDomainData.prompts.map((prompt, idx) => (
             <button
               key={idx}
               onClick={() => handleSendMessage(prompt)}
               disabled={loading}
-              className="text-xs shrink-0 bg-[#0F1524] hover:bg-cyan-950 text-slate-300 hover:text-cyan-300 border border-cyan-800/40 hover:border-cyan-500/60 rounded-full px-3 py-1 transition-all whitespace-nowrap disabled:opacity-50"
+              className="text-xs shrink-0 bg-[#0F1524] hover:bg-cyan-950/80 text-slate-300 hover:text-cyan-200 border border-cyan-900/40 hover:border-cyan-500/60 rounded-full px-3 py-1 transition-all whitespace-nowrap disabled:opacity-50 cursor-pointer"
             >
               {prompt}
             </button>
@@ -450,28 +585,86 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
         </div>
       </div>
 
-      {/* Image Preview if attached */}
+      {/* Image Preview & Vision Analysis Action Chips if attached */}
       {attachedImage && (
-        <div className="bg-[#070A12] px-4 py-2 border-t border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded border border-slate-700 overflow-hidden">
-              <img
-                src={attachedImage}
-                alt="Attachment preview"
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
-              />
+        <div className="bg-[#070A12] px-3.5 py-2.5 border-t border-cyan-500/30 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-11 h-11 rounded-lg border border-cyan-500/50 overflow-hidden shadow-xs shrink-0">
+                <img
+                  src={attachedImage}
+                  alt="Attachment preview"
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+              <div>
+                <span className="text-xs text-cyan-300 font-semibold flex items-center gap-1">
+                  📷 {isMl ? 'ചിത്രം / നോട്ടീസ് തയ്യാറാണ്' : 'Drawing / Notice Ready for AI Scrutiny'}
+                </span>
+                <p className="text-[10px] text-slate-400">
+                  {isMl
+                    ? 'താഴെയുള്ള വിശകലന ഓപ്ഷനുകളിൽ ഒന്നിൽ ക്ലിക്ക് ചെയ്യുക:'
+                    : 'Click a preset scrutiny action below or type custom query:'}
+                </p>
+              </div>
             </div>
-            <span className="text-xs text-slate-300">
-              {isMl ? 'പ്ലാൻ ഫോട്ടോ ചേർത്തു' : 'Drawing photo attached'}
-            </span>
+            <button
+              onClick={() => setAttachedImage(null)}
+              className="text-slate-400 hover:text-rose-400 p-1.5 rounded-lg hover:bg-slate-800/80 transition-colors"
+              title={isMl ? 'ഫോട്ടോ നീക്കം ചെയ്യുക' : 'Remove photo'}
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-          <button
-            onClick={() => setAttachedImage(null)}
-            className="text-slate-400 hover:text-rose-400 p-1"
-          >
-            <X className="w-4 h-4" />
-          </button>
+
+          {/* Quick vision action buttons */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1">
+            <button
+              type="button"
+              onClick={() =>
+                handleSendMessage(
+                  isMl
+                    ? 'ഈ പ്ലാൻ സമഗ്രമായി പരിശോധിച്ച് KMBR/KPBR ചട്ടങ്ങൾ പ്രകാരമുള്ള കണ്ടെത്തലുകൾ, അനുവദനീയമായവ, ചട്ടലംഘനങ്ങൾ, ആവശ്യമായ തിരുത്തലുകൾ എന്നിവ നൽകുക.'
+                    : 'Analyze this plan thoroughly for KMBR/KPBR compliance, list key findings, compliant items, rule violations, and specific CAD corrections needed.'
+                )
+              }
+              disabled={loading}
+              className="text-xs shrink-0 bg-cyan-950/70 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/40 rounded-lg px-2.5 py-1 font-medium transition-all"
+            >
+              🔍 {isMl ? 'സമഗ്ര പ്ലാൻ പരിശോധന' : 'Full Plan Scrutiny'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                handleSendMessage(
+                  isMl
+                    ? 'ഈ നോട്ടീസിലെ ന്യൂനതകൾ പരിശോധിച്ച് KMBR/KPBR ചട്ട നമ്പറുകൾ ഉദ്ധരിച്ച് തദ്ദേശ സ്ഥാപനത്തിന് നൽകാനുള്ള കൃത്യമായ മറുപടി കത്തും തിരുത്തൽ നിർദ്ദേശങ്ങളും തയാറാക്കുക.'
+                    : 'Analyze this LSGD objection notice and draft a professional statutory reply letter citing exact KMBR/KPBR rules and required plan rectifications.'
+                )
+              }
+              disabled={loading}
+              className="text-xs shrink-0 bg-amber-950/60 hover:bg-amber-900/80 text-amber-300 border border-amber-500/40 rounded-lg px-2.5 py-1 font-medium transition-all"
+            >
+              📑 {isMl ? 'നോട്ടീസ് മറുപടി തയാറാക്കുക' : 'Draft Notice Reply'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                handleSendMessage(
+                  isMl
+                    ? 'ഈ ഡ്രോയിംഗിലെ സെറ്റ്ബാക്കുകൾ (Front, Rear, Sides), കിണറും സെപ്റ്റിക് ടാങ്കും തമ്മിലുള്ള 7.50 മീറ്റർ അകലം (Rule 47) എന്നിവ പ്രത്യേകം പരിശോധിക്കുക.'
+                    : 'Examine setbacks (Front, Rear, Sides) and well-to-septic tank 7.50m clearance (Rule 47) in this blueprint.'
+                )
+              }
+              disabled={loading}
+              className="text-xs shrink-0 bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-500/40 rounded-lg px-2.5 py-1 font-medium transition-all"
+            >
+              📐 {isMl ? 'സെറ്റ്ബാക്ക് & കിണർ അകലം' : 'Setbacks & Well Buffer'}
+            </button>
+          </div>
         </div>
       )}
 
