@@ -321,7 +321,7 @@ export function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-4 space-y-5">
-        {/* Superbuilt-Style High Impact Hero Header */}
+        {/* Vinyasa High-Precision Obsidian Hero Header */}
         <div className="relative overflow-hidden rounded-2xl super-card p-6 sm:p-10 shadow-[0_20px_50px_rgba(0,0,0,0.8),0_0_35px_rgba(6,182,212,0.18)]">
           {/* Ambient Glow Orbs */}
           <div className="absolute -right-16 -top-16 w-80 h-80 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none" />
@@ -348,7 +348,7 @@ export function App() {
               </p>
             </div>
 
-            {/* Service Cards (3-Column Superbuilt Glass Grid) */}
+            {/* Service Cards (3-Column Obsidian Glass Grid) */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
               {/* Card 1: Automated Drawing Scrutiny */}
               <div 

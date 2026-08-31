@@ -141,7 +141,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     <header className="sticky top-0 z-40 bg-[#07090E]/95 border-b border-white/10 shadow-[0_10px_35px_rgba(0,0,0,0.85)] backdrop-blur-xl">
       {/* Top Main Brand & Control Bar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3">
-        {/* Brand Logo & Superbuilt-style pill badge: KBR AI Scrutiny */}
+        {/* Brand Logo & Vinyasa pill badge: KBR AI Scrutiny */}
         <div className="flex items-center gap-2.5 sm:gap-3.5">
           <button
             onClick={() => setActiveTab('authority')}
