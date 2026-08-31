@@ -130,18 +130,30 @@ export const Navbar: React.FC<NavbarProps> = ({
     setGlobalSearch('');
   };
 
+  // Compute user initial letter
+  const userInitial = currentUser?.email
+    ? currentUser.email.charAt(0).toUpperCase()
+    : currentUser?.name
+    ? currentUser.name.charAt(0).toUpperCase()
+    : 'U';
+
   return (
-    <header className="sticky top-0 z-40 bg-[#040813] border-b border-cyan-950/80 shadow-xl backdrop-blur-md">
+    <header className="sticky top-0 z-40 bg-[#07090E]/95 border-b border-white/10 shadow-[0_10px_35px_rgba(0,0,0,0.85)] backdrop-blur-xl">
       {/* Top Main Brand & Control Bar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3">
-        {/* Brand Logo */}
-        <div className="flex items-center gap-3">
+        {/* Brand Logo & Superbuilt-style pill badge: KBR AI Scrutiny */}
+        <div className="flex items-center gap-2.5 sm:gap-3.5">
           <button
             onClick={() => setActiveTab('authority')}
-            className="flex items-center gap-2.5 text-left group focus:outline-none"
+            className="flex items-center gap-2.5 text-left group focus:outline-none cursor-pointer"
           >
             <VinyasaLogo variant="full" size="md" theme="dark" showDomain={true} />
           </button>
+          
+          <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 text-[10px] font-extrabold tracking-wider uppercase shadow-[0_0_15px_rgba(0,240,255,0.2)]">
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+            <span>KBR AI Scrutiny</span>
+          </div>
         </div>
 
         {/* Global Search Bar */}
@@ -162,7 +174,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   ? 'ചട്ടങ്ങൾ, ഭേദഗതികൾ, സെറ്റ്ബാക്ക്, പാർക്കിംഗ് തിരയുക...'
                   : 'Search building rules, setbacks, parking, FAR...'
               }
-              className="w-full pl-9 pr-8 py-1.5 text-xs bg-slate-900/90 border border-slate-800 focus:border-cyan-500 rounded-xl text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 transition-all"
+              className="w-full pl-9 pr-8 py-1.5 text-xs bg-[#0F172A]/90 border border-white/10 focus:border-cyan-500/80 rounded-xl text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-cyan-500 transition-all shadow-inner"
             />
             {globalSearch && (
               <button
@@ -209,7 +221,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Right Action Tools: Jurisdiction Toggle, Language, Scrutiny Button, Reset */}
         <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
           {/* Quick Jurisdiction Selector */}
-          <div className="flex items-center bg-slate-900/90 p-0.5 rounded-lg border border-slate-800 shadow-sm text-xs font-semibold">
+          <div className="flex items-center bg-[#0D1424] p-0.5 rounded-lg border border-slate-800 shadow-sm text-xs font-semibold">
             <button
               id="jurisdiction-nav-kpbr"
               onClick={() => setJurisdiction('KPBR')}
@@ -236,11 +248,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           </div>
 
-          {/* Language Switcher */}
+          {/* Bilingual Switcher Toggle (English / മലയാളം) */}
           <button
             id="lang-toggle-btn"
             onClick={() => setLanguage(language === 'ml' ? 'en' : 'ml')}
-            className="flex items-center gap-1 text-xs bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-cyan-900/80 text-slate-200 px-2.5 py-1.5 rounded-lg transition-colors font-medium cursor-pointer"
+            className="flex items-center gap-1.5 text-xs bg-[#0D1424] hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/50 text-slate-200 px-3 py-1.5 rounded-lg transition-all font-semibold cursor-pointer shadow-sm hover:text-cyan-300"
             title="Toggle Language / ഭാഷ മാറ്റുക"
           >
             <Globe className="w-3.5 h-3.5 text-cyan-400" />
@@ -251,7 +263,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             id="run-scrutiny-btn"
             onClick={onRunScrutiny}
-            className="flex items-center gap-1.5 text-xs font-bold bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 px-3.5 py-1.5 rounded-lg shadow-[0_0_15px_rgba(0,229,255,0.35)] transition-all transform active:scale-95 cursor-pointer"
+            className="flex items-center gap-1.5 text-xs font-bold bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 px-3.5 py-1.5 rounded-lg shadow-[0_0_20px_rgba(0,240,255,0.35)] transition-all transform active:scale-95 cursor-pointer"
           >
             <Sparkles className="w-3.5 h-3.5 text-slate-950" />
             <span>{isMl ? 'ചട്ട പരിശോധന' : 'Run Scrutiny'}</span>
@@ -267,7 +279,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <RotateCcw className="w-4 h-4" />
           </button>
 
-          {/* User Account with Interactive Email Dropdown & Logout */}
+          {/* User Account with Interactive Email Dropdown & Logout (No registration or license inputs) */}
           {currentUser && (
             <div ref={profileMenuRef} className="relative flex items-center gap-1.5 pl-2 border-l border-slate-800">
               <button
@@ -276,15 +288,15 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
                 className={`flex items-center gap-2 py-1 px-2 sm:px-2.5 rounded-xl border transition-all cursor-pointer group ${
                   isProfileMenuOpen
-                    ? 'bg-cyan-950/80 border-cyan-500/60 shadow-[0_0_15px_rgba(0,229,255,0.2)]'
-                    : 'bg-slate-900/90 hover:bg-slate-850 border-slate-800 hover:border-cyan-700/50'
+                    ? 'bg-cyan-950/80 border-cyan-500/60 shadow-[0_0_15px_rgba(0,240,255,0.25)]'
+                    : 'bg-[#0D1424] hover:bg-slate-850 border-slate-800 hover:border-cyan-700/50'
                 }`}
                 title={isMl ? 'അക്കൗണ്ട് വിവരങ്ങളും ഇമെയിലും കാണുക' : 'View account details & email'}
               >
-                {/* Initial Letter Avatar */}
+                {/* Initial Letter Avatar (Indigo-to-Cyan Gradient) */}
                 <div className="relative shrink-0">
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-cyan-600 via-blue-600 to-indigo-600 border border-cyan-400/50 text-white font-black text-xs flex items-center justify-center shadow-md">
-                    {currentUser.email ? currentUser.email.charAt(0).toUpperCase() : (currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U')}
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-indigo-600 via-blue-600 to-cyan-500 border border-cyan-300/60 text-white font-black text-xs flex items-center justify-center shadow-md">
+                    {userInitial}
                   </div>
                   <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-1 ring-slate-950" />
                 </div>
@@ -316,16 +328,16 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <LogOut className="w-4 h-4" />
               </button>
 
-              {/* Interactive Profile Details Popover Menu */}
+              {/* Fixed Profile Details Popover Menu (No clipping/overflow bugs) */}
               {isProfileMenuOpen && (
-                <div className="absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] sm:w-84 max-w-[350px] bg-[#070E1E] border border-cyan-500/50 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.95),0_0_30px_rgba(0,229,255,0.2)] overflow-hidden z-50 animate-scaleUp text-left">
+                <div className="fixed sm:absolute right-4 sm:right-0 top-16 sm:top-full sm:mt-2 w-[calc(100vw-2rem)] sm:w-88 max-w-[360px] bg-[#070E1E] border border-cyan-500/50 rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.95),0_0_35px_rgba(0,240,255,0.25)] overflow-hidden z-50 animate-scaleUp text-left">
                   {/* Top Header Card */}
                   <div className="p-4 bg-gradient-to-br from-slate-900 via-[#0B152A] to-slate-950 border-b border-slate-800/80 relative">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="relative shrink-0">
-                          <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 border-2 border-cyan-400/60 text-white flex items-center justify-center text-lg font-black shadow-[0_0_15px_rgba(0,229,255,0.3)]">
-                            {currentUser.email ? currentUser.email.charAt(0).toUpperCase() : (currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U')}
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-600 via-blue-600 to-cyan-400 border-2 border-cyan-300/70 text-white flex items-center justify-center text-lg font-black shadow-[0_0_20px_rgba(0,240,255,0.35)]">
+                            {userInitial}
                           </div>
                           {/* Verified Badge */}
                           <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center shadow-md border border-slate-900 font-bold text-[10px]">
@@ -346,7 +358,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
                       <button
                         onClick={() => setIsProfileMenuOpen(false)}
-                        className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 rounded-lg transition-colors shrink-0"
+                        className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 rounded-lg transition-colors shrink-0 cursor-pointer"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -361,7 +373,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                           <Mail className="w-3.5 h-3.5 text-cyan-400" />
                           <span>{isMl ? 'ഇമെയിൽ വിലാസം (Email ID)' : 'Registered Email Address'}</span>
                         </span>
-                        <span className="text-emerald-400 font-mono text-[9px] bg-emerald-950/80 px-1.5 py-0.5 rounded border border-emerald-500/30">
+                        <span className="text-emerald-400 font-mono text-[9px] bg-emerald-950/80 px-1.5 py-0.5 rounded border border-emerald-500/30 font-bold">
                           ACTIVE
                         </span>
                       </div>
@@ -446,47 +458,47 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       {/* Navigation Tabs */}
-      <div className="bg-[#040813] border-t border-slate-800/80 px-4 sm:px-6">
+      <div className="bg-[#080C16]/95 border-t border-white/5 px-4 sm:px-6 backdrop-blur-md">
         <div className="max-w-7xl mx-auto flex items-center justify-between overflow-x-auto no-scrollbar">
           <nav className="flex space-x-1 py-1.5 min-w-max text-xs sm:text-sm font-medium">
             <button
               id="nav-tab-authority"
               onClick={() => setActiveTab('authority')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                 activeTab === 'authority'
-                  ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-700/50 shadow-[0_0_10px_rgba(0,229,255,0.15)] font-semibold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(0,240,255,0.2)] font-semibold'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-850/60'
               }`}
             >
-              <ShieldCheck className="w-4 h-4" />
+              <ShieldCheck className="w-4 h-4 text-cyan-400" />
               <span>{isMl ? '1. പ്രോജക്റ്റും ചട്ടങ്ങളും' : '1. Authority & Project'}</span>
             </button>
 
             <button
               id="nav-tab-drawings"
               onClick={() => setActiveTab('drawings')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                 activeTab === 'drawings'
-                  ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-700/50 shadow-[0_0_10px_rgba(0,229,255,0.15)] font-semibold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(0,240,255,0.2)] font-semibold'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-850/60'
               }`}
             >
-              <UploadCloud className="w-4 h-4" />
+              <UploadCloud className="w-4 h-4 text-cyan-400" />
               <span>{isMl ? '2. ഡ്രോയിംഗുകൾ' : '2. Plan Uploads'}</span>
             </button>
 
             <button
               id="nav-tab-redline"
               onClick={() => setActiveTab('redline')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                 activeTab === 'redline'
-                  ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-700/50 shadow-[0_0_10px_rgba(0,229,255,0.15)] font-semibold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(0,240,255,0.2)] font-semibold'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-850/60'
               }`}
             >
               <Split className="w-4 h-4 text-cyan-400" />
               <span>{isMl ? '3. ഓട്ടോ-തിരുത്തൽ' : '3. CAD Redlines & Fix'}</span>
-              <span className="text-[9px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 px-1 rounded uppercase font-bold">
+              <span className="text-[9px] bg-cyan-500/30 text-cyan-300 border border-cyan-400/50 px-1 rounded uppercase font-bold">
                 AI
               </span>
             </button>
@@ -494,26 +506,26 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="nav-tab-areastatement"
               onClick={() => setActiveTab('areastatement')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                 activeTab === 'areastatement'
-                  ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-700/50 shadow-[0_0_10px_rgba(0,229,255,0.15)] font-semibold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(0,240,255,0.2)] font-semibold'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-850/60'
               }`}
             >
-              <Calculator className="w-4 h-4" />
+              <Calculator className="w-4 h-4 text-cyan-400" />
               <span>{isMl ? '4. ഏരിയ സ്റ്റേറ്റ്മെന്റ്' : '4. Area Statement'}</span>
             </button>
 
             <button
               id="nav-tab-scrutiny"
               onClick={() => setActiveTab('scrutiny')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                 activeTab === 'scrutiny'
-                  ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-700/50 shadow-[0_0_10px_rgba(0,229,255,0.15)] font-semibold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(0,240,255,0.2)] font-semibold'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-850/60'
               }`}
             >
-              <FileCheck2 className="w-4 h-4" />
+              <FileCheck2 className="w-4 h-4 text-cyan-400" />
               <span>{isMl ? '5. പരിശോധനാ ഫലം' : '5. Rule Scrutiny'}</span>
               {summary && (
                 <span
@@ -531,10 +543,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="nav-tab-rfi"
               onClick={() => setActiveTab('rfi')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                 activeTab === 'rfi'
-                  ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-700/50 shadow-[0_0_10px_rgba(0,229,255,0.15)] font-semibold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(0,240,255,0.2)] font-semibold'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-850/60'
               }`}
             >
               <FileQuestion className="w-4 h-4 text-emerald-400" />
@@ -544,10 +556,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="nav-tab-boq"
               onClick={() => setActiveTab('boq')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                 activeTab === 'boq'
-                  ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-700/50 shadow-[0_0_10px_rgba(0,229,255,0.15)] font-semibold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(0,240,255,0.2)] font-semibold'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-850/60'
               }`}
             >
               <Coins className="w-4 h-4 text-amber-400" />
@@ -557,26 +569,26 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="nav-tab-report"
               onClick={() => setActiveTab('report')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                 activeTab === 'report'
-                  ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-700/50 shadow-[0_0_10px_rgba(0,229,255,0.15)] font-semibold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(0,240,255,0.2)] font-semibold'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-850/60'
               }`}
             >
-              <FileText className="w-4 h-4" />
+              <FileText className="w-4 h-4 text-cyan-400" />
               <span>{isMl ? '8. പെർമിറ്റ് റിപ്പോർട്ട്' : '8. Permit Report'}</span>
             </button>
 
             <button
               id="nav-tab-rulebook"
               onClick={() => setActiveTab('rulebook')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                 activeTab === 'rulebook'
-                  ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-700/50 shadow-[0_0_10px_rgba(0,229,255,0.15)] font-semibold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(0,240,255,0.2)] font-semibold'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-850/60'
               }`}
             >
-              <BookOpen className="w-4 h-4" />
+              <BookOpen className="w-4 h-4 text-cyan-400" />
               <span>{isMl ? '9. ചട്ട പുസ്തകം' : '9. Rulebook'}</span>
             </button>
 

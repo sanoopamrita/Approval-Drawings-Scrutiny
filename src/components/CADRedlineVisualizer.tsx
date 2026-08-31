@@ -22,6 +22,10 @@ import {
   ArrowRight,
   RefreshCw,
   FileCheck,
+  FileSpreadsheet,
+  FileText,
+  Check,
+  X,
 } from 'lucide-react';
 import { Language, AreaStatementData, UploadedDrawing } from '../types';
 
@@ -34,18 +38,19 @@ interface CADRedlineVisualizerProps {
 
 interface RedlineIssue {
   id: string;
-  category: 'setback' | 'sanitation' | 'staircase' | 'access' | 'far';
+  category: 'setback' | 'sanitation' | 'staircase' | 'access' | 'far' | 'coverage';
   titleEn: string;
   titleMl: string;
   ruleRef: string;
   currentVal: string;
   requiredVal: string;
   severity: 'critical' | 'warning' | 'info';
+  status: 'fail' | 'pass' | 'warning';
   fixDescriptionEn: string;
   fixDescriptionMl: string;
   resolved: boolean;
-  coords: { x: number; y: number; width: number; height: number };
-  correctedCoords: { x: number; y: number; width: number; height: number };
+  coords: { x: number; y: number; width: number; height: number; label: string };
+  correctedCoords: { x: number; y: number; width: number; height: number; label: string };
 }
 
 export const CADRedlineVisualizer: React.FC<CADRedlineVisualizerProps> = ({
@@ -65,6 +70,7 @@ export const CADRedlineVisualizer: React.FC<CADRedlineVisualizerProps> = ({
   // Layer Toggles
   const [showSetbackLines, setShowSetbackLines] = useState<boolean>(true);
   const [showSanitationOverlay, setShowSanitationOverlay] = useState<boolean>(true);
+  const [showBoundingBoxes, setShowBoundingBoxes] = useState<boolean>(true);
   const [showDimensions, setShowDimensions] = useState<boolean>(true);
   const [showGrid, setShowGrid] = useState<boolean>(true);
 
@@ -79,56 +85,76 @@ export const CADRedlineVisualizer: React.FC<CADRedlineVisualizerProps> = ({
       currentVal: `${data.rearSetbackM || '1.10'} m`,
       requiredVal: '1.50 m (Min)',
       severity: 'critical',
+      status: 'fail',
       fixDescriptionEn: 'Shift rear building wall 0.40m inward into the plinth to secure 1.50m mandatory clear rear open space.',
       fixDescriptionMl: '1.50 മീറ്റർ കൃത്യമായ ഓപ്പൺ സ്പേസ് ഉറപ്പാക്കാൻ പിൻഭാഗത്തെ ഭിത്തി 0.40 മീറ്റർ ഉള്ളിലേക്ക് മാറ്റുക.',
       resolved: false,
-      coords: { x: 50, y: 15, width: 200, height: 25 },
-      correctedCoords: { x: 50, y: 35, width: 200, height: 25 },
+      coords: { x: 50, y: 15, width: 200, height: 20, label: 'DEFICIT 1.10m [REQ: 1.50m]' },
+      correctedCoords: { x: 50, y: 35, width: 200, height: 20, label: 'COMPLIANT 1.50m ✓' },
     },
     {
       id: 'iss-2',
       category: 'sanitation',
-      titleEn: 'Septic Tank to Open Well Distance Conflict',
+      titleEn: 'Septic Tank to Open Well Clearance Conflict',
       titleMl: 'കിണറും സെപ്റ്റിക് ടാങ്കും തമ്മിലുള്ള അകലക്കുറവ്',
       ruleRef: 'KMBR Rule 91 & KSPCB Norms',
       currentVal: '5.40 m',
       requiredVal: '7.50 m (Min Statutory Distance)',
       severity: 'critical',
+      status: 'fail',
       fixDescriptionEn: 'Relocate septic tank structure 2.10m towards the south-west corner to guarantee 7.50m buffer from open drinking well.',
       fixDescriptionMl: 'കിണറിൽ നിന്ന് 7.50 മീറ്റർ അകലം ഉറപ്പാക്കാൻ സെപ്റ്റിക് ടാങ്ക് തെക്ക്-പടിഞ്ഞാറ് മൂലയിലേക്ക് 2.10 മീറ്റർ മാറ്റി സ്ഥാപിക്കുക.',
       resolved: false,
-      coords: { x: 180, y: 70, width: 45, height: 35 },
-      correctedCoords: { x: 230, y: 110, width: 45, height: 35 },
+      coords: { x: 175, y: 65, width: 32, height: 25, label: 'CLASH: 5.40m (<7.5m)' },
+      correctedCoords: { x: 65, y: 145, width: 34, height: 24, label: 'SAFE BUFFER: 11.2m ✓' },
     },
     {
       id: 'iss-3',
       category: 'setback',
-      titleEn: 'Front Setback Alignment with Access Road',
+      titleEn: 'Front Setback Clearance with Access Road',
       titleMl: 'മുൻവശത്തെ സെറ്റ്ബാക്ക് വഴിവീതിയനുസരിച്ചുള്ള ക്രമീകരണം',
       ruleRef: 'KMBR 2019 Rule 25 & Rule 34',
       currentVal: `${data.frontSetbackM || '2.60'} m`,
       requiredVal: '3.00 m (Min)',
       severity: 'warning',
+      status: 'fail',
       fixDescriptionEn: 'Align front porch line to provide full 3.00m clearance from front street boundary line.',
       fixDescriptionMl: 'മുൻവശത്തെ അതിർത്തിയിൽ നിന്നും റോഡിൽ നിന്നും 3.00 മീറ്റർ അകലം ഉറപ്പാക്കാൻ മുൻ പോർച്ച് ലൈൻ ക്രമീകരിക്കുക.',
       resolved: false,
-      coords: { x: 50, y: 180, width: 200, height: 20 },
-      correctedCoords: { x: 50, y: 165, width: 200, height: 20 },
+      coords: { x: 50, y: 175, width: 200, height: 25, label: 'FRONT: 2.60m [REQ: 3.00m]' },
+      correctedCoords: { x: 50, y: 165, width: 200, height: 25, label: 'FRONT: 3.00m COMPLIANT ✓' },
     },
     {
       id: 'iss-4',
       category: 'staircase',
-      titleEn: 'Staircase Riser & Tread Dimension Discrepancy',
+      titleEn: 'Staircase Riser & Tread Flight Dimension',
       titleMl: 'സ്റ്റെയർകേസ് റൈസർ & ട്രെഡ്ഡ് അളവിലെ വ്യത്യാസം',
       ruleRef: 'KMBR Rule 35 & NBC 2016 Part 4',
       currentVal: 'Riser: 18.5 cm / Tread: 22 cm',
       requiredVal: 'Max Riser: 15 cm / Min Tread: 25 cm',
       severity: 'warning',
+      status: 'warning',
       fixDescriptionEn: 'Reconfigure flight geometry to 16 risers at 15cm each with 25cm clear tread width for safety compliance.',
       fixDescriptionMl: 'സുരക്ഷാ മാനദണ്ഡങ്ങൾ പാലിച്ച് 15cm റൈസറും 25cm ട്രെഡും ഉള്ള 16 പടികളാക്കി സ്റ്റെയർകേസ് പുനക്രമീകരിക്കുക.',
       resolved: false,
-      coords: { x: 110, y: 80, width: 40, height: 50 },
-      correctedCoords: { x: 105, y: 75, width: 50, height: 60 },
+      coords: { x: 95, y: 65, width: 40, height: 48, label: 'STAIR: NON-STANDARD' },
+      correctedCoords: { x: 95, y: 65, width: 40, height: 48, label: 'STAIR: NBC COMPLIANT ✓' },
+    },
+    {
+      id: 'iss-5',
+      category: 'coverage',
+      titleEn: 'Ground Coverage Statutory Permissibility',
+      titleMl: 'ഗ്രൗണ്ട് കവറേജ് ചട്ടപരിധി പരിശോധന',
+      ruleRef: 'KMBR Rule 26 / KPBR Rule 24',
+      currentVal: `${((data.groundCoverageSqM / (data.plotAreaSqM || 202.34)) * 100).toFixed(1)}%`,
+      requiredVal: data.jurisdiction === 'KMBR' ? 'Max 60.00%' : 'Max 65.00%',
+      severity: 'info',
+      status: 'pass',
+      fixDescriptionEn: 'Plinth boundary sits comfortably within maximum permissible ground coverage limit.',
+      fixDescriptionMl: 'പ്ലിന്ത് വിസ്തീർണ്ണം അനുവദനീയമായ പരമാവധി പരിധിക്കുള്ളിലാണ്.',
+      resolved: true,
+      coords: { x: 50, y: 35, width: 200, height: 130, label: 'PLINTH: WITHIN LIMIT ✓' },
+      correctedCoords: { x: 50, y: 35, width: 200, height: 130, label: 'PLINTH: COMPLIANT ✓' },
     },
   ]);
 
@@ -146,13 +172,50 @@ export const CADRedlineVisualizer: React.FC<CADRedlineVisualizerProps> = ({
       setIssues((prev) => prev.map((item) => ({ ...item, resolved: true })));
       setIsApplyingFixAll(false);
       setViewMode('corrected');
-    }, 1200);
+    }, 1000);
   };
 
   const handleReset = () => {
-    setIssues((prev) => prev.map((item) => ({ ...item, resolved: false })));
+    setIssues((prev) => prev.map((item) => ({ ...item, resolved: item.id === 'iss-5' })));
     setViewMode('split');
   };
+
+  // Quick CSV Export from Scrutiny Canvas
+  const handleQuickExportCSV = () => {
+    const rows = [
+      ['VINYASA SCRUTINY CANVAS & KBR SCORECARD EXPORT'],
+      ['Project', data.projectName || 'Proposed Building'],
+      ['Jurisdiction', data.jurisdiction],
+      ['Plot Area (Cents)', data.plotAreaCents.toString()],
+      ['Plot Area (Sq.M)', data.plotAreaSqM.toFixed(2)],
+      [],
+      ['KBR SCORECARD BREAKDOWN'],
+      ['Issue / Check Title', 'Rule Ref', 'Submitted / Current', 'Statutory Requirement', 'Status', 'Rectification Action'],
+    ];
+
+    issues.forEach((iss) => {
+      rows.push([
+        `"${iss.titleEn}"`,
+        `"${iss.ruleRef}"`,
+        `"${iss.currentVal}"`,
+        `"${iss.requiredVal}"`,
+        `"${iss.resolved ? 'RESOLVED / COMPLIANT' : 'VIOLATION'}"`,
+        `"${iss.fixDescriptionEn}"`,
+      ]);
+    });
+
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + rows.map((e) => e.join(',')).join('\n');
+    const link = document.createElement('a');
+    link.setAttribute('href', encodeURI(csvContent));
+    link.setAttribute('download', `VINYASA_${data.jurisdiction}_Scrutiny_Scorecard.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const resolvedCount = issues.filter((i) => i.resolved).length;
+  const pendingCount = issues.filter((i) => !i.resolved).length;
+  const scorePercent = Math.round((resolvedCount / issues.length) * 100);
 
   return (
     <div className="space-y-6 text-left animate-fadeIn">
@@ -165,43 +228,52 @@ export const CADRedlineVisualizer: React.FC<CADRedlineVisualizerProps> = ({
           <div className="space-y-2.5 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/90 border border-cyan-500/50 text-cyan-300 text-xs font-bold uppercase tracking-wider">
               <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-              <span>{isMl ? 'ഡ്രോയിംഗ് റിവ്യൂ & ഓട്ടോ-റെഡ്‌ലൈൻ ഫിക്‌സ് സ്റ്റുഡിയോ' : 'Drawing Review & CAD Redline Auto-Fix Studio'}</span>
+              <span>{isMl ? 'സ്പ്ലിറ്റ്-സ്ക്രീൻ സ്ക്രൂട്ടിനി ക്യാൻവാസ് & സ്കോർകാർഡ്' : 'Split-Screen Scrutiny Canvas & KBR Scorecard'}</span>
             </div>
 
             <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              {isMl ? 'പ്ലാനുകളിലെ അപാകതകൾ തത്സമയം കണ്ടെത്തി തിരുത്തുന്നു' : 'Automated CAD Redline Scrutiny & Statutory Rectification'}
+              {isMl ? 'ഡ്രോയിംഗ് സ്ക്രൂട്ടിനിയും അപാകത പരിഹാരവും' : 'Visual CAD Scrutiny & Rule Violation Breakdown'}
             </h2>
 
             <p className="text-sm text-slate-300 leading-relaxed font-normal">
               {isMl
-                ? 'നിങ്ങൾ നൽകിയ CAD/PDF ഡ്രോയിംഗുകളിലെ സെറ്റ്ബാക്ക് ലംഘനങ്ങൾ, കിണർ-സെപ്റ്റിക് ടാങ്ക് അകലം, സ്റ്റെയർകേസ് അളവുകൾ എന്നിവ KMBR/KPBR 2019 ചട്ടങ്ങൾ പ്രകാരം പരിശോധിച്ച്, കൃത്യമായ തിരുത്തലുകളോടെ പുതിയ ബ്ലൂപ്രിന്റ് നിർദ്ദേശിക്കുന്നു.'
-                : 'Scans DWG, DXF & PDF blueprints for KMBR/KPBR code violations. Automatically plots visual redline overlays with exact coordinate offsets to achieve 100% defect-free LSGD permit compliance.'}
+                ? 'ഇടതുവശത്ത് പച്ച/ചുവപ്പ് കംപ്ലയൻസ് ബൗണ്ടിംഗ് ബോക്സുകളോടെയുള്ള CAD ഡ്രോയിംഗ് വ്യൂവർ; വലതുവശത്ത് സ്ട്രക്ചേർഡ് KBR സ്കോർകാർഡും ചട്ടലംഘന വിശദാംശങ്ങളും.'
+                : 'Interactive split-screen scrutiny viewer: High-contrast green/red compliance bounding boxes on the left; structured KBR scorecard and violation breakdown on the right.'}
             </p>
           </div>
 
-          {/* Quick Action Button */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
+            <button
+              onClick={handleQuickExportCSV}
+              className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 font-bold text-xs transition-all cursor-pointer shadow-[0_0_12px_rgba(16,185,129,0.2)]"
+              title="One-click CSV Scorecard Export"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+              <span>{isMl ? 'CSV സ്കോർകാർഡ്' : 'Export CSV'}</span>
+            </button>
+
             <button
               onClick={handleFixAllWithAI}
               disabled={isApplyingFixAll}
-              className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-bold text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-all cursor-pointer disabled:opacity-50"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-bold text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-all cursor-pointer disabled:opacity-50"
             >
               {isApplyingFixAll ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>{isMl ? 'തിരുത്തലുകൾ വരുത്തുന്നു...' : 'Rectifying CAD Overlays...'}</span>
+                  <span>{isMl ? 'തിരുത്തുന്നു...' : 'Auto-Fixing...'}</span>
                 </>
               ) : (
                 <>
                   <Zap className="w-4 h-4 fill-slate-950" />
-                  <span>{isMl ? 'AI ഓട്ടോ-ഫിക്‌സ് & അലൈൻമെന്റ്' : 'Auto-Fix All Redlines'}</span>
+                  <span>{isMl ? 'AI ഓട്ടോ-ഫിക്‌സ്' : 'Auto-Fix All'}</span>
                 </>
               )}
             </button>
 
             <button
               onClick={handleReset}
-              className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 font-semibold text-xs transition-colors cursor-pointer"
+              className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 font-semibold text-xs transition-colors cursor-pointer"
             >
               <RotateCcw className="w-4 h-4" />
               <span>{isMl ? 'റീസെറ്റ്' : 'Reset'}</span>
@@ -210,10 +282,10 @@ export const CADRedlineVisualizer: React.FC<CADRedlineVisualizerProps> = ({
         </div>
       </div>
 
-      {/* Main Studio Grid: Left Visualizer Canvas, Right Issues Inspector */}
+      {/* Main Studio Split-Screen Grid: Left Drawing Viewer (7-8 cols), Right Structured KBR Scorecard (4-5 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Visualizer Interactive Canvas (7 cols on desktop) */}
-        <div className="lg:col-span-8 bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col">
+        {/* LEFT: Drawing Viewer with Green/Red Compliance Bounding Boxes */}
+        <div className="lg:col-span-7 xl:col-span-8 bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col">
           {/* Canvas Controls Header */}
           <div className="p-3.5 sm:p-4 bg-[#080E1A] border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800">
@@ -234,7 +306,7 @@ export const CADRedlineVisualizer: React.FC<CADRedlineVisualizerProps> = ({
                 }`}
               >
                 <Layers className="w-3.5 h-3.5 inline mr-1" />
-                {isMl ? 'ഓവർലേ (Overlay)' : 'Redline Overlay'}
+                {isMl ? 'ഓവർലേ (Overlay)' : 'Overlay'}
               </button>
 
               <button
@@ -251,6 +323,19 @@ export const CADRedlineVisualizer: React.FC<CADRedlineVisualizerProps> = ({
             {/* Layer Filter Toggles */}
             <div className="flex items-center gap-2">
               <button
+                onClick={() => setShowBoundingBoxes(!showBoundingBoxes)}
+                className={`p-1.5 rounded-md border text-xs flex items-center gap-1 transition-colors cursor-pointer ${
+                  showBoundingBoxes
+                    ? 'bg-emerald-950/70 border-emerald-600/60 text-emerald-300'
+                    : 'bg-slate-900 border-slate-800 text-slate-500'
+                }`}
+                title="Toggle Compliance Bounding Boxes"
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{isMl ? 'ബോക്സുകൾ' : 'Bounding Boxes'}</span>
+              </button>
+
+              <button
                 onClick={() => setShowSetbackLines(!showSetbackLines)}
                 className={`p-1.5 rounded-md border text-xs flex items-center gap-1 transition-colors cursor-pointer ${
                   showSetbackLines
@@ -260,7 +345,7 @@ export const CADRedlineVisualizer: React.FC<CADRedlineVisualizerProps> = ({
                 title="Toggle Setback Boundary Guidelines"
               >
                 <Sliders className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">{isMl ? 'സെറ്റ്ബാക്കുകൾ' : 'Setbacks'}</span>
+                <span className="hidden sm:inline">{isMl ? 'സെറ്റ്ബാക്ക്' : 'Setbacks'}</span>
               </button>
 
               <button
@@ -273,7 +358,7 @@ export const CADRedlineVisualizer: React.FC<CADRedlineVisualizerProps> = ({
                 title="Toggle Well & Septic Sanitation Buffer"
               >
                 <Layers className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">{isMl ? 'കിണർ & ടാങ്ക്' : 'Sanitation'}</span>
+                <span className="hidden sm:inline">{isMl ? 'സാനിറ്റേഷൻ' : 'Sanitation'}</span>
               </button>
 
               <button
@@ -294,8 +379,8 @@ export const CADRedlineVisualizer: React.FC<CADRedlineVisualizerProps> = ({
             </div>
           </div>
 
-          {/* Interactive Blueprint Canvas */}
-          <div className="relative p-6 bg-[#040812] flex-1 flex items-center justify-center min-h-[380px] overflow-hidden">
+          {/* Interactive Blueprint Canvas with Red/Green Bounding Boxes */}
+          <div className="relative p-6 bg-[#040812] flex-1 flex items-center justify-center min-h-[420px] overflow-hidden">
             {/* Blueprint Grid pattern */}
             <div
               className="absolute inset-0 opacity-20 pointer-events-none"
@@ -308,7 +393,7 @@ export const CADRedlineVisualizer: React.FC<CADRedlineVisualizerProps> = ({
 
             {/* SVG Visual Blueprint Engine */}
             <div
-              className="relative transition-transform duration-300 w-full max-w-[540px] aspect-[4/3] bg-slate-950/90 border border-cyan-500/30 rounded-xl p-4 shadow-inner"
+              className="relative transition-transform duration-300 w-full max-w-[560px] aspect-[4/3] bg-slate-950/90 border border-cyan-500/30 rounded-xl p-4 shadow-inner"
               style={{ transform: `scale(${zoomLevel / 100})` }}
             >
               <svg viewBox="0 0 300 220" className="w-full h-full">
@@ -324,13 +409,13 @@ export const CADRedlineVisualizer: React.FC<CADRedlineVisualizerProps> = ({
                   strokeDasharray="4 2"
                 />
                 <text x="25" y="24" fill="#64748B" fontSize="7" fontFamily="monospace">
-                  PLOT BOUNDARY ({data.plotAreaCents || 5} Cents)
+                  PLOT BOUNDARY ({data.plotAreaCents || 5} Cents - {data.jurisdiction})
                 </text>
 
                 {/* Road Frontage */}
                 <rect x="20" y="200" width="260" height="15" fill="#1E293B" stroke="#475569" strokeWidth="1" />
-                <text x="110" y="210" fill="#94A3B8" fontSize="6.5" fontWeight="bold" fontFamily="monospace">
-                  ROAD ({data.roadAccessWidthM || 5.0}m Access)
+                <text x="105" y="210" fill="#94A3B8" fontSize="6.5" fontWeight="bold" fontFamily="monospace">
+                  ROAD ({data.roadAccessWidthM || 5.0}m Access Width)
                 </text>
 
                 {/* Building Footprint (Original Defective in Red/Amber) */}
@@ -344,7 +429,7 @@ export const CADRedlineVisualizer: React.FC<CADRedlineVisualizerProps> = ({
                     stroke="#EF4444"
                     strokeWidth="1.8"
                   />
-                  <text x="55" y="32" fill="#EF4444" fontSize="7" fontWeight="bold" fontFamily="sans-serif">
+                  <text x="55" y="30" fill="#EF4444" fontSize="7" fontWeight="bold" fontFamily="sans-serif">
                     BUILDING (Plinth: {data.groundCoverageSqM || 120} m²)
                   </text>
                 </g>
@@ -373,13 +458,13 @@ export const CADRedlineVisualizer: React.FC<CADRedlineVisualizerProps> = ({
                   <>
                     {/* Rear Setback Line */}
                     <line x1="20" y1="35" x2="280" y2="35" stroke="#10B981" strokeWidth="1" strokeDasharray="3 3" />
-                    <text x="210" y="30" fill="#10B981" fontSize="6" fontFamily="monospace">
-                      1.50m KMBR Rear Line
+                    <text x="200" y="30" fill="#10B981" fontSize="6" fontFamily="monospace">
+                      1.50m Mandatory Rear Line
                     </text>
 
                     {/* Front Setback Line */}
                     <line x1="20" y1="165" x2="280" y2="165" stroke="#10B981" strokeWidth="1" strokeDasharray="3 3" />
-                    <text x="205" y="173" fill="#10B981" fontSize="6" fontFamily="monospace">
+                    <text x="195" y="173" fill="#10B981" fontSize="6" fontFamily="monospace">
                       3.00m Front Setback Line
                     </text>
                   </>
@@ -402,7 +487,7 @@ export const CADRedlineVisualizer: React.FC<CADRedlineVisualizerProps> = ({
                       </text>
                       {/* Distance Radius Line */}
                       <line x1="240" y1="45" x2="190" y2="75" stroke="#EF4444" strokeWidth="1" strokeDasharray="2 2" />
-                      <text x="205" y="60" fill="#EF4444" fontSize="5.5" fontWeight="bold">
+                      <text x="202" y="60" fill="#EF4444" fontSize="5.5" fontWeight="bold">
                         5.4m (Violation)
                       </text>
                     </g>
@@ -433,7 +518,7 @@ export const CADRedlineVisualizer: React.FC<CADRedlineVisualizerProps> = ({
                 )}
 
                 {/* Staircase Flight */}
-                <g transform="translate(100, 70)">
+                <g transform="translate(95, 65)">
                   <rect x="0" y="0" width="30" height="40" fill="#1E293B" stroke="#64748B" strokeWidth="1" />
                   <line x1="0" y1="10" x2="30" y2="10" stroke="#475569" strokeWidth="0.8" />
                   <line x1="0" y1="20" x2="30" y2="20" stroke="#475569" strokeWidth="0.8" />
@@ -443,15 +528,57 @@ export const CADRedlineVisualizer: React.FC<CADRedlineVisualizerProps> = ({
                   </text>
                 </g>
 
-                {/* Active Selection Glow Ring */}
+                {/* DYNAMIC GREEN / RED COMPLIANCE BOUNDING BOXES */}
+                {showBoundingBoxes &&
+                  issues.map((iss) => {
+                    const isSelected = selectedIssueId === iss.id;
+                    const isOk = iss.resolved;
+                    const c = isOk ? iss.correctedCoords : iss.coords;
+
+                    return (
+                      <g key={`bbox-${iss.id}`} onClick={() => setSelectedIssueId(iss.id)} className="cursor-pointer">
+                        <rect
+                          x={c.x}
+                          y={c.y}
+                          width={c.width}
+                          height={c.height}
+                          fill={isOk ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.22)'}
+                          stroke={isOk ? '#10B981' : '#EF4444'}
+                          strokeWidth={isSelected ? '2.5' : '1.5'}
+                          strokeDasharray={isSelected ? 'none' : '3 1'}
+                        />
+                        {/* Bounding Box Indicator Tag */}
+                        <rect
+                          x={c.x}
+                          y={Math.max(c.y - 10, 2)}
+                          width={Math.min(c.width, 110)}
+                          height="9"
+                          fill={isOk ? '#065F46' : '#991B1B'}
+                          rx="2"
+                        />
+                        <text
+                          x={c.x + 2}
+                          y={Math.max(c.y - 3, 9)}
+                          fill="#FFFFFF"
+                          fontSize="5"
+                          fontWeight="bold"
+                          fontFamily="sans-serif"
+                        >
+                          {isOk ? '✓ COMPLIANT' : '✕ VIOLATION'}
+                        </text>
+                      </g>
+                    );
+                  })}
+
+                {/* Active Selection Focus Ring */}
                 <rect
-                  x={activeIssue.resolved ? activeIssue.correctedCoords.x : activeIssue.coords.x}
-                  y={activeIssue.resolved ? activeIssue.correctedCoords.y : activeIssue.coords.y}
-                  width={activeIssue.coords.width}
-                  height={activeIssue.coords.height}
+                  x={activeIssue.resolved ? activeIssue.correctedCoords.x - 2 : activeIssue.coords.x - 2}
+                  y={activeIssue.resolved ? activeIssue.correctedCoords.y - 2 : activeIssue.coords.y - 2}
+                  width={activeIssue.coords.width + 4}
+                  height={activeIssue.coords.height + 4}
                   fill="none"
-                  stroke={activeIssue.resolved ? '#10B981' : '#00F0FF'}
-                  strokeWidth="1.5"
+                  stroke="#00F0FF"
+                  strokeWidth="1.8"
                   className="animate-pulse"
                 />
               </svg>
@@ -469,41 +596,64 @@ export const CADRedlineVisualizer: React.FC<CADRedlineVisualizerProps> = ({
               </span>
             </div>
 
-            <div className="flex items-center gap-4 font-mono text-[11px]">
+            <div className="flex items-center gap-3 font-mono text-[11px]">
               <span className="text-red-400 font-semibold">
-                ● {issues.filter((i) => !i.resolved).length} {isMl ? 'അപാകതകൾ' : 'Redlines Pending'}
+                ● {pendingCount} {isMl ? 'അപാകതകൾ' : 'Violations'}
               </span>
               <span className="text-emerald-400 font-semibold">
-                ● {issues.filter((i) => i.resolved).length} {isMl ? 'തിരുത്തിയത്' : 'Rectified'}
+                ● {resolvedCount} {isMl ? 'അനുയോജ്യം' : 'Compliant'}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Issues List & Remedy Inspector (5 cols on desktop) */}
-        <div className="lg:col-span-4 space-y-4 flex flex-col">
-          {/* Header Card */}
+        {/* RIGHT: Structured KBR Scorecard & Violation Breakdown */}
+        <div className="lg:col-span-5 xl:col-span-4 space-y-4 flex flex-col">
+          {/* KBR Scorecard Summary Card */}
           <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <FileCheck className="w-5 h-5 text-cyan-400" />
+                <ShieldCheck className="w-5 h-5 text-cyan-400" />
                 <h3 className="text-sm sm:text-base font-bold text-white">
-                  {isMl ? 'കണ്ടെത്തിയ തിരുത്തലുകൾ' : 'Detected Redline Violations'}
+                  {isMl ? 'KBR കംപ്ലയൻസ് സ്കോർകാർഡ്' : 'Structured KBR Scorecard'}
                 </h3>
               </div>
-              <span className="px-2 py-0.5 rounded-full bg-cyan-950 border border-cyan-600/60 text-cyan-300 text-xs font-bold">
-                {issues.length} Items
+              <span
+                className={`px-2.5 py-0.5 rounded-full text-xs font-mono font-bold ${
+                  scorePercent === 100
+                    ? 'bg-emerald-950 text-emerald-300 border border-emerald-500'
+                    : scorePercent >= 60
+                    ? 'bg-amber-950 text-amber-300 border border-amber-500'
+                    : 'bg-rose-950 text-rose-300 border border-rose-500'
+                }`}
+              >
+                {scorePercent}% SCORE
               </span>
             </div>
 
-            <p className="text-xs text-slate-400">
-              {isMl
-                ? 'താഴെയുള്ള ഓരോ ഇനത്തിലും ക്ലിക്ക് ചെയ്ത് തിരുത്തൽ നിർദ്ദേശങ്ങൾ പരിശോധിക്കുക.'
-                : 'Select an issue to inspect code citations, dimensional conflicts, and AI auto-correction offsets.'}
-            </p>
+            {/* Metric Micro-Bar */}
+            <div className="w-full bg-slate-950 rounded-full h-2 overflow-hidden border border-slate-800">
+              <div
+                className={`h-full transition-all duration-500 ${
+                  scorePercent === 100 ? 'bg-emerald-400' : 'bg-gradient-to-r from-rose-500 to-amber-400'
+                }`}
+                style={{ width: `${scorePercent}%` }}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-xs font-mono pt-1">
+              <div className="bg-slate-950 p-2 rounded-lg border border-slate-800 text-slate-300">
+                <span className="text-[10px] text-slate-500 uppercase block">Rule Authority</span>
+                <strong className="text-cyan-300">{data.jurisdiction === 'KMBR' ? 'KMBR 2019 (Urban)' : 'KPBR 2019 (Rural)'}</strong>
+              </div>
+              <div className="bg-slate-950 p-2 rounded-lg border border-slate-800 text-slate-300">
+                <span className="text-[10px] text-slate-500 uppercase block">Total Checks</span>
+                <strong>{issues.length} Parameters</strong>
+              </div>
+            </div>
           </div>
 
-          {/* Issue Cards Stack */}
+          {/* Violation Breakdown List */}
           <div className="space-y-2.5 flex-1 overflow-y-auto max-h-[380px] pr-1">
             {issues.map((issue) => (
               <div
@@ -513,7 +663,7 @@ export const CADRedlineVisualizer: React.FC<CADRedlineVisualizerProps> = ({
                   selectedIssueId === issue.id
                     ? 'bg-cyan-950/40 border-cyan-500 shadow-[0_0_15px_rgba(0,229,255,0.15)]'
                     : issue.resolved
-                    ? 'bg-slate-900/50 border-emerald-700/40 opacity-75'
+                    ? 'bg-slate-900/50 border-emerald-700/40 opacity-80'
                     : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
                 }`}
               >
@@ -523,7 +673,7 @@ export const CADRedlineVisualizer: React.FC<CADRedlineVisualizerProps> = ({
                       {issue.resolved ? (
                         <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                       ) : (
-                        <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                        <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
                       )}
                       <span className="text-xs font-bold text-white">
                         {isMl ? issue.titleMl : issue.titleEn}
@@ -550,7 +700,7 @@ export const CADRedlineVisualizer: React.FC<CADRedlineVisualizerProps> = ({
                   </button>
                 </div>
 
-                {/* Expand active card details */}
+                {/* Selected Issue Inspection Box */}
                 {selectedIssueId === issue.id && (
                   <div className="mt-3 pt-3 border-t border-slate-800/80 space-y-2 text-xs">
                     <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
@@ -565,7 +715,7 @@ export const CADRedlineVisualizer: React.FC<CADRedlineVisualizerProps> = ({
                     </div>
 
                     <div className="bg-slate-950/70 p-2.5 rounded-lg border border-slate-800 text-slate-300 leading-relaxed text-[11px]">
-                      <span className="font-bold text-cyan-400 mr-1">{isMl ? 'തിരുത്തൽ നിർദ്ദേശം:' : 'AI Remedy:'}</span>
+                      <span className="font-bold text-cyan-400 mr-1">{isMl ? 'പരിഹാര നിർദ്ദേശം:' : 'Rectification:'}</span>
                       {isMl ? issue.fixDescriptionMl : issue.fixDescriptionEn}
                     </div>
                   </div>
@@ -577,13 +727,14 @@ export const CADRedlineVisualizer: React.FC<CADRedlineVisualizerProps> = ({
           {/* Quick Navigate to Full Scrutiny Report */}
           <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
             <div className="text-xs text-slate-300 font-semibold">
-              {isMl ? 'പൂർണ്ണമായ ഡിഫെക്ട്-ഫ്രീ K-Smart റിപ്പോർട്ട് തയ്യാറാണ്' : 'Ready to export certified LSGD compliance schedule?'}
+              {isMl ? 'പൂർണ്ണമായ KBR സ്ക്രൂട്ടിനി റിപ്പോർട്ട് ഡൗൺലോഡ് ചെയ്യാം' : 'Ready to export official KBR summary report?'}
             </div>
             <button
               onClick={() => onNavigateTab('report')}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-slate-900 hover:bg-slate-800 border border-cyan-500/50 text-cyan-300 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-lg text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer shadow-md"
             >
-              <span>{isMl ? '5. പെർമിറ്റ് റിപ്പോർട്ട് കാണുക' : 'Generate Permit Report'}</span>
+              <FileText className="w-4 h-4" />
+              <span>{isMl ? 'റിപ്പോർട്ട് കാണുക & എക്സ്പോർട്ട് ചെയ്യുക' : 'Generate & Export Official Report'}</span>
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>

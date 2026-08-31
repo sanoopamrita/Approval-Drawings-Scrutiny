@@ -17,6 +17,7 @@ import {
   Info,
   Check,
   FileCheck2,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { BuildingFormData, Language, ScrutinyCheckResult, ScrutinyReportSummary, UploadedDrawing } from '../types';
 import { VinyasaLogo } from './VinyasaLogo';
@@ -83,6 +84,66 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
     }
   };
 
+  const handleDownloadCsv = () => {
+    try {
+      const rows: string[][] = [
+        ['VINYASA TECHNICAL COMPLIANCE SCRUTINY REPORT - KERALA BUILDING RULES'],
+        ['Reference ID', summary.scrutinyReferenceId],
+        ['Jurisdiction', data.jurisdiction],
+        ['Local Body', data.localBodyName || 'LSGD Authority'],
+        ['Project Name', data.projectName || 'Proposed Building'],
+        ['Applicant Name', data.applicantName || 'Applicant'],
+        ['Survey No / Ward', `${data.surveyNumber || '-'} / Ward ${data.wardNumber || '-'}`],
+        ['Occupancy Group', `Group ${data.occupancyGroup}`],
+        ['Prepared By', data.preparedByName || '-'],
+        ['Overall Status', summary.overallStatus],
+        ['Total Checks', summary.totalChecks.toString()],
+        ['Passed', summary.passedCount.toString()],
+        ['Violations / Failed', summary.failedCount.toString()],
+        ['Warnings', summary.warningCount.toString()],
+        ['Generated Date', new Date(summary.scrutinyTimestamp).toISOString()],
+        [],
+        ['AREA & METRIC SUMMARY', '', '', ''],
+        ['Parameter', 'Proposed / Submitted', 'Statutory Limit / Permissible', 'Compliance Status'],
+        ['Plot Area', `${data.plotAreaSqM.toFixed(2)} m² (${data.plotAreaCents} Cents)`, data.plotType === 'small_plot' ? 'Small Plot (<=125 m²)' : 'Standard', 'Valid'],
+        ['Road Access Width', `${data.roadAccessWidthM.toFixed(2)} m`, `Min requirement for Group ${data.occupancyGroup}`, data.roadAccessWidthM >= 3.0 ? 'Pass' : 'Deficient'],
+        ['Ground Coverage', `${summary.providedCoveragePercent.toFixed(2)}% (${data.groundCoverageSqM.toFixed(2)} m²)`, `Max ${summary.maxPermissibleCoveragePercent}%`, summary.providedCoveragePercent <= summary.maxPermissibleCoveragePercent ? 'Pass' : 'Excess Coverage'],
+        ['Floor Area Ratio (FAR)', `${summary.providedFar.toFixed(3)} (${data.totalFloorAreaSqM.toFixed(2)} m²)`, `Base: ${summary.permissibleFarWithoutFee} | Max: ${summary.maxPermissibleFarWithFee}`, summary.providedFar <= summary.permissibleFarWithoutFee ? 'Within Base FAR' : summary.providedFar <= summary.maxPermissibleFarWithFee ? 'Purchasable FAR' : 'Exceeds Max FAR'],
+        ['Building Height', `${data.buildingHeightM.toFixed(2)} m (${data.numberOfFloors} Floors)`, '1.5 × (Road + Setback)', 'Verified'],
+        ['Car Parking Slots', `${data.carParkingProvided} Slot(s)`, `Required: ${summary.requiredCarParking} Slot(s)`, data.carParkingProvided >= summary.requiredCarParking ? 'Pass' : 'Deficit'],
+        ['RWH Tank Capacity', `${data.rwhTankCapacityLiters} L`, `Required: ${summary.requiredRwhCapacityLiters} L`, data.rwhTankCapacityLiters >= summary.requiredRwhCapacityLiters ? 'Pass' : 'Deficit'],
+        [],
+        ['DETAILED RULE SCRUTINY CHECKLIST', '', '', '', '', ''],
+        ['Rule Ref (KMBR)', 'Rule Ref (KPBR)', 'Title', 'Submitted Value', 'Required Standard', 'Status', 'Technical Note', 'Rectification Action'],
+      ];
+
+      checks.forEach((c) => {
+        rows.push([
+          `"${c.ruleNoKmbr.replace(/"/g, '""')}"`,
+          `"${c.ruleNoKpbr.replace(/"/g, '""')}"`,
+          `"${c.titleEn.replace(/"/g, '""')}"`,
+          `"${c.providedValue.replace(/"/g, '""')}"`,
+          `"${c.requiredValue.replace(/"/g, '""')}"`,
+          `"${c.status.toUpperCase()}"`,
+          `"${(c.technicalNoteEn || '').replace(/"/g, '""')}"`,
+          `"${(c.rectificationAdviceEn || '').replace(/"/g, '""')}"`,
+        ]);
+      });
+
+      const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + rows.map((e) => e.join(',')).join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      const cleanProjectName = data.projectName ? data.projectName.replace(/\s+/g, '_') : 'Project';
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', `VINYASA_${data.jurisdiction}_${cleanProjectName}_Scrutiny_Schedule.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error('Error generating spreadsheet:', err);
+    }
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -143,6 +204,19 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
             <span>{isMl ? 'പ്രിന്റ്' : 'Print'}</span>
           </button>
 
+          {/* Spreadsheet CSV Export */}
+          <button
+            type="button"
+            id="download-csv-btn"
+            onClick={handleDownloadCsv}
+            className="flex items-center gap-1.5 text-xs font-bold bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/50 px-3.5 py-2 rounded-xl transition-all cursor-pointer shadow-[0_0_12px_rgba(16,185,129,0.2)]"
+            title="Download CSV / Spreadsheet"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+            <span>{isMl ? 'സ്പ്രെഡ്ഷീറ്റ് (Excel/CSV)' : 'Export Spreadsheet'}</span>
+          </button>
+
+          {/* PDF Export */}
           <button
             type="button"
             id="download-pdf-btn"
