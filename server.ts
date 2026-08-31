@@ -113,8 +113,8 @@ class AsyncSemaphore {
   }
 }
 
-// Max 10 concurrent heavy Gemini API calls to prevent thread/socket exhaustion
-const aiSemaphore = new AsyncSemaphore(10);
+// Max 30 concurrent heavy Gemini API calls to prevent thread/socket exhaustion with non-blocking queueing
+const aiSemaphore = new AsyncSemaphore(30);
 
 // 3. Sliding Window Rate Limiter (per IP)
 interface RateLimitEntry {
@@ -123,7 +123,7 @@ interface RateLimitEntry {
 }
 const rateLimitMap = new Map<string, RateLimitEntry>();
 
-function checkRateLimit(ip: string, limit: number = 120, windowMs: number = 60 * 1000): boolean {
+function checkRateLimit(ip: string, limit: number = 240, windowMs: number = 60 * 1000): boolean {
   const now = Date.now();
   const entry = rateLimitMap.get(ip);
 
@@ -165,13 +165,25 @@ function getGeminiClient(): GoogleGenAI | null {
     return null;
   }
   if (!genAIClient) {
-    genAIClient = new GoogleGenAI({ apiKey });
+    genAIClient = new GoogleGenAI({
+      apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        },
+      },
+    });
   }
   return genAIClient;
 }
 
 const SYSTEM_INSTRUCTION_KERALA_RULES = `
-You are വിന്യാസ AI ചട്ട ഉപദേശകൻ (Vinyasa Regulatory Co-Pilot), the authoritative Senior Architectural & Statutory Compliance AI expert specializing in Kerala Building Regulations and related state/national codes.
+You are വിന്യാസ (Vinyasa AI), an elite AI consultant functioning with the combined expertise of a Veteran Government Chief Engineer (LSGD / PWD / Fire & Rescue Services / Town Planning) and a Senior AEC IT & AI Systems Architect.
+
+CORE IDENTITY & EXPERTISE:
+1. **Government Chief Engineer Authority**: You possess profound mastery over all Kerala Building Rules (KMBR 2019, KPBR 2019, and all latest LSGD Gazette amendments), National Building Code (NBC 2016 Part 4 Fire & Life Safety), Kerala Education Rules (KER Chapter IV), Coastal Regulation Zone (CRZ 2019 Notification & KCZMA norms), Kerala Conservation of Paddy Land & Wetland Act (Form 5 & Form 6 under Section 27A), KSPCB Environmental clearances, AAI NOCAS aeronautical height limits, and K-Smart online building permit validation.
+2. **Advanced IT & AI Technologist**: You leverage real-time Google Search grounding to verify the latest government orders (G.O.), circulars, court rulings, and technical amendments across the internet. You understand CAD layers, automated plan scrutiny algorithms, and digital workflow optimization.
+3. **Deep Human Reasoning & Empathy**: You think methodically and converse warmly like a seasoned human senior engineer consulting a client face-to-face. You carefully evaluate every query, measure constraints, calculate setbacks/FAR/coverage/clearances mathematically, identify hidden pitfalls, and deliver authoritative, trustworthy, and actionable guidance.
 
 MASTER STATUTORY KNOWLEDGE DOMAINS:
 1. KERALA BUILDING RULES (KMBR 2019 & KPBR 2019):
@@ -239,14 +251,21 @@ MASTER STATUTORY KNOWLEDGE DOMAINS:
    - CPWD / Kerala PWD Delhi Schedule of Rates (DSR) estimation norms.
 
 OPERATIONAL RULES FOR RESPONSES:
-- **Language Precision**: If user writes in Malayalam (മലയാളം), reply in flawless, professional, authoritative Malayalam with clear AEC terminology. If user writes in English, reply in crisp architectural English.
+- **Greeting Standard**:
+  * If the user begins a conversation with a greeting or hello, respond warmly: "നമസ്കാരം, ഞാൻ വിന്യാസ, നിങ്ങൾക്ക് എന്ത് സഹായമാണ് ചെയ്യേണ്ടത്?" (or in English: "Namaskaram! I am Vinyasa. How may I assist you today?").
+- **Language Strict Mirroring (Absolute Rule)**:
+  * If the user's latest query is in Malayalam (or written in Malayalam script/words), you MUST reply ONLY in natural, fluent Malayalam (മലയാളം).
+  * If the user's query is in English, you MUST reply ONLY in English.
+  * Never mix languages unnaturally or reply in English when asked in Malayalam.
+- **Expert Analysis & Human Communication**:
+  * Think, evaluate, and explain clearly like an experienced human Chief Engineer.
+  * Provide the exact rule numbers, precise measurements, and statutory requirements clearly.
+  * Be helpful, mathematically accurate, and authoritative.
 - **Multimodal Visual Analysis (When photo/drawing/notice is attached)**:
-  Provide a clean, structured report:
-  1. 📋 **കണ്ടെത്തലുകൾ (Analysis Findings)**
-  2. ✅ **അനുയോജ്യമായവ (Compliant Items)**
-  3. ⚠️ **ചട്ടലംഘനങ്ങൾ / ന്യൂനതകൾ (Violations with exact Rule citation)**
-  4. 🛠️ **തിരുത്തൽ നിർദ്ദേശങ്ങൾ & നിയമപരമായ മറുപടി (Exact CAD Action Steps & Statutory Reply Draft)**
-- **Concise & Direct**: Keep answers crisp, highly readable, point-by-point, with zero generic conversational fluff.
+  * If an image is provided, provide a comprehensive expert appraisal:
+    1. 📋 **കണ്ടെത്തൽ (Key Findings)**
+    2. ⚠️ **ചട്ടലംഘനം / ന്യൂനത (Violation with exact Rule citation)**
+    3. 🛠️ **തിരുത്തൽ നടപടി (Direct Action Step)**
 `;
 
 async function startServer() {
@@ -306,434 +325,206 @@ async function startServer() {
     language: string
   ): string {
     const isMl = language === 'ml';
-    const q = (query || '').toLowerCase();
+    const q = (query || '').toLowerCase().trim();
+
+    if (
+      q === 'ഹലോ' ||
+      q === 'ഹായ്' ||
+      q === 'നമസ്കാരം' ||
+      q.includes('നമസ്കാരം') ||
+      q === 'hello' ||
+      q === 'hi' ||
+      q === 'hey' ||
+      q.includes('who are you') ||
+      q.includes('ആരാണ്') ||
+      q.includes('നിങ്ങൾ ആരാണ്')
+    ) {
+      return isMl
+        ? `നമസ്കാരം, ഞാൻ വിന്യാസ, നിങ്ങൾക്ക് എന്ത് സഹായമാണ് ചെയ്യേണ്ടത്?
+
+കേരള കെട്ടിട നിർമ്മാണ ചട്ടങ്ങൾ (**KMBR 2019 & KPBR 2019**), ഫയർ & ലൈഫ് സേഫ്റ്റി (**NBC 2016 Part 4**), സ്കൂൾ ചട്ടങ്ങൾ (**KER**), തീരദേശ പരിപാലന ചട്ടങ്ങൾ (**CRZ 2019**), നെൽവയൽ-തണ്ണീർത്തട നിയമം, കെ-സ്മാർട്ട് (**K-Smart**) ഓൺലൈൻ പെർമിറ്റ്, മുനിസിപ്പാലിറ്റി/പഞ്ചായത്ത് ന്യൂനത നോട്ടീസ് തിരുത്തലുകൾ എന്നിവയിലെല്ലാം ഒരു സീനിയർ ഗവൺമെന്റ് ചീഫ് എൻജിനീയറുടെ സൂക്ഷ്മതയോടെ ഞാൻ നിങ്ങളെ സഹായിക്കാം.
+
+നിങ്ങളുടെ സംശയം ചോദിക്കുകയോ പ്ലാനിന്റെ ഫോട്ടോ അറ്റാച്ച് ചെയ്യുകയോ ചെയ്യാം.`
+        : `Namaskaram! I am Vinyasa. How may I assist you today?
+
+I provide authoritative statutory architectural & civil engineering consultancy grounded strictly in **KMBR 2019 & KPBR 2019**, Fire & Life Safety (**NBC 2016 Part 4**), Kerala Education Rules (**KER**), Coastal Regulation Zone (**CRZ 2019**), Kerala Paddy & Wetland Act, and **K-Smart** online fast-track permitting.
+
+Feel free to ask your specific query or attach a drawing/objection notice!`;
+    }
 
     if (q.includes('സെറ്റ്ബാക്ക്') || q.includes('setback') || q.includes('അകലം') || q.includes('clearance') || q.includes('മുൻവശം') || q.includes('പിൻവശം')) {
       if (isMl) {
-        return `### 🏛️ കേരള കെട്ടിട നിർമ്മാണ ചട്ടങ്ങൾ: സെറ്റ്ബാക്ക് (Setback) മാനദണ്ഡങ്ങൾ
+        return `**സെറ്റ്ബാക്ക് മാനദണ്ഡങ്ങൾ (KMBR 2019 റൂൾ 27 / KPBR 2019 റൂൾ 25, Table 4):**
 
-**ചട്ട പരാമർശം:** KMBR 2019 ചട്ടം 27 / KPBR 2019 ചട്ടം 25 (Table 4)
+- **സാധാരണ പാർപ്പിട വീടുകൾ (10 മീറ്റർ വരെ ഉയരം):**
+  * **മുൻവശം (Front):** കുറഞ്ഞത് **3.00 മീറ്റർ** (റോഡ് വികസന ലൈനിൽ നിന്ന്).
+  * **പിൻവശം (Rear):** പഞ്ചായത്തിൽ **1.50 മീറ്റർ**, മുനിസിപ്പാലിറ്റിയിൽ **2.00 മീറ്റർ**.
+  * **വശങ്ങൾ (Sides):** ഒരു വശത്ത് **1.20 മീറ്റർ**, മറുവശത്ത് **1.00 മീറ്റർ**.
 
-1. **സാധാരണ പാർപ്പിട കെട്ടിടങ്ങൾ (Group A1 - 10 മീറ്റർ വരെ ഉയരം):**
-   - **മുൻവശ സെറ്റ്ബാക്ക് (Front):** കുറഞ്ഞത് **3.00 മീറ്റർ** (റോഡ് വികസന ലൈനിൽ നിന്ന്).
-   - **പിൻവശ സെറ്റ്ബാക്ക് (Rear):** പഞ്ചായത്തിൽ **1.50 മീറ്റർ**, മുനിസിപ്പാലിറ്റിയിൽ **2.00 മീറ്റർ** (ശരാശരി 2.0 മീറ്റർ).
-   - **വശങ്ങളിലെ സെറ്റ്ബാക്കുകൾ (Sides):** ഒരു വശത്ത് കുറഞ്ഞത് **1.20 മീറ്ററും**, മറുവശത്ത് **1.00 മീറ്ററും**.
-
-2. **ചെറിയ പ്ലോട്ടുകൾക്കുള്ള പ്രത്യേക ഇളവ് (റൂൾ 60 / 62 - പ്ലോട്ട് <= 3 സെന്റ് / 125 ച.മീ):**
-   - മുൻവശം: **1.80 മീറ്റർ**
-   - പിൻവശം: **1.00 മീറ്റർ**
-   - വശങ്ങൾ: ഒരു വശത്ത് **0.90 മീറ്ററും**, മറുവശത്ത് **0.60 മീറ്ററും** മതിയാകും.
-
----
-💡 **നിങ്ങളുടെ പ്ലോട്ടിന് കൃത്യമായ കണക്കുകൾ നിർണ്ണയിക്കാൻ ദയവായി താഴെ പറയുന്നവ വ്യക്തമാക്കുക:**
-1. നിങ്ങളുടെ പ്ലോട്ടിന്റെ വിസ്തീർണ്ണം എത്ര സെന്റ് / ച.മീറ്റർ ആണ്?
-2. പ്ലോട്ട് സ്ഥിതി ചെയ്യുന്നത് ഗ്രാമപഞ്ചായത്തിലാണോ അതോ മുനിസിപ്പാലിറ്റി / കോർപ്പറേഷനിലാണോ?
-3. എത്ര നിലകളും (Floors) എത്ര ഉയരവുമാണ് (Height in meters) കെട്ടിടത്തിന് ഉദ്ദേശിക്കുന്നത്?`;
+- **ചെറിയ പ്ലോട്ടുകൾ (റൂൾ 60 / 62 - വിസ്തീർണ്ണം <= 3 സെന്റ് / 125 ച.മീ):**
+  * മുൻവശം: **1.80 മീറ്റർ** | പിൻവശം: **1.00 മീറ്റർ** | വശങ്ങൾ: **0.90 മീറ്റർ & 0.60 മീറ്റർ**.`;
       } else {
-        return `### 🏛️ Kerala Building Rules: Setback Clearance Standards
+        return `**Setback Clearances (KMBR 2019 Rule 27 / KPBR 2019 Rule 25, Table 4):**
 
-**Statutory Citations:** KMBR 2019 Rule 27 / KPBR 2019 Rule 25 (Table 4)
+- **Standard Residential Dwellings (Height <= 10m):**
+  * **Front:** Minimum **3.00 meters** from road boundary line.
+  * **Rear:** Minimum **1.50 meters** (KPBR) / **2.00 meters** (KMBR).
+  * **Sides:** Minimum **1.20 meters** on one side and **1.00 meter** on the other.
 
-1. **Standard Residential Dwellings (Group A1 - Up to 10m Height):**
-   - **Front Setback:** Minimum **3.00 meters** from the proposed road widening line.
-   - **Rear Setback:** Minimum **1.50 meters** (KPBR) / **2.00 meters** (KMBR).
-   - **Side Setbacks:** Minimum **1.20 meters** on one side and **1.00 meter** on the other side.
-
-2. **Small Plot Concessions (Rule 60/62 - Plots <= 125 sq.m / 3 Cents):**
-   - Front Setback: **1.80 meters**
-   - Rear Setback: **1.00 meter**
-   - Side Setbacks: **0.90 meters** & **0.60 meters**
-
----
-💡 **To determine the exact mathematical compliance for your site, please clarify:**
-1. What is the total plot area (in Cents or sq.meters)?
-2. Is the site located in a Grama Panchayat (KPBR) or Municipality / Corporation (KMBR)?
-3. What is the proposed building height (in meters) and number of storeys?`;
+- **Small Plots (Rule 60/62 - Area <= 125 sq.m / 3 Cents):**
+  * Front: **1.80m** | Rear: **1.00m** | Sides: **0.90m & 0.60m**.`;
       }
     }
 
     if (q.includes('കിണർ') || q.includes('well') || q.includes('സെപ്റ്റിക്') || q.includes('septic') || q.includes('സോക്ക്') || q.includes('soak')) {
       if (isMl) {
-        return `### 💧 കുടിവെള്ള കിണറും സാനിറ്റേഷൻ അകലങ്ങളും (Rule 47)
+        return `**കിണർ & സെപ്റ്റിക് ടാങ്ക് അകലങ്ങൾ (KMBR / KPBR 2019 ചട്ടം 47):**
 
-**ചട്ട പരാമർശം:** KPBR 2019 / KMBR 2019 ചട്ടം 47
-
-1. **കുടിവെള്ള കിണറിൽ നിന്നുള്ള സുരക്ഷിത അകലം:**
-   - കുടിവെള്ള കിണറും **സെപ്റ്റിക് ടാങ്ക് / സോക്ക് പിറ്റ് / ലീച്ച് പിറ്റ് / വേസ്റ്റ് വാട്ടർ ട്രീറ്റ്മെന്റ്** എന്നിവയും തമ്മിൽ **കുറഞ്ഞത് 7.50 മീറ്റർ (750 cm)** തിരശ്ചീന അകലം (Horizontal distance) ഉണ്ടായിരിക്കണം.
-   - അയൽപക്കത്തെ പ്ലോട്ടിലെ കിണറുണ്ടെങ്കിലും ഈ 7.50 മീറ്റർ ദൂരപരിധി നിർബന്ധമാണ്.
-
-2. **അതിർത്തിയിൽ നിന്നുള്ള അകലം (Boundary Clearance):**
-   - സെപ്റ്റിക് ടാങ്കിന്റെയും സോക്ക് പിറ്റിന്റെയും ഭിത്തി പ്ലോട്ട് അതിർത്തിയിൽ നിന്ന് കുറഞ്ഞത് **1.20 മീറ്റർ** അകലത്തിൽ സ്ഥാപിക്കണം.
-   - അയൽവാസിയുടെ രേഖാമൂലമുള്ള സമ്മതപത്രം (Consent letter) ഉണ്ടെങ്കിൽ അതിർത്തിയിൽ നിന്ന് 0.60 മീറ്റർ വരെയാക്കി കുറയ്ക്കാവുന്നതാണ്.
-
-3. **കിണറും അതിർത്തിയും:**
-   - തുറന്ന കിണറിന്റെ ആൾമറ അതിർത്തിയിൽ നിന്ന് കുറഞ്ഞത് **1.50 മീറ്റർ** വിട്ട് നിർമ്മിക്കേണ്ടതാണ്.
-
----
-💡 **നിങ്ങളുടെ പ്ലാനിൽ ഇത് കൃത്യമായി പരിശോധിക്കാൻ ദയവായി വ്യക്തമാക്കുക:**
-1. പ്ലോട്ടിൽ നിർദ്ദിഷ്ട കിണർ കൂടാതെ അയൽവാസിയുടെ പ്ലോട്ടിൽ അതിർത്തിയോട് ചേർന്ന് കിണർ ഉണ്ടോ?
-2. സെപ്റ്റിക് ടാങ്കിന് പകരം ബയോ-ഡൈജസ്റ്റർ ടാങ്ക് (Bio-digester) ആണോ ഉപയോഗിക്കുന്നത്?`;
+- **കിണറും സെപ്റ്റിക് ടാങ്കും തമ്മിലുള്ള അകലം:** കുടിവെള്ള കിണറിൽ നിന്ന് സെപ്റ്റിക് ടാങ്ക് / സോക്ക് പിറ്റ് / ലീച്ച് പിറ്റിലേക്ക് കുറഞ്ഞത് **7.50 മീറ്റർ** (750 cm) തിരശ്ചീന അകലം നിർബന്ധമാണ്.
+- **അതിർത്തിയിൽ നിന്നുള്ള അകലം:** സെപ്റ്റിക് ടാങ്ക് / സോക്ക് പിറ്റ് ഭിത്തി പ്ലോട്ട് അതിർത്തിയിൽ നിന്ന് കുറഞ്ഞത് **1.20 മീറ്റർ** വിട്ട് സ്ഥാപിക്കണം (അയൽവാസിയുടെ സമ്മതപത്രമുണ്ടെങ്കിൽ 0.60 മീറ്റർ).
+- **കിണറും അതിർത്തിയും:** തുറന്ന കിണറിന്റെ ആൾമറ അതിർത്തിയിൽ നിന്ന് കുറഞ്ഞത് **1.50 മീറ്റർ** വിട്ടിരിക്കണം.`;
       } else {
-        return `### 💧 Open Well & Septic Tank Clearances (Rule 47)
+        return `**Open Well & Septic Clearances (KMBR / KPBR 2019 Rule 47):**
 
-**Statutory Citations:** KMBR / KPBR 2019 Rule 47 (Sanitation Standards)
-
-1. **Clearance to Drinking Water Source:**
-   - Minimum clear horizontal distance between an open/bore drinking well and a septic tank, soak pit, or dispersion trench is **7.50 meters**.
-   - This 7.50m radius applies equally across property boundaries to adjacent plots.
-
-2. **Clearance to Property Boundaries:**
-   - Septic tanks and soak pits must maintain at least **1.20 meters** clearance from all plot boundaries.
-
----
-💡 **To verify your layout, please clarify:**
-1. What is the measured distance between your proposed septic tank location and any existing wells on neighboring plots?
-2. Are you using a conventional brick septic tank or an approved bio-sewage treatment unit?`;
+- **Well to Septic Tank Clearance:** Minimum **7.50 meters** clear horizontal distance between any drinking water well and septic tank/soak pit/leach pit.
+- **Boundary Clearance:** Septic tank must be minimum **1.20 meters** from plot boundaries (0.60m with neighbor's written consent).
+- **Well Boundary Buffer:** Well wall must maintain minimum **1.50 meters** from property boundary.`;
       }
     }
 
     if (q.includes('ചെറിയ പ്ലോട്ട്') || q.includes('small plot') || q.includes('3 cent') || q.includes('3 സെന്റ്') || q.includes('125') || q.includes('റൂൾ 60') || q.includes('rule 60') || q.includes('rule 62')) {
       if (isMl) {
-        return `### 📐 ചെറിയ പ്ലോട്ടുകൾക്കുള്ള പ്രത്യേക ആനുകൂല്യങ്ങൾ (Small Plot Concessions)
+        return `**ചെറിയ പ്ലോട്ടുകൾക്കുള്ള ഇളവുകൾ (KMBR റൂൾ 60 / KPBR റൂൾ 62 - വിസ്തീർണ്ണം <= 125 ച.മീ / 3 സെന്റ്):**
 
-**ചട്ട പരാമർശം:** KMBR 2019 ചട്ടം 60 / KPBR 2019 ചട്ടം 62
-
-**യോഗ്യത:** 125 ചതുരശ്ര മീറ്റർ (ഏകദേശം 3.08 സെന്റ്) അല്ലെങ്കിൽ അതിൽ താഴെ വിസ്തീർണ്ണമുള്ള പ്ലോട്ടുകൾ.
-
-1. **സെറ്റ്ബാക്ക് ഇളവുകൾ:**
-   - **മുൻവശം (Front Setback):** സാധാരണ 3.0 മീറ്ററിന് പകരം **1.80 മീറ്റർ** മതി.
-   - **പിൻവശം (Rear Setback):** **1.00 മീറ്റർ** മതി (സാധാരണ 1.5 - 2.0 മീ).
-   - **വശം 1 (Side 1):** **0.90 മീറ്റർ**
-   - **വശം 2 (Side 2):** **0.60 മീറ്റർ** (അയൽവാസിയുടെ സമ്മതപത്രം ഉണ്ടെങ്കിൽ അതിർത്തിയോട് ചേർത്ത് ഭിത്തി നിർമ്മിക്കാം).
-
-2. **ഗ്രൗണ്ട് കവറേജ് & FAR:**
-   - പരമാവധി അനുവദനീയമായ ഗ്രൗണ്ട് കവറേജ് **75%** വരെ ഉയർത്താം (സാധാരണ 60-65%).
-   - പരമാവധി ഉയരം: സാധാരണയായി **10 മീറ്റർ** (G+2 നിലകൾ).
-
-3. **കാർ പാർക്കിംഗ്:**
-   - 150 ചതുരശ്ര മീറ്ററിൽ താഴെയുള്ള വീടുകൾക്ക് പാർക്കിംഗ് സ്ഥലം നിർബന്ധമില്ല.
-
----
-💡 **കൂടുതൽ വ്യക്തതയ്ക്കായി ദയവായി പറയുക:**
-1. നിങ്ങളുടെ പ്ലോട്ടിന്റെ ആധാര പ്രകാരമുള്ള കൃത്യമായ വിസ്തീർണ്ണം എത്രയാണ്?
-2. കെട്ടിടത്തിന്റെ മൊത്തം ബിൽറ്റ്-അപ്പ് ഏരിയ (Built-up area) എത്ര ചതുരശ്ര മീറ്ററാണ് പ്ലാൻ ചെയ്യുന്നത്?`;
+- **സെറ്റ്ബാക്കുകൾ:** മുൻവശം **1.80 മീറ്റർ**, പിൻവശം **1.00 മീറ്റർ**, വശങ്ങളിൽ **0.90 മീറ്ററും 0.60 മീറ്ററും** (അയൽവാസിയുടെ സമ്മതമുണ്ടെങ്കിൽ അതിർത്തിയോട് ചേർത്ത് നിർമ്മിക്കാം).
+- **ഗ്രൗണ്ട് കവറേജ്:** പരമാവധി **75%** വരെ അനുവദനീയം.
+- **പാർക്കിംഗ്:** 150 ച.മീറ്ററിൽ താഴെയുള്ള വീടുകൾക്ക് കാർ പാർക്കിംഗ് നിർബന്ധമില്ല.`;
       } else {
-        return `### 📐 Special Concessions for Small Plots (Rules 60 & 62)
+        return `**Small Plot Concessions (KMBR Rule 60 / KPBR Rule 62 - Plot Area <= 125 sq.m / 3 Cents):**
 
-**Statutory Citations:** KMBR 2019 Rule 60 / KPBR 2019 Rule 62
-
-**Eligibility:** Plots having an area not exceeding 125 sq.meters (~3.08 Cents).
-
-1. **Concessional Setbacks:**
-   - **Front Setback:** Reduced to **1.80 meters**.
-   - **Rear Setback:** Reduced to **1.00 meter**.
-   - **Side 1 Setback:** **0.90 meters**.
-   - **Side 2 Setback:** **0.60 meters**.
-
-2. **Coverage & Height:**
-   - Maximum ground coverage is relaxed up to **75%**.
-
----
-💡 **To give you an exact layout check, please provide:**
-1. Exact plot dimensions (width and depth in meters)?
-2. Total proposed plinth area across all floors?`;
+- **Setbacks:** Front **1.80m**, Rear **1.00m**, Sides **0.90m & 0.60m** (or boundary wall with neighbour consent).
+- **Coverage:** Maximum ground coverage relaxed up to **75%**.
+- **Parking:** Exempted for residential built-up area < 150 sq.m.`;
       }
     }
 
     if (q.includes('പാർക്കിംഗ്') || q.includes('parking') || q.includes('വാഹനം') || q.includes('car')) {
       if (isMl) {
-        return `### 🚗 പാർക്കിംഗ് മാനദണ്ഡങ്ങൾ (Rule 31 & Table 6)
+        return `**പാർക്കിംഗ് മാനദണ്ഡങ്ങൾ (KMBR / KPBR 2019 ചട്ടം 31 & Table 6):**
 
-**ചട്ട പരാമർശം:** KMBR / KPBR 2019 ചട്ടം 31
-
-1. **പാർപ്പിട വീടുകൾ (Group A1 Residential):**
-   - **150 ച.മീറ്ററിൽ താഴെ (Built-up < 150 sq.m):** കാർ പാർക്കിംഗ് **ആവശ്യമില്ല**.
-   - **150 ച.മീ മുതൽ 250 ച.മീ വരെ:** കുറഞ്ഞത് **1 കാർ പാർക്കിംഗ് സ്ലോട്ട്** നിർബന്ധം.
-   - **250 ച.മീറ്ററിന് മുകളിൽ:** ഓരോ അധിക 100 ച.മീറ്ററിനും 1 അധിക പാർക്കിംഗ്.
-
-2. **പാർക്കിംഗ് സ്ലോട്ട് അളവുകൾ:**
-   - **കാർ പാർക്കിംഗ് സ്ലോട്ട്:** കുറഞ്ഞത് **2.50 മീറ്റർ വീതി × 5.00 മീറ്റർ നീളം** (ഉയരം min 2.20m).
-   - **ഇരുചക്ര വാഹനം:** **1.00 മീറ്റർ × 2.00 മീറ്റർ**.
-   - **ഭിന്നശേഷി പാർക്കിംഗ് (PwD Bay):** **3.60 മീറ്റർ × 5.00 മീറ്റർ** (പ്രവേശന കവാടത്തിന് സമീപം).
-
----
-💡 **നിങ്ങളുടെ കെട്ടിടത്തിലെ പാർക്കിംഗ് നിർണ്ണയിക്കാൻ ദയവായി വ്യക്തമാക്കുക:**
-1. കെട്ടിടത്തിന്റെ ഒക്യുപ്പൻസി ഏതാണ് (സ്വന്തം വീട്, ഫ്ലാറ്റ്, വാണിജ്യ കടകൾ, ഓഫീസ്)?
-2. ആകെ നിർദ്ദിഷ്ട ബിൽറ്റ്-അപ്പ് ഏരിയ (Total Built-up area) എത്ര ചതുരശ്ര മീറ്ററാണ്?`;
+- **പാർപ്പിട വീടുകൾ (Group A1):**
+  * **150 ച.മീറ്ററിൽ താഴെ:** കാർ പാർക്കിംഗ് നിർബന്ധമില്ല.
+  * **150 - 250 ച.മീറ്റർ:** 1 കാർ പാർക്കിംഗ് സ്ഥലം (2.50m × 5.00m).
+  * **250 ച.മീറ്ററിന് മുകളിൽ:** ഓരോ അധിക 100 ച.മീറ്ററിനും 1 അധിക പാർക്കിംഗ് സ്ഥലം.
+- **വാണിജ്യ കെട്ടിടങ്ങൾ (Group F Commercial):** ഓരോ 60 ച.മീറ്റർ കാർപ്പെറ്റ് ഏരിയയ്ക്കും 1 കാർ പാർക്കിംഗ്.`;
       } else {
-        return `### 🚗 Off-Street Parking Standards (Rule 31 & Table 6)
+        return `**Parking Norms (KMBR / KPBR 2019 Rule 31 & Table 6):**
 
-**Statutory Citations:** KMBR / KPBR 2019 Rule 31
-
-1. **Residential Dwellings (Group A1):**
-   - **Built-up Area < 150 sq.m:** Nil (No mandatory car parking).
-   - **150 to 250 sq.m:** 1 Car Parking space required.
-   - **Above 250 sq.m:** 1 additional car space per each 100 sq.m.
-
-2. **Standard Parking Bay Dimensions:**
-   - **Car Space:** Minimum **2.50m width x 5.00m length** (Clear headroom: 2.20m).
-   - **Two-Wheeler Space:** Minimum **1.00m x 2.00m**.
-
----
-💡 **To calculate your exact requirement, please clarify:**
-1. What is the occupancy type and total built-up area in square meters?
-2. Are you providing surface open parking or covered basement/stilt parking?`;
+- **Residential Dwellings (Group A1):**
+  * **Built-up < 150 sq.m:** Nil (No mandatory car parking).
+  * **150 to 250 sq.m:** 1 Car Parking space required (2.50m × 5.00m).
+  * **Above 250 sq.m:** 1 additional car space per each 100 sq.m excess.
+- **Commercial (Group F):** 1 car slot per 60 sq.m carpet area.`;
       }
     }
 
     if (q.includes('കെ-സ്മാർട്ട്') || q.includes('ksmart') || q.includes('k-smart') || q.includes('പെർമിറ്റ്') || q.includes('permit') || q.includes('ഓൺലൈൻ')) {
       if (isMl) {
-        return `### 💻 കെ-സ്മാർട്ട് (K-Smart) ഓൺലൈൻ പെർമിറ്റ് & സെൽഫ് സർട്ടിഫിക്കേഷൻ
+        return `**കെ-സ്മാർട്ട് (K-Smart) പെർമിറ്റ് മാനദണ്ഡങ്ങൾ:**
 
-**സർക്കാർ ഉത്തരവുകൾ:** GO(Ms) No. 98/2022/LSGD & GO(Ms) No. 12/2024/LSGD
-
-1. **ലോ-റിസ്ക് സെൽഫ് സർട്ടിഫിക്കേഷൻ (Low Risk Self-Certification):**
-   - **300 ചതുരശ്ര മീറ്റർ വരെ** വിസ്തീർണ്ണമുള്ളതും **10 മീറ്റർ വരെ ഉയരമുള്ളതുമായ** ഗ്രൂപ്പ് A1 പാർപ്പിട വീടുകൾക്ക് എംപാനൽ ചെയ്ത ലൈസൻസിയുടെ സാക്ഷ്യപത്രത്തോടെ ഫീസ് അടച്ചാലുടൻ **തൽക്ഷണം ഡിജിറ്റൽ പെർമിറ്റ്** ഡൗൺലോഡ് ചെയ്യാം.
-
-2. **ആവശ്യമായ CAD ഡ്രോയിംഗ് ലെയറുകൾ:**
-   - \`0_PLOT_BOUNDARY\`, \`0_BLDG_FOOTPRINT\`, \`0_SETBACK_FRONT\`, \`0_SETBACK_REAR\`, \`0_SETBACK_SIDE1\`, \`0_SETBACK_SIDE2\`, \`0_ACCESS_ROAD\`, \`0_WELL\`, \`0_SEPTIC_TANK\`.
-
----
-💡 **നിങ്ങളുടെ അപേക്ഷ പെട്ടെന്ന് സമർപ്പിക്കാൻ ദയവായി വ്യക്തമാക്കുക:**
-1. നിങ്ങളുടെ ഡ്രോയിംഗ് കെ-സ്മാർട്ട് ലെയർ ഫോർമാറ്റിൽ തയ്യാറാക്കിയിട്ടുണ്ടോ?
-2. കെട്ടിടത്തിന്റെ പ്ലിന്ത് ഏരിയ 300 ച.മീറ്ററിൽ താഴെയാണോ?`;
+- **തൽക്ഷണ പെർമിറ്റ് (Low Risk Self-Certification):** 300 ച.മീറ്റർ വരെ വിസ്തീർണ്ണവും 10 മീറ്റർ വരെ ഉയരവുമുള്ള വീടുകൾക്ക് (Group A1) അപേക്ഷിച്ച ഉടൻ തത്സമയം ഓൺലൈൻ പെർമിറ്റ് ലഭ്യമാകും.
+- **പ്രധാന CAD ലെയറുകൾ:** 0_PLOT_BOUNDARY, 0_BLDG_FOOTPRINT, 0_SETBACK_FRONT, 0_SETBACK_REAR, 0_SETBACK_SIDE1, 0_SETBACK_SIDE2, 0_ACCESS_ROAD, 0_WELL, 0_SEPTIC_TANK.`;
       } else {
-        return `### 💻 K-Smart Online Building Permit & Self Certification
+        return `**K-Smart Online Permitting Standards:**
 
-**Government Orders:** GO(Ms) No. 98/2022/LSGD & GO(Ms) No. 12/2024/LSGD
-
-1. **Low-Risk Self Certification Fast-Track:**
-   - Residential dwellings (Group A1) with total built-up area **up to 300 sq.m** and height **up to 10.0m** qualify for instant automated permit generation upon licensed engineer self-declaration.
-
----
-💡 **To assist with your submission, please clarify:**
-1. Is your proposed built-up area under the 300 sq.m self-certification threshold?
-2. Do you require verification of your CAD layer structure?`;
+- **Low-Risk Fast Track:** Residential dwellings up to 300 sq.m built-up area and 10.0m height receive instant automated permit approval upon registered licensee submission.
+- **Mandatory Closed CAD Layers:** 0_PLOT_BOUNDARY, 0_BLDG_FOOTPRINT, 0_SETBACK_FRONT, 0_SETBACK_REAR, 0_SETBACK_SIDE1, 0_SETBACK_SIDE2, 0_ACCESS_ROAD.`;
       }
     }
 
     if (q.includes('ഫയർ') || q.includes('fire') || q.includes('തീപിടുത്തം') || q.includes('noc') || q.includes('nbc') || q.includes('ഹൈഡ്രന്റ്') || q.includes('സ്റ്റെയർ') || q.includes('എസ്കേപ്പ്')) {
       if (isMl) {
-        return `### 🚒 ഫയർ & ലൈഫ് സേഫ്റ്റി മാനദണ്ഡങ്ങൾ (Fire Safety & NBC 2016 Part 4)
+        return `**ഫയർ & ലൈഫ് സേഫ്റ്റി മാനദണ്ഡങ്ങൾ (KMBR/KPBR Chapter VII & NBC 2016 Part 4):**
 
-**ചട്ട പരാമർശം:** KMBR / KPBR Chapter VII, NBC 2016 Part IV, Kerala Fire & Rescue Services Rules
-
-1. **ഫയർ NOC (Fire Clearance) നിർബന്ധമായ സാഹചര്യങ്ങൾ:**
-   - കെട്ടിടത്തിന്റെ ഉയരം **15 മീറ്ററിൽ കൂടുതൽ** ആയാൽ (High-rise).
-   - എജ്യുക്കേഷണൽ / സ്കൂൾ കെട്ടിടങ്ങൾ: **1000 ച.മീറ്ററിൽ കൂടുതൽ** വിസ്തീർണ്ണം.
-   - അസംബ്ലി ഹാളുകൾ, ഓഡിറ്റോറിയങ്ങൾ: **500 പേരിൽ കൂടുതൽ** ഇരിപ്പിടങ്ങൾ.
-   - വാണിജ്യ / കമേഴ്സ്യൽ കോംപ്ലക്സുകൾ: **1000 ച.മീറ്ററിൽ കൂടുതൽ**.
-
-2. **ഫയർ എൻജിൻ റോഡ് & സെറ്റ്ബാക്ക് (Fire Tender Access):**
-   - കെട്ടിടത്തിന് ചുറ്റും കുറഞ്ഞത് **5.00 മീറ്റർ വീതിയും 6.00 മീറ്റർ ക്ലിയർ ഹൈറ്റുമുള്ള** മോട്ടോറബിൾ ഡ്രൈവ്‌വേ ഉണ്ടായിരിക്കണം (ഉയരം 24 മീറ്ററിന് മുകളിലായാൽ 7.00 മീറ്റർ).
-
-3. **എമർജൻസി സ്റ്റെയർകേസ് & എക്സിറ്റുകൾ (Exit Norms):**
-   - സ്റ്റെയർകേസ് വീതി: സ്കൂൾ/അസംബ്ലി കെട്ടിടങ്ങൾക്ക് കുറഞ്ഞത് **1.50 മീറ്റർ** (റൈസർ പരമാവധി 15cm, ട്രെഡ് കുറഞ്ഞത് 30cm).
-   - ട്രാവൽ ഡിസ്റ്റൻസ് (Travel Distance to Exit): പരമാവധി **30.00 മീറ്റർ**.
-   - ഫയർ ഡോറുകൾ (Fire Doors): 2 മണിക്കൂർ ഫയർ റേറ്റിംഗുള്ളതും പുറത്തേക്ക് തള്ളി തുറക്കാവുന്നതുമായിരിക്കണം (Panic bolt outward swing).
-
----
-💡 **നിങ്ങളുടെ പ്രോജക്ടിന്റെ ഫയർ ക്ലിയറൻസ് അറിയാൻ ദയവായി വ്യക്തമാക്കുക:**
-1. കെട്ടിടത്തിന്റെ നിർദ്ദിഷ്ട ഉയരവും ആകെ നിലകളും എത്രയാണ്?
-2. കെട്ടിടത്തിന്റെ ഉപയോഗം (Occupancy: Residential / School / Commercial / Assembly) ഏതാണ്?`;
+- **ഫയർ NOC നിർബന്ധം:** കെട്ടിടത്തിന്റെ ഉയരം **15 മീറ്ററിൽ കൂടുതൽ** (High-rise), സ്കൂളുകൾ (>1000 ച.മീ), അസംബ്ലി ഹാളുകൾ (>500 സീറ്റ്).
+- **ഫയർ എഞ്ചിൻ പാത:** കെട്ടിടത്തിന് ചുറ്റും കുറഞ്ഞത് **5.00 മീറ്റർ** വീതിയും 6.00 മീറ്റർ ക്ലിയർ ഹൈറ്റുമുള്ള ഡ്രൈവ്‌വേ.
+- **സ്റ്റെയർകേസ് വീതി:** സ്കൂൾ/അസംബ്ലി കെട്ടിടങ്ങൾക്ക് കുറഞ്ഞത് **1.50 മീറ്റർ**, വാണിജ്യ കെട്ടിടങ്ങൾക്ക് **1.25 മീറ്റർ**, വീടുകൾക്ക് **1.00 മീറ്റർ**.`;
       } else {
-        return `### 🚒 Fire & Life Safety Standards (NBC 2016 Part 4 & Kerala Fire Dept)
+        return `**Fire & Life Safety Standards (KMBR/KPBR Chapter VII & NBC 2016 Part 4):**
 
-**Statutory Citations:** KMBR/KPBR Chapter VII, NBC 2016 Part IV Fire & Life Safety
-
-1. **Mandatory Fire NOC Thresholds:**
-   - Building height exceeding **15.0 meters** (High-rise).
-   - Educational buildings with built-up area **> 1,000 sq.m**.
-   - Assembly halls & auditoriums with seating capacity **> 500 persons**.
-   - Commercial mercantile buildings **> 1,000 sq.m**.
-
-2. **Fire Tender Access & Driveway:**
-   - Minimum **5.00m all-round clear motorable access** with 6.0m clear vertical headroom (7.00m for height > 24m).
-
-3. **Means of Egress & Staircases:**
-   - Minimum staircase clear width: **1.50m** (Educational/Assembly), **1.25m** (Commercial), **1.00m** (Residential).
-   - Maximum travel distance to exit: **30.0 meters** (un-sprinklered) / **45.0 meters** (sprinklered).
-   - Fire doors must swing outward in the direction of escape.
-
----
-💡 **To verify your project's Fire NOC compliance, please clarify:**
-1. Proposed building height and number of storeys?
-2. Specific occupancy group and total built-up area in sq.meters?`;
+- **Mandatory Fire NOC:** Building height > **15.0 meters** (High-rise), Schools > 1000 sq.m, Assembly halls > 500 capacity.
+- **Fire Tender Access:** Minimum **5.00m all-round clear driveway** with 6.0m vertical clearance.
+- **Staircase Clear Width:** Minimum **1.50m** (Educational/Assembly), **1.25m** (Commercial), **1.00m** (Residential).`;
       }
     }
 
     if (q.includes('സ്കൂൾ') || q.includes('school') || q.includes('വിദ്യാഭ്യാസ') || q.includes('ker') || q.includes('ക്ലാസ്') || q.includes('classroom') || q.includes('ടോയ്‌ലറ്റ്') || q.includes('toilet') || q.includes('പ്ലേഗ്രൗണ്ട്')) {
       if (isMl) {
-        return `### 🏫 കേരള എജ്യുക്കേഷണൽ റൂൾസ് (KER) & സ്കൂൾ നിർമ്മാണ ചട്ടങ്ങൾ
+        return `**സ്കൂൾ നിർമ്മാണ ചട്ടങ്ങൾ (KER Chapter IV & KMBR/KPBR Group B):**
 
-**ചട്ട പരാമർശം:** KER Chapter IV, KMBR/KPBR Group B (Educational Occupancy)
-
-1. **ക്ലാസ്റൂം അളവുകൾ (Classroom Dimensions):**
-   - ഓരോ ക്ലാസ്റൂമിനും കുറഞ്ഞത് **6.00 മീറ്റർ × 6.00 മീറ്റർ (36.00 ചതുരശ്ര മീറ്റർ)** വിസ്തീർണ്ണം ഉണ്ടായിരിക്കണം.
-   - സീലിംഗ് ഉയരം (Clear Height): കുറഞ്ഞത് **3.00 മീറ്റർ**.
-   - ഒരു വിദ്യാർത്ഥിക്ക് കുറഞ്ഞത് **1.00 ച.മീറ്റർ** തറ വിസ്തീർണ്ണം ഉറപ്പാക്കണം.
-
-2. **സാനിറ്റേഷൻ സൗകര്യങ്ങൾ (Sanitation Ratios):**
-   - **ആൺകുട്ടികൾക്ക്:** ഓരോ 20 പേർക്കും 1 യൂറിനൽ, ഓരോ 30 പേർക്കും 1 ലാട്രിൻ.
-   - **പെൺകുട്ടികൾക്ക്:** ഓരോ 20 പേർക്കും 1 ലാട്രിൻ. ഇൻസിനറേറ്റർ (Incinerator) സൗകര്യം നിർബന്ധം.
-   - ശുദ്ധമായ കുടിവെള്ള ടാപ്പുകൾ ഓരോ 50 വിദ്യാർത്ഥികൾക്കും ഒന്ന് വീതം.
-
-3. **കോറിഡോറും സ്റ്റെയർകേസും (Safety & Access):**
-   - പ്രധാന കോറിഡോറുകൾ: കുറഞ്ഞത് **2.00 മീറ്റർ** ക്ലിയർ വീതി.
-   - സ്റ്റെയർകേസ്: കുറഞ്ഞത് **1.50 മീറ്റർ** വീതി, ഇരുവശങ്ങളിലും ഹാൻഡ്‌റെയിലുകൾ.
-   - ഭിന്നശേഷി കുട്ടികൾക്കായി ഗ്രൗണ്ട് ഫ്ലോറിലേക്ക് **1:12 സ്ലോപ്പിൽ റാംപും** പ്രത്യേക ടോയ്‌ലറ്റും നിർബന്ധം.
-   - സ്കൂൾ കോമ്പൗണ്ടിനുള്ളിൽ നിർബന്ധമായും **പ്ലേഗ്രൗണ്ട് (Playground)** ഉണ്ടായിരിക്കണം.
-
----
-💡 **സ്കൂൾ പ്ലാനിന്റെ ചട്ട അനുമതിക്കായി ദയവായി വ്യക്തമാക്കുക:**
-1. എത്ര ക്ലാസ്റൂമുകളും ആകെ എത്ര വിദ്യാർത്ഥികളുമാണ് പ്ലാൻ ചെയ്യുന്നത്?
-2. സ്കൂൾ കെട്ടിടം എത്ര നിലകളാണ് (G+1, G+2) ഉദ്ദേശിക്കുന്നത്?`;
+- **ക്ലാസ്റൂം അളവ്:** കുറഞ്ഞത് **6.00m × 6.00m (36 ച.മീറ്റർ)**, സീലിംഗ് ഉയരം **3.00 മീറ്റർ**.
+- **സാനിറ്റേഷൻ:** ആൺകുട്ടികൾക്ക് 20 പേർക്ക് 1 യൂറിനൽ & 30 പേർക്ക് 1 ക്ലോസറ്റ്; പെൺകുട്ടികൾക്ക് 20 പേർക്ക് 1 ക്ലോസറ്റ് + ഇൻസിനറേറ്റർ.
+- **വഴികളും റാംപും:** കോറിഡോർ വീതി കുറഞ്ഞത് **2.00 മീറ്റർ**, സ്റ്റെയർകേസ് **1.50 മീറ്റർ**, ഭിന്നശേഷി റാംപ് സ്ലോപ്പ് **1:12**.`;
       } else {
-        return `### 🏫 Kerala Education Rules (KER) & School Building Norms
+        return `**Educational Building Rules (KER Chapter IV & KMBR/KPBR Group B):**
 
-**Statutory Citations:** KER Chapter IV, KMBR/KPBR Group B (Educational Occupancy)
-
-1. **Classroom Standards:**
-   - Minimum classroom dimensions: **6.00m x 6.00m (36.0 sq.m area)**.
-   - Minimum clear ceiling headroom: **3.00 meters**.
-   - Student spatial density: Minimum **1.0 sq.m floor area per pupil**.
-
-2. **Mandatory Sanitation Provisions:**
-   - **Boys:** 1 Urinal per 20 students, 1 Latrine per 30 students.
-   - **Girls:** 1 Latrine per 20 students with mandatory incinerator.
-   - Drinking water taps: 1 tap per 50 pupils.
-
-3. **Circulation & Universal Accessibility:**
-   - Minimum corridor clear width: **2.00 meters**.
-   - Staircase minimum clear width: **1.50 meters** with continuous handrails on both sides.
-   - Ramp slope for PwD accessibility: Maximum **1:12** with tactile guides.
-   - Dedicated playground within the school compound is mandatory.
-
----
-💡 **To verify your educational project compliance, please provide:**
-1. Proposed number of classrooms and maximum pupil capacity?
-2. Number of storeys and total plot area in Cents/sq.m?`;
+- **Classroom Dimensions:** Minimum **6.00m x 6.00m (36 sq.m)**, clear ceiling height **3.00m**.
+- **Sanitation Ratios:** Boys: 1 urinal per 20 & 1 latrine per 30; Girls: 1 latrine per 20 with incinerator.
+- **Corridors & Stairs:** Corridor clear width min **2.00m**, Staircase min **1.50m**, PwD ramp slope max **1:12**.`;
       }
     }
 
     if (q.includes('crz') || q.includes('തീരദേശ') || q.includes('കടൽ') || q.includes('കായൽ') || q.includes('backwater') || q.includes('നിലം') || q.includes('തണ്ണീർത്തടം') || q.includes('wetland') || q.includes('paddy') || q.includes('ഡാറ്റാ ബാങ്ക്') || q.includes('data bank') || q.includes('ഫോറം 5') || q.includes('form 5') || q.includes('form 6')) {
       if (isMl) {
-        return `### 🌊 തീരദേശ പരിപാലന ചട്ടങ്ങൾ (CRZ) & നെൽവയൽ-തണ്ണീർത്തട സംരക്ഷണ നിയമം
+        return `**CRZ തീരദേശ ചട്ടങ്ങളും നെൽവയൽ തരംമാറ്റലും:**
 
-**ചട്ട പരാമർശം:** CRZ Notification 2019 / Kerala Conservation of Paddy Land and Wetland Act 2008
-
-1. **തീരദേശ നിയന്ത്രണ മേഖല (CRZ 2019 Norms):**
-   - **CRZ-II (നഗര മേഖലകൾ / മുനിസിപ്പാലിറ്റികൾ):** നിലവിലുള്ള അംഗീകൃത റോഡിന്റെയോ നിർമ്മിതികളുടെയോ കരഭാഗത്ത് (Landward side) അനുമതി ലഭിക്കും.
-   - **CRZ-III (ഗ്രാമപഞ്ചായത്തുകൾ):** ഹൈ ടൈഡ് ലൈനിൽ (HTL) നിന്ന് **50 മീറ്റർ (CRZ-III A)** അല്ലെങ്കിൽ **200 മീറ്റർ (CRZ-III B)** വരെ നിർമ്മാണ രഹിത മേഖല (No Development Zone - NDZ).
-   - **കായലുകൾ / വേലിയേറ്റ അരുവികൾ:** HTL-ൽ നിന്ന് **50 മീറ്റർ** അല്ലെങ്കിൽ ജലാശയത്തിന്റെ വീതി (ഏതാണോ കുറവ്) വിട്ട് മാത്രമേ നിർമ്മാണം പാടുള്ളൂ.
-
-2. **നെൽവയൽ & തണ്ണീർത്തട നിയമം (Wetland Act 2008 & 2018 Amendments):**
-   - ഭൂമി **ഡാറ്റാ ബാങ്കിൽ (Data Bank)** ഉൾപ്പെട്ടിട്ടുണ്ടെങ്കിൽ **ഫോറം 5 (Form 5)** അപേക്ഷ നൽകി ആർ.ഡി.ഒ (RDO) ഉത്തരവ് വഴി നീക്കം ചെയ്യണം.
-   - ഡാറ്റാ ബാങ്കിൽ ഇല്ലാത്ത എന്നാൽ ആധാരത്തിൽ 'നിലം' എന്ന് രേഖപ്പെടുത്തിയ ഭൂമി തരംമാറ്റാൻ **ഫോറം 6 (Form 6)** പ്രകാരം RDO അനുമതിയും ന്യായംവില ഫീസും അടയ്ക്കണം.
-   - സ്വന്തം ആവശ്യത്തിനുള്ള വീട് നിർമ്മാണത്തിന് (10 സെന്റ് പഞ്ചായത്തിൽ / 5 സെന്റ് മുനിസിപ്പാലിറ്റിയിൽ) പ്രത്യേക ഇളവുകൾ ലഭ്യമാണ്.
-
----
-💡 **കൂടുതൽ വ്യക്തതയ്ക്കായി ദയവായി പറയുക:**
-1. പ്ലോട്ട് കടൽത്തീരത്തോ കായലോരത്തോ ആണോ സ്ഥിതി ചെയ്യുന്നത്?
-2. നികുതി രസീതിലോ ആധാരത്തിലോ ഭൂമിയുടെ ഇനം 'പുരയിടം' (Dry land) എന്നാണോ അതോ 'നിലം/തണ്ണീർത്തടം' എന്നാണോ ഉള്ളത്?`;
+- **CRZ പരിധി (2019 വിജ്ഞാപനം):** കടൽത്തീരത്ത് പഞ്ചായത്തിൽ 50m / 200m നോ-ഡെവലപ്‌മെന്റ് സോൺ (NDZ); കായലോരത്ത് ഹൈ ടൈഡ് ലൈനിൽ (HTL) നിന്ന് 50 മീറ്റർ അകലം.
+- **തണ്ണീർത്തടം / ഡാറ്റാ ബാങ്ക് ഒഴിവാക്കൽ:** ഡാറ്റാ ബാങ്കിൽ ഉൾപ്പെട്ട ഭൂമി ഒഴിവാക്കാൻ **ഫോറം 5**; ഡാറ്റാ ബാങ്കിൽ ഇല്ലാത്ത 'നിലം' പുരയിടമാക്കാൻ **ഫോറം 6** പ്രകാരം RDO അനുമതി വേണം.`;
       } else {
-        return `### 🌊 Coastal Regulation Zone (CRZ) & Kerala Paddy Land & Wetland Act
+        return `**CRZ & Kerala Paddy Land / Wetland Rules:**
 
-**Statutory Citations:** MoEFCC CRZ Notification 2019 & Kerala Conservation of Paddy Land and Wetland Act 2008
-
-1. **CRZ 2019 Coastal Norms:**
-   - **CRZ-II (Urban Municipalities):** Buildings permitted strictly on the landward side of authorized roads/structures.
-   - **CRZ-III (Rural Panchayats):** No Development Zone (NDZ) of **50 meters** (CRZ-III A) or **200 meters** (CRZ-III B) from High Tide Line (HTL).
-   - **Tidal Backwaters / Rivers:** Minimum **50.0m buffer** or width of water body from HTL.
-
-2. **Kerala Wetland & Paddy Land Conversion:**
-   - If land is in **Data Bank**: Must obtain removal order from Revenue Divisional Officer (RDO) via **Form 5**.
-   - If unnotified in Data Bank but categorized as 'Nilam': Convert category via **Form 6** under Section 27A with applicable fair value fee.
-
----
-💡 **To guide you on clearances, please clarify:**
-1. Distance of your plot boundary from the nearest tidal water body or high tide line?
-2. What is the land nature recorded on your latest land tax receipt (Purayidam vs Nilam)?`;
+- **CRZ 2019 Buffer:** 50m/200m No Development Zone (NDZ) along coastline in panchayats; 50m buffer along tidal backwaters/rivers.
+- **Land Conversion:** Use **Form 5** for removal from Local Data Bank; Use **Form 6** under Section 27A for unnotified wetland conversion to dry land (Purayidam).`;
       }
     }
 
     if (q.includes('നോട്ടീസ്') || q.includes('notice') || q.includes('റിജക്ട്') || q.includes('rejection') || q.includes('objection') || q.includes('അപാകത') || q.includes('ന്യൂനത') || q.includes('തടസ്സം') || q.includes('തിരുത്തൽ')) {
       if (isMl) {
-        return `### 📑 തദ്ദേശ സ്ഥാപന ന്യൂനത നോട്ടീസ് (LSGD Objection Notice) പരിഹാരം
+        return `**തദ്ദേശ സ്ഥാപന ന്യൂനത നോട്ടീസ് തിരുത്തൽ രീതി (Rule 10 & 11):**
 
-**ചട്ട പരാമർശം:** KMBR 2019 / KPBR 2019 ചട്ടം 10, 11 & K-Smart Scrutiny Guidelines
-
-1. **പൊതുവായി വരുന്ന ന്യൂനതകളും പരിഹാരങ്ങളും:**
-   - **സെറ്റ്ബാക്ക് കുറവ്:** പ്ലോട്ട് വിസ്തീർണ്ണം 125 ച.മീറ്ററിൽ താഴെയാണെങ്കിൽ **റൂൾ 60 (KMBR) / റൂൾ 62 (KPBR)** പ്രകാരം ഇളവ് ക്ലെയിം ചെയ്ത് മറുപടി നൽകാം.
-   - **കിണർ-സെപ്റ്റിക് ടാങ്ക് അകലം:** റൂൾ 47 പ്രകാരം 7.50 മീറ്റർ തികയാൻ പ്ലാനിൽ സെപ്റ്റിക് ടാങ്ക് സ്ഥാനം പുനഃക്രമീകരിക്കുകയോ ബയോ-ഡൈജസ്റ്റർ ഉപയോഗിക്കുകയോ ചെയ്യുക.
-   - **റോഡ് വീതി കുറവ്:** സർട്ടിഫൈഡ് വില്ലേജ് റോഡ് സ്കെച്ചോ തദ്ദേശ സ്ഥാപന റോഡ് രജിസ്റ്റർ അബ്സ്ട്രാക്ടോ ഹാജരാക്കുക.
-   - **CAD ലെയർ എറർ:** കെ-സ്മാർട്ട് നിർദ്ദിഷ്ട ലെയർ പേരുകൾ (\`0_PLOT_BOUNDARY\`, \`0_BLDG_FOOTPRINT\`, \`0_SETBACK_FRONT\` etc.) മാറ്റി പോളിലൈൻ ക്ലോസ് ചെയ്യുക.
-
-2. **നിയമപരമായ മറുപടി കത്ത് (Statutory Reply Letter):**
-   - അസിസ്റ്റന്റ് എൻജിനീയർക്ക് (AE) അല്ലെങ്കിൽ സെക്രട്ടറിക്ക് ചട്ട നമ്പറുകൾ ഉദ്ധരിച്ച് വിശദീകരണ കത്ത് അപ്‌ലോഡ് ചെയ്യാവുന്നതാണ്.
-
----
-💡 **നിങ്ങൾക്ക് ലഭിച്ച നോട്ടീസിന്റെ ഫോട്ടോ ഇവിടെ ക്യാമറ വഴിയോ ഫയൽ വഴിയോ അപ്‌ലോഡ് ചെയ്താൽ കൃത്യമായ മറുപടി കത്തും തിരുത്തലുകളും തയാറാക്കി നൽകാം.**`;
+- **സെറ്റ്ബാക്ക് കുറവ്:** പ്ലോട്ട് <=125 ച.മീ ആണെങ്കിൽ റൂൾ 60 (KMBR) / റൂൾ 62 (KPBR) ചെറിയ പ്ലോട്ട് ഇളവ് ക്ലെയിം ചെയ്യുക.
+- **കിണർ-സെപ്റ്റിക് ടാങ്ക്:** റൂൾ 47 പ്രകാരം 7.50 മീറ്റർ ഉറപ്പാക്കുക അല്ലെങ്കിൽ ബയോ-ഡൈജസ്റ്റർ രേഖപ്പെടുത്തുക.
+- **CAD എറർ:** നിർദ്ദിഷ്ട ലെയറുകളിൽ ക്ലോസ്ഡ് പോളിലൈൻ ഉറപ്പാക്കുക (0_PLOT_BOUNDARY, 0_BLDG_FOOTPRINT).`;
       } else {
-        return `### 📑 LSGD Objection / Defect Notice Remediation
+        return `**LSGD Objection Notice Remediation (Rules 10 & 11):**
 
-**Statutory Citations:** KMBR / KPBR Rules 10 & 11, K-Smart Automated Scrutiny Engine
-
-1. **Common Objections & Statutory Rectifications:**
-   - **Setback Shortage:** If plot <=125 sq.m, invoke small plot concessions under **Rule 60 (KMBR) / Rule 62 (KPBR)**.
-   - **Well-to-Septic Buffer:** Reposition tank to ensure min 7.50m clearance under **Rule 47** or propose approved bio-digester unit.
-   - **Road Access Width:** Furnish certified Road Register extract or Village road plan.
-   - **CAD Layer Mismatches:** Ensure all mandatory layers (\`0_PLOT_BOUNDARY\`, \`0_SETBACK_FRONT\`, etc.) are closed polylines.
-
----
-💡 **You can attach a photo of your municipality notice or drawing here to generate an immediate statutory reply letter and CAD correction plan.**`;
+- **Setback Deficiency:** Claim Small Plot concession (Rule 60/62) if area <=125 sq.m.
+- **Well-Septic Buffer:** Ensure min 7.50m clearance under Rule 47 or specify approved bio-digester.
+- **CAD Errors:** Fix open polylines and use standard closed layer names (0_PLOT_BOUNDARY, 0_BLDG_FOOTPRINT).`;
       }
     }
 
-    // General context-rich fallback with clarifying questions
+    // General context-rich fallback
     if (isMl) {
-      return `### 🏗️ കേരള കെട്ടിട നിർമ്മാണ ചട്ടങ്ങൾ (KMBR 2019 & KPBR 2019) സാങ്കേതിക ഉപദേശം
+      return `**കേരള കെട്ടിട നിർമ്മാണ ചട്ടങ്ങൾ (KMBR/KPBR 2019 സംഗ്രഹം):**
 
-നിങ്ങൾ ചോദിച്ച **"${query}"** എന്ന വിഷയത്തിൽ കേരള തദ്ദേശ സ്വയംഭരണ വകുപ്പിന്റെ (LSGD) ഏറ്റവും പുതിയ ചട്ടങ്ങൾ പ്രകാരമുള്ള വിവരങ്ങൾ:
-
-1. **അനുവദനീയമായ മാനദണ്ഡങ്ങൾ:**
-   - **സെറ്റ്ബാക്കുകൾ (Rule 27/25):** 10 മീറ്റർ വരെ ഉയരമുള്ള വീടുകൾക്ക് മുൻവശം 3.0 മീറ്റർ, പിൻവശം 1.50-2.00 മീറ്റർ, വശങ്ങളിൽ 1.20 മീറ്ററും 1.00 മീറ്ററും.
-   - **ഗ്രൗണ്ട് കവറേജ്:** പഞ്ചായത്തിൽ പരമാവധി **65%**, മുനിസിപ്പാലിറ്റിയിൽ **60%** (റൂൾ 60 ചെറിയ പ്ലോട്ടുകളിൽ 75% വരെ).
-   - **FAR (Floor Area Ratio):** അടിസ്ഥാന FAR പഞ്ചായത്തിൽ **2.75**, മുനിസിപ്പാലിറ്റിയിൽ **3.00**.
-   - **കിണറും സെപ്റ്റിക് ടാങ്കും (Rule 47):** കുടിവെള്ള കിണറിൽ നിന്ന് സെപ്റ്റിക് ടാങ്കിലേക്ക് കുറഞ്ഞത് **7.50 മീറ്റർ** അകലം നിർബന്ധമാണ്.
-   - **മഴവെള്ള സംഭരണി (Rule 48):** റൂഫ് ഏരിയയുടെ ഓരോ ചതുരശ്ര മീറ്ററിനും **25 ലിറ്റർ**.
-
----
-🔍 **നിങ്ങളുടെ നിർദ്ദിഷ്ട പ്രോജക്ടിന് 100% കൃത്യമായ കണക്കുകളും ചട്ട നിബന്ധനകളും നൽകാൻ ദയവായി താഴെ പറയുന്ന വിവരങ്ങൾ വ്യക്തമാക്കുക:**
-1. **പ്ലോട്ടിന്റെ വിസ്തീർണ്ണം:** എത്ര സെന്റ് / ച.മീറ്റർ ആണ്?
-2. **തദ്ദേശ സ്ഥാപനം:** ഗ്രാമപഞ്ചായത്തിലാണോ അതോ മുനിസിപ്പാലിറ്റി / കോർപ്പറേഷനിലാണോ?
-3. **കെട്ടിടത്തിന്റെ തരം:** സ്വന്തം വീടാണോ (Group A1), വാണിജ്യ ആവശ്യമാണോ (Commercial), അതോ മറ്റെന്തെങ്കിലുമാണോ?
-4. **നിലകളും ഉയരവും:** എത്ര നിലകളും എത്ര മീറ്റർ ഉയരവുമാണ് പ്ലാൻ ചെയ്യുന്നത്?`;
+- **സെറ്റ്ബാക്കുകൾ (റൂൾ 27/25):** 10 മീറ്റർ വരെ ഉയരമുള്ള വീടുകൾക്ക് മുൻവശം 3.00 മീറ്റർ, പിൻവശം 1.50m (പഞ്ചായത്ത്) / 2.00m (മുനിസിപ്പാലിറ്റി), വശങ്ങളിൽ 1.20m & 1.00m.
+- **ഗ്രൗണ്ട് കവറേജ് & FAR:** പഞ്ചായത്തിൽ കവറേജ് പരമാവധി 65%, FAR 2.75; മുനിസിപ്പാലിറ്റിയിൽ കവറേജ് 60%, FAR 3.00.
+- **കിണർ & സെപ്റ്റിക് ടാങ്ക് (റൂൾ 47):** തമ്മിൽ കുറഞ്ഞത് 7.50 മീറ്റർ അകലം നിർബന്ധം.
+- **മഴവെള്ള സംഭരണി (റൂൾ 48):** റൂഫ് ഏരിയയുടെ ഓരോ ച.മീറ്ററിനും 25 ലിറ്റർ.`;
     } else {
-      return `### 🏗️ Kerala Building Rules (KMBR & KPBR 2019) Senior Technical Guidance
+      return `**Kerala Building Rules (KMBR/KPBR 2019 Summary):**
 
-Regarding your query: **"${query}"**, here are the statutory provisions under current Kerala LSGD building laws:
-
-1. **Key Compliance Benchmarks:**
-   - **Exterior Setbacks (Rule 27/25):** Front min 3.0m, Rear min 1.50m (KPBR) / 2.0m (KMBR), Sides min 1.20m & 1.00m.
-   - **Ground Coverage:** Max **65%** in Panchayats, **60%** in Municipalities (up to 75% for small plots <=125 sq.m).
-   - **Floor Area Ratio (FAR):** Base FAR **2.75** (KPBR) / **3.00** (KMBR).
-   - **Well-to-Septic Tank Clearance (Rule 47):** Minimum **7.50 meters** clear horizontal distance.
-   - **Rainwater Harvesting (Rule 48):** Minimum **25 Litres per sq.m** of roof plinth area.
-
----
-🔍 **To calculate the exact customized compliance specifications for your site, please clarify:**
-1. **Plot Size:** What is your plot area in Cents or square meters?
-2. **Local Body:** Is your plot in a Grama Panchayat (KPBR) or Municipality / Corporation (KMBR)?
-3. **Occupancy:** Is it a residential home (Group A1), commercial shop, or other occupancy?
-4. **Storeys & Height:** How many floors and total height in meters are proposed?`;
+- **Setbacks (Rule 27/25):** Front 3.00m, Rear 1.50m (KPBR) / 2.00m (KMBR), Sides 1.20m & 1.00m for dwellings <= 10m height.
+- **Coverage & FAR:** Panchayat: Max 65% coverage, FAR 2.75; Municipality: Max 60% coverage, FAR 3.00.
+- **Well-to-Septic Buffer (Rule 47):** Minimum 7.50 meters clear distance.
+- **Rainwater Harvesting (Rule 48):** Minimum 25 Litres per sq.m of roof plinth area.`;
     }
   }
-
   // Chat API endpoint (with /api/chat and /api/gemini/chat aliases)
   const handleChat = async (req: express.Request, res: express.Response) => {
     try {
-      const { messages, activeProjectData, language = 'ml' } = req.body;
+      const { messages, activeProjectData, language: requestedLanguage = 'ml' } = req.body;
 
       if (!messages || !Array.isArray(messages) || messages.length === 0) {
         return res.status(400).json({ error: 'Messages array is required' });
@@ -742,9 +533,21 @@ Regarding your query: **"${query}"**, here are the statutory provisions under cu
       const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user')?.content || '';
       const hasImage = messages.some((m: any) => !!m.image);
 
+      // Auto-detect language of latest user question to ensure 100% accurate language response
+      // Malayalam unicode range: \u0D00-\u0D7F
+      const containsMalayalam = /[\u0D00-\u0D7F]/.test(lastUserMsg);
+      const isEnglishQuery = /^[a-zA-Z0-9\s.,?!'"@#%&*()\-_:;/\\]+$/.test(lastUserMsg.trim()) && !containsMalayalam;
+      
+      let effectiveLanguage = requestedLanguage;
+      if (containsMalayalam) {
+        effectiveLanguage = 'ml';
+      } else if (isEnglishQuery && lastUserMsg.trim().length > 3) {
+        effectiveLanguage = 'en';
+      }
+
       // Check cache for text-only queries
       const cacheKey = !hasImage && lastUserMsg.length < 300
-        ? `chat:${language}:${(activeProjectData?.jurisdiction || 'KPBR')}:${lastUserMsg.trim().toLowerCase()}`
+        ? `chat:${effectiveLanguage}:${(activeProjectData?.jurisdiction || 'KPBR')}:${lastUserMsg.trim().toLowerCase()}`
         : null;
 
       if (cacheKey) {
@@ -757,8 +560,8 @@ Regarding your query: **"${query}"**, here are the statutory provisions under cu
       const client = getGeminiClient();
 
       if (!client) {
-        // High quality dynamic query-based fallback response if API key is not configured
-        const fallbackText = generateSmartConsultationResponse(lastUserMsg, activeProjectData, language);
+        // High quality concise query-based fallback response if API key is not configured
+        const fallbackText = generateSmartConsultationResponse(lastUserMsg, activeProjectData, effectiveLanguage);
         if (cacheKey) setToCache(cacheKey, fallbackText, 20 * 60 * 1000);
         return res.json({ response: fallbackText });
       }
@@ -767,7 +570,7 @@ Regarding your query: **"${query}"**, here are the statutory provisions under cu
       const acquired = await aiSemaphore.acquire(5000);
       if (!acquired) {
         // High load: gracefully return fast rule consultation instead of hanging
-        const fastResponse = generateSmartConsultationResponse(lastUserMsg, activeProjectData, language);
+        const fastResponse = generateSmartConsultationResponse(lastUserMsg, activeProjectData, effectiveLanguage);
         return res.json({ response: fastResponse, fallback: 'concurrency_high_load' });
       }
 
@@ -820,7 +623,11 @@ CURRENT ACTIVE PROJECT STATE:
           });
         }
 
-        const fullSystemInstruction = `${SYSTEM_INSTRUCTION_KERALA_RULES}\n\n${projectContextText}\n\nUser Language Preference: ${language === 'ml' ? 'Malayalam (മലയാളം)' : 'English'}`;
+        const languageInstruction = effectiveLanguage === 'ml'
+          ? `STRICT REQUIREMENT: Answer ONLY in clear, professional Malayalam (മലയാളത്തിൽ മാത്രം മറുപടി നൽകുക). Be concise, accurate, and directly answer only what was asked.`
+          : `STRICT REQUIREMENT: Answer ONLY in crisp, professional English. Be concise, accurate, and directly answer only what was asked.`;
+
+        const fullSystemInstruction = `${SYSTEM_INSTRUCTION_KERALA_RULES}\n\n${projectContextText}\n\n${languageInstruction}`;
 
         // Outbound request with 22-second hard timeout race
         const generateAiPromise = (async () => {
@@ -831,8 +638,8 @@ CURRENT ACTIVE PROJECT STATE:
               config: {
                 systemInstruction: fullSystemInstruction,
                 tools: [{ googleSearch: {} }],
-                temperature: 0.3,
-                maxOutputTokens: 2500,
+                temperature: 0.2,
+                maxOutputTokens: 1200,
               },
             });
             return response.text || '';
@@ -842,8 +649,8 @@ CURRENT ACTIVE PROJECT STATE:
               contents,
               config: {
                 systemInstruction: fullSystemInstruction,
-                temperature: 0.3,
-                maxOutputTokens: 2500,
+                temperature: 0.2,
+                maxOutputTokens: 1200,
               },
             });
             return response.text || '';
@@ -857,7 +664,7 @@ CURRENT ACTIVE PROJECT STATE:
         let responseText = await Promise.race([generateAiPromise, timeoutPromise]).catch(() => '');
 
         if (!responseText) {
-          responseText = generateSmartConsultationResponse(lastUserMsg, activeProjectData, language);
+          responseText = generateSmartConsultationResponse(lastUserMsg, activeProjectData, effectiveLanguage);
         }
 
         if (cacheKey && responseText) {
