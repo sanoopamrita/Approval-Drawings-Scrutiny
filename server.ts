@@ -395,7 +395,7 @@ CURRENT ACTIVE PROJECT STATE:
       let responseText = '';
       try {
         const response = await client.models.generateContent({
-          model: 'gemini-3-flash',
+          model: 'gemini-3.7-flash',
           contents,
           config: {
             systemInstruction: fullSystemInstruction,
@@ -408,7 +408,7 @@ CURRENT ACTIVE PROJECT STATE:
       } catch (genErr) {
         // Retry without search tool if search tool fails
         const response = await client.models.generateContent({
-          model: 'gemini-3-flash',
+          model: 'gemini-3.7-flash',
           contents,
           config: {
             systemInstruction: fullSystemInstruction,
@@ -452,7 +452,7 @@ Perform a search/verification of the latest Kerala Local Self Government Departm
 Summarize key recent statutory amendments in 3 bullet points in English and Malayalam.`;
 
           const response = await client.models.generateContent({
-            model: 'gemini-3-flash',
+            model: 'gemini-3.7-flash',
             contents: syncPrompt,
             config: {
               tools: [{ googleSearch: {} }],
@@ -533,7 +533,7 @@ Write in ${isMl ? 'clear Malayalam (മലയാളം) with official engineerin
       let responseText = '';
       try {
         const response = await client.models.generateContent({
-          model: 'gemini-3-flash',
+          model: 'gemini-3.7-flash',
           contents: searchPrompt,
           config: {
             tools: [{ googleSearch: {} }],
@@ -545,7 +545,7 @@ Write in ${isMl ? 'clear Malayalam (മലയാളം) with official engineerin
       } catch {
         // Fallback without search tool
         const response = await client.models.generateContent({
-          model: 'gemini-3-flash',
+          model: 'gemini-3.7-flash',
           contents: searchPrompt,
           config: {
             systemInstruction: SYSTEM_INSTRUCTION_KERALA_RULES,
@@ -588,7 +588,7 @@ List all Grama Panchayats, Municipalities, Municipal Corporations, and Taluks fo
 Ensure accurate Malayalam and English names. Return a brief verification confirmation note.`;
 
           const result = await client.models.generateContent({
-            model: 'gemini-3-flash',
+            model: 'gemini-3.7-flash',
             contents: syncPrompt,
             config: {
               tools: [{ googleSearch: {} }],
@@ -933,7 +933,7 @@ Write the textual analysis in ${isMl ? 'fluent Malayalam (മലയാളം) wi
 `;
 
       const response = await client.models.generateContent({
-        model: 'gemini-3-flash',
+        model: 'gemini-3.7-flash',
         contents: [
           {
             role: 'user',

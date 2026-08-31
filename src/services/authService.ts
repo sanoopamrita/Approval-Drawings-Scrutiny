@@ -175,13 +175,10 @@ export async function verifyCodeAndLogin(params: {
       const user: User = {
         id: `usr-${Date.now()}`,
         email: cleanEmail,
-        name: name?.trim() || (isSuper ? 'Sanoop Sadanandhan (Super Admin)' : cleanEmail.split('@')[0].replace('.', ' ')),
+        name: name?.trim() || (isSuper ? 'Sanoop Sadanandhan (Super Admin)' : cleanEmail.split('@')[0].replace(/[._-]/g, ' ')),
         role: isSuper ? 'super_admin' : 'user',
-        avatar: isSuper
-          ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'
-          : undefined,
-        organization: organization?.trim() || (isSuper ? 'VINYASA Core Architecture Authority' : 'Kerala Engineering Association'),
-        licenseNumber: licenseNumber?.trim() || (isSuper ? 'SUPER-ADMIN-01' : 'LSGD/E-A/2026/9821'),
+        organization: organization?.trim() || (isSuper ? 'VINYASA Core Architecture Authority' : undefined),
+        licenseNumber: licenseNumber?.trim() || (isSuper ? 'SUPER-ADMIN-01' : undefined),
         provider: 'email_verified',
         createdAt: Date.now(),
         lastLoginAt: Date.now(),
@@ -231,13 +228,8 @@ export function loginWithGoogle(
       email: cleanEmail,
       name: formattedName,
       role: isSuper ? 'super_admin' : 'user',
-      avatar:
-        avatar ||
-        (isSuper
-          ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80'
-          : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&auto=format&fit=crop&q=80'),
-      organization: isSuper ? 'VINYASA Core Architecture Authority' : 'Kerala Engineering & Architecture Forum',
-      licenseNumber: isSuper ? 'SUPER-ADMIN-01' : 'LSGD/E-A/2026/REGISTERED',
+      organization: isSuper ? 'VINYASA Core Architecture Authority' : undefined,
+      licenseNumber: isSuper ? 'SUPER-ADMIN-01' : undefined,
       provider: 'google',
       createdAt: Date.now(),
       lastLoginAt: Date.now(),

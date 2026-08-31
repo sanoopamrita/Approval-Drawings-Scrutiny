@@ -24,6 +24,9 @@ import {
   Copy,
   Shield,
   ChevronDown,
+  Coins,
+  Split,
+  FileQuestion,
 } from 'lucide-react';
 import { TabType, Language, JurisdictionType, ScrutinyReportSummary, User } from '../types';
 import { VinyasaLogo } from './VinyasaLogo';
@@ -271,36 +274,27 @@ export const Navbar: React.FC<NavbarProps> = ({
                 type="button"
                 id="user-profile-menu-btn"
                 onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-                className={`flex items-center gap-2 py-1 px-2.5 rounded-xl border transition-all cursor-pointer group ${
+                className={`flex items-center gap-2 py-1 px-2 sm:px-2.5 rounded-xl border transition-all cursor-pointer group ${
                   isProfileMenuOpen
                     ? 'bg-cyan-950/80 border-cyan-500/60 shadow-[0_0_15px_rgba(0,229,255,0.2)]'
                     : 'bg-slate-900/90 hover:bg-slate-850 border-slate-800 hover:border-cyan-700/50'
                 }`}
                 title={isMl ? 'അക്കൗണ്ട് വിവരങ്ങളും ഇമെയിലും കാണുക' : 'View account details & email'}
               >
-                {/* Avatar */}
-                <div className="relative">
-                  {currentUser.avatar ? (
-                    <img
-                      src={currentUser.avatar}
-                      alt={currentUser.name}
-                      className="w-6 h-6 rounded-full object-cover border border-cyan-500/40"
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : (
-                    <div className="w-6 h-6 rounded-full bg-cyan-950 border border-cyan-500/40 text-cyan-300 flex items-center justify-center text-[10px] font-bold">
-                      {currentUser.isSuperAdmin ? '👑' : (currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U')}
-                    </div>
-                  )}
-                  <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-1 ring-slate-950" />
+                {/* Initial Letter Avatar */}
+                <div className="relative shrink-0">
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-cyan-600 via-blue-600 to-indigo-600 border border-cyan-400/50 text-white font-black text-xs flex items-center justify-center shadow-md">
+                    {currentUser.email ? currentUser.email.charAt(0).toUpperCase() : (currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U')}
+                  </div>
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-1 ring-slate-950" />
                 </div>
 
                 <div className="hidden sm:block text-left">
                   <div className="text-[11px] font-bold text-slate-200 group-hover:text-cyan-300 transition-colors truncate max-w-[130px]">
-                    {currentUser.name || currentUser.email}
+                    {currentUser.email || currentUser.name}
                   </div>
                   <div className="text-[9px] text-cyan-400 font-mono flex items-center gap-1">
-                    <span>{currentUser.isSuperAdmin ? '👑 Super Admin' : (currentUser.licenseNumber || 'Verified User')}</span>
+                    <span>{currentUser.isSuperAdmin ? '👑 Super Admin' : (isMl ? 'സ്ഥിരീകരിച്ച അക്കൗണ്ട്' : 'Verified Account')}</span>
                   </div>
                 </div>
 
@@ -324,66 +318,35 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               {/* Interactive Profile Details Popover Menu */}
               {isProfileMenuOpen && (
-                <div className="absolute right-0 top-full mt-2 w-80 sm:w-88 bg-[#091122] border border-cyan-500/40 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.8),0_0_20px_rgba(0,229,255,0.15)] overflow-hidden z-50 animate-scaleUp text-left">
+                <div className="absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] sm:w-84 max-w-[350px] bg-[#070E1E] border border-cyan-500/50 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.95),0_0_30px_rgba(0,229,255,0.2)] overflow-hidden z-50 animate-scaleUp text-left">
                   {/* Top Header Card */}
-                  <div className="p-4 bg-gradient-to-br from-slate-900 via-[#0C162D] to-slate-950 border-b border-slate-800/80 relative">
+                  <div className="p-4 bg-gradient-to-br from-slate-900 via-[#0B152A] to-slate-950 border-b border-slate-800/80 relative">
                     <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
                         <div className="relative shrink-0">
-                          {currentUser.avatar ? (
-                            <img
-                              src={currentUser.avatar}
-                              alt={currentUser.name}
-                              className="w-12 h-12 rounded-full object-cover border-2 border-cyan-400/60 shadow-[0_0_15px_rgba(0,229,255,0.3)]"
-                              referrerPolicy="no-referrer"
-                            />
-                          ) : (
-                            <div className="w-12 h-12 rounded-full bg-cyan-950 border-2 border-cyan-400/60 text-cyan-300 flex items-center justify-center text-lg font-bold">
-                              {currentUser.isSuperAdmin ? '👑' : (currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U')}
-                            </div>
-                          )}
-                          {/* Google G icon Badge */}
-                          <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white flex items-center justify-center shadow-md border border-slate-200">
-                            <svg className="w-3 h-3" viewBox="0 0 24 24">
-                              <path
-                                fill="#4285F4"
-                                d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
-                              />
-                              <path
-                                fill="#34A853"
-                                d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
-                              />
-                              <path
-                                fill="#FBBC05"
-                                d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
-                              />
-                              <path
-                                fill="#EA4335"
-                                d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
-                              />
-                            </svg>
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 border-2 border-cyan-400/60 text-white flex items-center justify-center text-lg font-black shadow-[0_0_15px_rgba(0,229,255,0.3)]">
+                            {currentUser.email ? currentUser.email.charAt(0).toUpperCase() : (currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U')}
+                          </div>
+                          {/* Verified Badge */}
+                          <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center shadow-md border border-slate-900 font-bold text-[10px]">
+                            ✓
                           </div>
                         </div>
 
                         <div className="min-w-0">
                           <div className="text-sm font-bold text-white truncate flex items-center gap-1.5">
-                            <span>{currentUser.name}</span>
-                            {currentUser.isSuperAdmin && (
-                              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-semibold shrink-0">
-                                Super Admin
-                              </span>
-                            )}
+                            <span className="truncate">{currentUser.email}</span>
                           </div>
                           <div className="text-xs text-emerald-400 flex items-center gap-1 mt-0.5 font-medium">
                             <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-                            <span>{isMl ? 'ഗൂഗിൾ വെരിഫൈഡ് അക്കൗണ്ട്' : 'Google Verified Account'}</span>
+                            <span>{isMl ? 'സ്ഥിരീകരിച്ച ഉപയോക്താവ്' : 'Verified User'}</span>
                           </div>
                         </div>
                       </div>
 
                       <button
                         onClick={() => setIsProfileMenuOpen(false)}
-                        className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 rounded-lg transition-colors"
+                        className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 rounded-lg transition-colors shrink-0"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -399,7 +362,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                           <span>{isMl ? 'ഇമെയിൽ വിലാസം (Email ID)' : 'Registered Email Address'}</span>
                         </span>
                         <span className="text-emerald-400 font-mono text-[9px] bg-emerald-950/80 px-1.5 py-0.5 rounded border border-emerald-500/30">
-                          VERIFIED
+                          ACTIVE
                         </span>
                       </div>
 
@@ -411,7 +374,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <button
                           type="button"
                           onClick={handleCopyEmail}
-                          className="p-1.5 bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white rounded-lg border border-slate-700 transition-colors shrink-0 flex items-center gap-1 text-[10px] font-semibold cursor-pointer"
+                          className="p-1.5 bg-slate-850 hover:bg-slate-750 text-slate-300 hover:text-white rounded-lg border border-slate-700 transition-colors shrink-0 flex items-center gap-1 text-[10px] font-semibold cursor-pointer"
                           title="Copy email to clipboard"
                         >
                           {copiedEmail ? (
@@ -432,18 +395,16 @@ export const Navbar: React.FC<NavbarProps> = ({
                     {/* Metadata Specs */}
                     <div className="space-y-1.5 text-xs">
                       <div className="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800/60 text-slate-300">
-                        <span className="text-slate-400">{isMl ? 'അക്കൗണ്ട് പദവി' : 'Role / Authorization'}:</span>
+                        <span className="text-slate-400">{isMl ? 'ലോഗിൻ രീതി' : 'Auth Method'}:</span>
                         <span className="font-semibold text-slate-200">
-                          {currentUser.isSuperAdmin
-                            ? (isMl ? '👑 സൂപ്പർ അഡ്മിനിസ്ട്രേറ്റർ' : '👑 Super Administrator')
-                            : (isMl ? 'സ്ഥിരീകരിച്ച ആർക്കിടെക്റ്റ് / എൻജിനീയർ' : 'Verified Professional User')}
+                          {currentUser.provider === 'google' ? 'Google Sign-In' : 'Email OTP Verification'}
                         </span>
                       </div>
 
-                      {currentUser.licenseNumber && (
-                        <div className="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-slate-800/60 text-slate-300">
-                          <span className="text-slate-400">{isMl ? 'ലൈസൻസ് നമ്പർ' : 'LSGD License'}:</span>
-                          <span className="font-mono text-cyan-300 text-[11px]">{currentUser.licenseNumber}</span>
+                      {currentUser.isSuperAdmin && (
+                        <div className="flex items-center justify-between p-2 rounded-lg bg-amber-950/30 border border-amber-500/30 text-amber-300">
+                          <span className="text-amber-400">{isMl ? 'പ്രത്യേക അധികാരം' : 'Privilege'}:</span>
+                          <span className="font-bold text-[11px]">👑 Super Admin</span>
                         </div>
                       )}
                     </div>
@@ -515,6 +476,22 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
 
             <button
+              id="nav-tab-redline"
+              onClick={() => setActiveTab('redline')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+                activeTab === 'redline'
+                  ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-700/50 shadow-[0_0_10px_rgba(0,229,255,0.15)] font-semibold'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+              }`}
+            >
+              <Split className="w-4 h-4 text-cyan-400" />
+              <span>{isMl ? '3. ഓട്ടോ-തിരുത്തൽ' : '3. CAD Redlines & Fix'}</span>
+              <span className="text-[9px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 px-1 rounded uppercase font-bold">
+                AI
+              </span>
+            </button>
+
+            <button
               id="nav-tab-areastatement"
               onClick={() => setActiveTab('areastatement')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all cursor-pointer ${
@@ -524,7 +501,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }`}
             >
               <Calculator className="w-4 h-4" />
-              <span>{isMl ? '3. ഏരിയ സ്റ്റേറ്റ്മെന്റ്' : '3. Area Statement'}</span>
+              <span>{isMl ? '4. ഏരിയ സ്റ്റേറ്റ്മെന്റ്' : '4. Area Statement'}</span>
             </button>
 
             <button
@@ -537,7 +514,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }`}
             >
               <FileCheck2 className="w-4 h-4" />
-              <span>{isMl ? '4. പരിശോധനാ ഫലം' : '4. Rule Scrutiny Results'}</span>
+              <span>{isMl ? '5. പരിശോധനാ ഫലം' : '5. Rule Scrutiny'}</span>
               {summary && (
                 <span
                   className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
@@ -552,6 +529,32 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
 
             <button
+              id="nav-tab-rfi"
+              onClick={() => setActiveTab('rfi')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+                activeTab === 'rfi'
+                  ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-700/50 shadow-[0_0_10px_rgba(0,229,255,0.15)] font-semibold'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+              }`}
+            >
+              <FileQuestion className="w-4 h-4 text-emerald-400" />
+              <span>{isMl ? '6. RFI & നോട്ടീസ്' : '6. RFI & Notices'}</span>
+            </button>
+
+            <button
+              id="nav-tab-boq"
+              onClick={() => setActiveTab('boq')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+                activeTab === 'boq'
+                  ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-700/50 shadow-[0_0_10px_rgba(0,229,255,0.15)] font-semibold'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+              }`}
+            >
+              <Coins className="w-4 h-4 text-amber-400" />
+              <span>{isMl ? '7. സ്മാർട്ട് BOQ' : '7. Smart BOQ'}</span>
+            </button>
+
+            <button
               id="nav-tab-report"
               onClick={() => setActiveTab('report')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all cursor-pointer ${
@@ -561,7 +564,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }`}
             >
               <FileText className="w-4 h-4" />
-              <span>{isMl ? '5. റിപ്പോർട്ട്' : '5. Scrutiny Report'}</span>
+              <span>{isMl ? '8. പെർമിറ്റ് റിപ്പോർട്ട്' : '8. Permit Report'}</span>
             </button>
 
             <button
@@ -574,7 +577,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }`}
             >
               <BookOpen className="w-4 h-4" />
-              <span>{isMl ? '6. ചട്ട പുസ്തകം' : '6. Rulebook & Amendments'}</span>
+              <span>{isMl ? '9. ചട്ട പുസ്തകം' : '9. Rulebook'}</span>
             </button>
 
             {/* Exclusive Super Admin Tab (sanoop.amrita@gmail.com) */}

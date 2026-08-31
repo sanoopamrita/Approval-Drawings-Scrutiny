@@ -21,9 +21,12 @@ export type Language = 'ml' | 'en';
 export type TabType = 
   | 'authority' 
   | 'drawings' 
+  | 'redline'
   | 'areastatement' 
   | 'scrutiny' 
   | 'report' 
+  | 'boq'
+  | 'rfi'
   | 'rulebook' 
   | 'chatbot'
   | 'admin';

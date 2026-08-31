@@ -12,7 +12,6 @@ interface GoogleSignInModalProps {
 interface SavedAccount {
   email: string;
   name: string;
-  avatar?: string;
   isSuperAdmin?: boolean;
   description?: string;
 }
@@ -39,13 +38,11 @@ export const GoogleSignInModal: React.FC<GoogleSignInModalProps> = ({
     {
       email: 'sanoopsadanandhan@gmail.com',
       name: 'Sanoop Sadanandhan',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
       description: isMl ? 'സ്ഥിരീകരിച്ച ഗൂഗിൾ അക്കൗണ്ട്' : 'Verified Google Account',
     },
     {
       email: SUPER_ADMIN_EMAIL,
       name: 'Sanoop Sadanandhan',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
       isSuperAdmin: true,
       description: isMl ? '👑 സൂപ്പർ അഡ്മിൻ ആക്സസ്' : '👑 Super Admin Authority',
     },
@@ -55,7 +52,7 @@ export const GoogleSignInModal: React.FC<GoogleSignInModalProps> = ({
     setErrorMessage(null);
     setLoadingEmail(account.email);
     try {
-      await onSelectAccount(account.email, account.name, account.avatar);
+      await onSelectAccount(account.email, account.name);
     } catch (err: any) {
       setErrorMessage(err?.message || (isMl ? 'ഗൂഗിൾ ലോഗിൻ പരാജയപ്പെട്ടു' : 'Authentication failed'));
       setLoadingEmail(null);
@@ -160,12 +157,9 @@ export const GoogleSignInModal: React.FC<GoogleSignInModalProps> = ({
                 >
                   <div className="flex items-center gap-3.5 min-w-0">
                     <div className="relative shrink-0">
-                      <img
-                        src={acc.avatar}
-                        alt={acc.name}
-                        className="w-10 h-10 rounded-full object-cover border border-slate-200"
-                        referrerPolicy="no-referrer"
-                      />
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-600 via-blue-600 to-indigo-600 text-white font-extrabold text-sm flex items-center justify-center shadow-md">
+                        {acc.email.charAt(0).toUpperCase()}
+                      </div>
                       {acc.isSuperAdmin && (
                         <span className="absolute -top-1 -right-1 text-xs" title="Super Admin">
                           👑
