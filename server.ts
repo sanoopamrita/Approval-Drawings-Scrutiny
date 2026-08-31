@@ -23,12 +23,145 @@ const appDir = currentDirname;
 
 const PORT = 3000;
 
+// ==========================================
+// 🛡️ SECURITY & CONCURRENCY CONTROLLERS
+// ==========================================
+
+// 1. In-memory Dynamic Query Cache (TTL based)
+interface CacheEntry<T> {
+  data: T;
+  expiresAt: number;
+}
+const responseCache = new Map<string, CacheEntry<any>>();
+
+function getFromCache<T>(key: string): T | null {
+  const entry = responseCache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    responseCache.delete(key);
+    return null;
+  }
+  return entry.data;
+}
+
+function setToCache<T>(key: string, data: T, ttlMs: number = 30 * 60 * 1000): void {
+  // Prevent unbounded cache growth
+  if (responseCache.size > 2000) {
+    const oldestKey = responseCache.keys().next().value;
+    if (oldestKey) responseCache.delete(oldestKey);
+  }
+  responseCache.set(key, {
+    data,
+    expiresAt: Date.now() + ttlMs,
+  });
+}
+
+// 2. Concurrency Semaphore for Outbound AI Invocations
+class AsyncSemaphore {
+  private max: number;
+  private current: number = 0;
+  private queue: Array<() => void> = [];
+
+  constructor(max: number) {
+    this.max = max;
+  }
+
+  async acquire(timeoutMs: number = 10000): Promise<boolean> {
+    if (this.current < this.max) {
+      this.current++;
+      return true;
+    }
+
+    return new Promise<boolean>((resolve) => {
+      let resolved = false;
+      const timer = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          const idx = this.queue.indexOf(run);
+          if (idx !== -1) this.queue.splice(idx, 1);
+          resolve(false); // Timed out waiting in queue
+        }
+      }, timeoutMs);
+
+      const run = () => {
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timer);
+          this.current++;
+          resolve(true);
+        }
+      };
+
+      this.queue.push(run);
+    });
+  }
+
+  release(): void {
+    this.current = Math.max(0, this.current - 1);
+    if (this.queue.length > 0 && this.current < this.max) {
+      const next = this.queue.shift();
+      if (next) next();
+    }
+  }
+
+  get activeCount(): number {
+    return this.current;
+  }
+
+  get queueLength(): number {
+    return this.queue.length;
+  }
+}
+
+// Max 10 concurrent heavy Gemini API calls to prevent thread/socket exhaustion
+const aiSemaphore = new AsyncSemaphore(10);
+
+// 3. Sliding Window Rate Limiter (per IP)
+interface RateLimitEntry {
+  count: number;
+  resetTime: number;
+}
+const rateLimitMap = new Map<string, RateLimitEntry>();
+
+function checkRateLimit(ip: string, limit: number = 120, windowMs: number = 60 * 1000): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+
+  if (!entry || now > entry.resetTime) {
+    rateLimitMap.set(ip, { count: 1, resetTime: now + windowMs });
+    return true;
+  }
+
+  if (entry.count >= limit) {
+    return false;
+  }
+
+  entry.count++;
+  return true;
+}
+
+// Periodic cleanup of rate limits, cache, and OTP memory (runs every 5 mins)
+setInterval(() => {
+  const now = Date.now();
+  // Clean expired rate limits
+  for (const [ip, entry] of rateLimitMap.entries()) {
+    if (now > entry.resetTime) {
+      rateLimitMap.delete(ip);
+    }
+  }
+  // Clean expired cache items
+  for (const [key, entry] of responseCache.entries()) {
+    if (now > entry.expiresAt) {
+      responseCache.delete(key);
+    }
+  }
+}, 5 * 60 * 1000);
+
 // Lazy initialization of Gemini API Client
 let genAIClient: GoogleGenAI | null = null;
 function getGeminiClient(): GoogleGenAI | null {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    console.warn('[Gemini Server] Warning: GEMINI_API_KEY is not defined in environment variables.');
     return null;
   }
   if (!genAIClient) {
@@ -72,14 +205,49 @@ CORE ARCHITECTURAL & STATUTORY DIRECTIVES:
 async function startServer() {
   const app = express();
 
-  app.use(express.json({ limit: '50mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+  // 🛡️ Security Headers Middleware
+  app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    if (req.path.startsWith('/api/')) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    }
+    next();
+  });
+
+  // Body parser with safe limits
+  app.use(express.json({ limit: '35mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '35mb' }));
+
+  // Global Rate Limiter for API Routes
+  app.use('/api/', (req, res, next) => {
+    const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown-client';
+    const isHeavy = req.path.includes('analyze-drawing');
+    const limit = isHeavy ? 30 : 120;
+
+    if (!checkRateLimit(clientIp, limit)) {
+      return res.status(429).json({
+        error: 'Too Many Requests',
+        message: 'നിരവധി അഭ്യർത്ഥനകൾ ഒരേ സമയം ലഭിച്ചതിനാൽ താൽക്കാലികമായി നിയന്ത്രിച്ചിരിക്കുന്നു. ദയവായി ഒരു മിനിറ്റിന് ശേഷം വീണ്ടും ശ്രമിക്കുക.',
+        retryAfter: 60,
+      });
+    }
+    next();
+  });
 
   // Health check
   app.get('/api/health', (req, res) => {
     res.json({
       status: 'ok',
       hasApiKey: !!process.env.GEMINI_API_KEY,
+      concurrency: {
+        activeAiCalls: aiSemaphore.activeCount,
+        queuedAiCalls: aiSemaphore.queueLength,
+        cachedQueriesCount: responseCache.size,
+      },
+      uptimeSeconds: Math.floor(process.uptime()),
       timestamp: new Date().toISOString(),
     });
   });
@@ -347,18 +515,42 @@ Regarding your query: **"${query}"**, here are the statutory provisions under cu
       }
 
       const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user')?.content || '';
+      const hasImage = messages.some((m: any) => !!m.image);
+
+      // Check cache for text-only queries
+      const cacheKey = !hasImage && lastUserMsg.length < 300
+        ? `chat:${language}:${(activeProjectData?.jurisdiction || 'KPBR')}:${lastUserMsg.trim().toLowerCase()}`
+        : null;
+
+      if (cacheKey) {
+        const cached = getFromCache<string>(cacheKey);
+        if (cached) {
+          return res.json({ response: cached, cached: true });
+        }
+      }
+
       const client = getGeminiClient();
 
       if (!client) {
         // High quality dynamic query-based fallback response if API key is not configured
         const fallbackText = generateSmartConsultationResponse(lastUserMsg, activeProjectData, language);
+        if (cacheKey) setToCache(cacheKey, fallbackText, 20 * 60 * 1000);
         return res.json({ response: fallbackText });
       }
 
-      // Build context from active project if provided
-      let projectContextText = '';
-      if (activeProjectData) {
-        projectContextText = `
+      // Concurrency guard: Acquire AI slot (max 10 concurrent calls) with 5s timeout
+      const acquired = await aiSemaphore.acquire(5000);
+      if (!acquired) {
+        // High load: gracefully return fast rule consultation instead of hanging
+        const fastResponse = generateSmartConsultationResponse(lastUserMsg, activeProjectData, language);
+        return res.json({ response: fastResponse, fallback: 'concurrency_high_load' });
+      }
+
+      try {
+        // Build context from active project if provided
+        let projectContextText = '';
+        if (activeProjectData) {
+          projectContextText = `
 CURRENT ACTIVE PROJECT STATE:
 - Jurisdiction: ${activeProjectData.jurisdiction || 'KPBR'}
 - Project Name: ${activeProjectData.projectName || 'Not specified'}
@@ -373,70 +565,84 @@ CURRENT ACTIVE PROJECT STATE:
 - Car Parking: ${activeProjectData.carParkingProvided || 0} slots
 - RWH Tank: ${activeProjectData.rwhTankCapacityLiters || 0} Litres
 `;
-      }
+        }
 
-      // Format conversation history for Gemini
-      const contents: any[] = [];
-      const recentMessages = messages.slice(-10);
-      for (const msg of recentMessages) {
-        const role = msg.role === 'assistant' ? 'model' : 'user';
-        const parts: any[] = [];
+        // Format conversation history for Gemini
+        const contents: any[] = [];
+        const recentMessages = messages.slice(-10);
+        for (const msg of recentMessages) {
+          const role = msg.role === 'assistant' ? 'model' : 'user';
+          const parts: any[] = [];
 
-        if (msg.image) {
-          const base64Data = msg.image.replace(/^data:image\/\w+;base64,/, '');
-          const mimeType = msg.image.match(/^data:([^;]+);/)?.[1] || 'image/jpeg';
-          parts.push({
-            inlineData: {
-              data: base64Data,
-              mimeType,
-            },
+          if (msg.image) {
+            const base64Data = msg.image.replace(/^data:image\/\w+;base64,/, '');
+            const mimeType = msg.image.match(/^data:([^;]+);/)?.[1] || 'image/jpeg';
+            parts.push({
+              inlineData: {
+                data: base64Data,
+                mimeType,
+              },
+            });
+          }
+
+          if (msg.content) {
+            parts.push({ text: msg.content });
+          }
+
+          contents.push({
+            role,
+            parts,
           });
         }
 
-        if (msg.content) {
-          parts.push({ text: msg.content });
+        const fullSystemInstruction = `${SYSTEM_INSTRUCTION_KERALA_RULES}\n\n${projectContextText}\n\nUser Language Preference: ${language === 'ml' ? 'Malayalam (മലയാളം)' : 'English'}`;
+
+        // Outbound request with 22-second hard timeout race
+        const generateAiPromise = (async () => {
+          try {
+            const response = await client.models.generateContent({
+              model: 'gemini-3.7-flash',
+              contents,
+              config: {
+                systemInstruction: fullSystemInstruction,
+                tools: [{ googleSearch: {} }],
+                temperature: 0.3,
+                maxOutputTokens: 2500,
+              },
+            });
+            return response.text || '';
+          } catch {
+            const response = await client.models.generateContent({
+              model: 'gemini-3.7-flash',
+              contents,
+              config: {
+                systemInstruction: fullSystemInstruction,
+                temperature: 0.3,
+                maxOutputTokens: 2500,
+              },
+            });
+            return response.text || '';
+          }
+        })();
+
+        const timeoutPromise = new Promise<string>((_, reject) =>
+          setTimeout(() => reject(new Error('AI request timeout')), 22000)
+        );
+
+        let responseText = await Promise.race([generateAiPromise, timeoutPromise]).catch(() => '');
+
+        if (!responseText) {
+          responseText = generateSmartConsultationResponse(lastUserMsg, activeProjectData, language);
         }
 
-        contents.push({
-          role,
-          parts,
-        });
+        if (cacheKey && responseText) {
+          setToCache(cacheKey, responseText, 30 * 60 * 1000);
+        }
+
+        return res.json({ response: responseText });
+      } finally {
+        aiSemaphore.release();
       }
-
-      const fullSystemInstruction = `${SYSTEM_INSTRUCTION_KERALA_RULES}\n\n${projectContextText}\n\nUser Language Preference: ${language === 'ml' ? 'Malayalam (മലയാളം)' : 'English'}`;
-
-      let responseText = '';
-      try {
-        const response = await client.models.generateContent({
-          model: 'gemini-3.7-flash',
-          contents,
-          config: {
-            systemInstruction: fullSystemInstruction,
-            tools: [{ googleSearch: {} }],
-            temperature: 0.3,
-            maxOutputTokens: 2500,
-          },
-        });
-        responseText = response.text || '';
-      } catch (genErr) {
-        // Retry without search tool if search tool fails
-        const response = await client.models.generateContent({
-          model: 'gemini-3.7-flash',
-          contents,
-          config: {
-            systemInstruction: fullSystemInstruction,
-            temperature: 0.3,
-            maxOutputTokens: 2500,
-          },
-        });
-        responseText = response.text || '';
-      }
-
-      if (!responseText) {
-        responseText = generateSmartConsultationResponse(lastUserMsg, activeProjectData, language);
-      }
-
-      return res.json({ response: responseText });
     } catch (err: any) {
       console.error('[Gemini Server] Chat error:', err);
       const lastUserMsg = [...(req.body?.messages || [])].reverse().find((m: any) => m.role === 'user')?.content || '';
@@ -459,25 +665,30 @@ CURRENT ACTIVE PROJECT STATE:
       let syncSummaryMl = `ഏറ്റവും പുതിയ എൽ.എസ്.ജി.ഡി ഗസറ്റ് വിജ്ഞാപനങ്ങൾ, കെ-സ്മാർട്ട് സെൽഫ് സർട്ടിഫിക്കേഷൻ ഉത്തരവുകൾ, ഫയർ സേഫ്റ്റി മാനദണ്ഡങ്ങൾ, റൂൾ 60 ചെറിയ പ്ലോട്ട് ഇളവുകൾ എന്നിവ വിജയകരമായി പരിശോധിച്ച് അപ്‌ഡേറ്റ് ചെയ്തു.`;
 
       if (client) {
-        try {
-          const syncPrompt = `You are the statutory knowledge synchronizer for Kerala Building Rules (KPBR & KMBR).
+        const acquired = await aiSemaphore.acquire(3000);
+        if (acquired) {
+          try {
+            const syncPrompt = `You are the statutory knowledge synchronizer for Kerala Building Rules (KPBR & KMBR).
 Perform a search/verification of the latest Kerala Local Self Government Department (LSGD) building rule notifications, gazette orders, K-Smart circulars, NBC 2016 Part IV fire safety norms, and school building rules (KER).
 Summarize key recent statutory amendments in 3 bullet points in English and Malayalam.`;
 
-          const response = await client.models.generateContent({
-            model: 'gemini-3.7-flash',
-            contents: syncPrompt,
-            config: {
-              tools: [{ googleSearch: {} }],
-              temperature: 0.2,
-            },
-          });
+            const response = await client.models.generateContent({
+              model: 'gemini-3.7-flash',
+              contents: syncPrompt,
+              config: {
+                tools: [{ googleSearch: {} }],
+                temperature: 0.2,
+              },
+            });
 
-          if (response.text) {
-            syncSummaryEn = response.text.slice(0, 500);
+            if (response.text) {
+              syncSummaryEn = response.text.slice(0, 500);
+            }
+          } catch (searchErr) {
+            console.warn('[Sync Rules] Search grounding note:', searchErr);
+          } finally {
+            aiSemaphore.release();
           }
-        } catch (searchErr) {
-          console.warn('[Sync Rules] Search grounding note:', searchErr);
         }
       }
 
@@ -515,25 +726,49 @@ Summarize key recent statutory amendments in 3 bullet points in English and Mala
         return res.status(400).json({ error: 'Search query is required' });
       }
 
-      const client = getGeminiClient();
+      const cleanQuery = query.trim();
       const isMl = language === 'ml';
+      const cacheKey = `search:${jurisdiction}:${language}:${cleanQuery.toLowerCase()}`;
+
+      // Check Cache
+      const cached = getFromCache<string>(cacheKey);
+      if (cached) {
+        return res.json({
+          result: cached,
+          query: cleanQuery,
+          timestamp: Date.now(),
+          grounded: true,
+          cached: true,
+        });
+      }
+
+      const client = getGeminiClient();
 
       if (!client) {
-        // Fallback intelligent summary if client is not configured
         const fallbackText = isMl
-          ? `**ചട്ട പരിശോധനാ ഫലം (${jurisdiction}):**\n\n"${query}" എന്നതുമായി ബന്ധപ്പെട്ട പ്രധാന കേരള കെട്ടിട നിർമ്മാണ ചട്ടങ്ങൾ:\n\n- **സെറ്റ്ബാക്കുകൾ (Rule 27 / 25):** 10 മീറ്റർ വരെ വീടുകൾക്ക് മുൻവശം 3.0 മീറ്റർ, പിൻവശം 1.5-2.0 മീറ്റർ, വശങ്ങളിൽ 1.20 മീ / 1.00 മീറ്റർ.\n- **കിണർ അകലം (Rule 47):** കുടിവെള്ള കിണറും സെപ്റ്റിക് ടാങ്കും തമ്മിൽ 7.50 മീറ്റർ അകലം നിർബന്ധം.\n- **ചെറിയ പ്ലോട്ട് (Rule 60 / 62):** 125 ച.മീ (3 സെന്റിൽ) താഴെയുള്ള പ്ലോട്ടുകൾക്ക് മുൻവശം 1.8 മീറ്ററും പിൻവശം 1.0 മീറ്ററും മതിയാകും.\n\n*ലൈവ് ഗസറ്റ് തിരച്ചിലിനായി API Key നൽകുക.*`
-          : `**Statutory Search Result (${jurisdiction}):**\n\nKey provisions matching "${query}":\n\n- **Setbacks (Rule 27/25):** Front min 3.0m, Rear min 1.5-2.0m, Sides min 1.2m & 1.0m.\n- **Well Distance (Rule 47):** Minimum 7.50m from drinking well to septic tank.\n- **Small Plots (Rule 60/62):** Concessional setbacks for plots <=125 sq.m.`;
+          ? `**ചട്ട പരിശോധനാ ഫലം (${jurisdiction}):**\n\n"${cleanQuery}" എന്നതുമായി ബന്ധപ്പെട്ട പ്രധാന കേരള കെട്ടിട നിർമ്മാണ ചട്ടങ്ങൾ:\n\n- **സെറ്റ്ബാക്കുകൾ (Rule 27 / 25):** 10 മീറ്റർ വരെ വീടുകൾക്ക് മുൻവശം 3.0 മീറ്റർ, പിൻവശം 1.5-2.0 മീറ്റർ, വശങ്ങളിൽ 1.20 മീ / 1.00 മീറ്റർ.\n- **കിണർ അകലം (Rule 47):** കുടിവെള്ള കിണറും സെപ്റ്റിക് ടാങ്കും തമ്മിൽ 7.50 മീറ്റർ അകലം നിർബന്ധം.\n- **ചെറിയ പ്ലോട്ട് (Rule 60 / 62):** 125 ച.മീ (3 സെന്റിൽ) താഴെയുള്ള പ്ലോട്ടുകൾക്ക് മുൻവശം 1.8 മീറ്ററും പിൻവശം 1.0 മീറ്ററും മതിയാകും.`
+          : `**Statutory Search Result (${jurisdiction}):**\n\nKey provisions matching "${cleanQuery}":\n\n- **Setbacks (Rule 27/25):** Front min 3.0m, Rear min 1.5-2.0m, Sides min 1.2m & 1.0m.\n- **Well Distance (Rule 47):** Minimum 7.50m from drinking well to septic tank.\n- **Small Plots (Rule 60/62):** Concessional setbacks for plots <=125 sq.m.`;
 
+        setToCache(cacheKey, fallbackText, 60 * 60 * 1000);
         return res.json({
           result: fallbackText,
-          query,
+          query: cleanQuery,
           timestamp: Date.now(),
           grounded: false,
         });
       }
 
-      const searchPrompt = `You are the Official Kerala Building Rules (KMBR 2019 / KPBR 2019) Statutory Research Assistant.
-The user is searching for: "${query}" in jurisdiction "${jurisdiction}".
+      const acquired = await aiSemaphore.acquire(4000);
+      if (!acquired) {
+        const fastFallback = isMl
+          ? `**തത്സമയ ചട്ട പരിശോധന (${jurisdiction}):**\n\n"${cleanQuery}" എന്നതുമായി ബന്ധപ്പെട്ട മാനദണ്ഡങ്ങൾ:\n- KMBR / KPBR 2019 ചട്ടങ്ങൾ പ്രകാരം കൃത്യമായ അകലങ്ങളും സെറ്റ്ബാക്കുകളും പാലിക്കേണ്ടതാണ്.`
+          : `**Statutory Reference (${jurisdiction}):**\n\nKey requirements for "${cleanQuery}" under Kerala Building Rules 2019.`;
+        return res.json({ result: fastFallback, query: cleanQuery, timestamp: Date.now(), grounded: false });
+      }
+
+      try {
+        const searchPrompt = `You are the Official Kerala Building Rules (KMBR 2019 / KPBR 2019) Statutory Research Assistant.
+The user is searching for: "${cleanQuery}" in jurisdiction "${jurisdiction}".
 Search the latest Kerala LSGD Government Orders, Gazette notifications, circulars, and KMBR/KPBR 2019 provisions.
 Provide a clear, authoritative answer containing:
 1. Exact Rule Numbers (e.g. Rule 27, Rule 47, Rule 60, Rule 29).
@@ -543,38 +778,44 @@ Provide a clear, authoritative answer containing:
 
 Write in ${isMl ? 'clear Malayalam (മലയാളം) with official engineering terms' : 'clear, professional English'}.`;
 
-      let responseText = '';
-      try {
-        const response = await client.models.generateContent({
-          model: 'gemini-3.7-flash',
-          contents: searchPrompt,
-          config: {
-            tools: [{ googleSearch: {} }],
-            temperature: 0.2,
-            maxOutputTokens: 2000,
-          },
-        });
-        responseText = response.text || '';
-      } catch {
-        // Fallback without search tool
-        const response = await client.models.generateContent({
-          model: 'gemini-3.7-flash',
-          contents: searchPrompt,
-          config: {
-            systemInstruction: SYSTEM_INSTRUCTION_KERALA_RULES,
-            temperature: 0.2,
-            maxOutputTokens: 2000,
-          },
-        });
-        responseText = response.text || '';
-      }
+        let responseText = '';
+        try {
+          const response = await client.models.generateContent({
+            model: 'gemini-3.7-flash',
+            contents: searchPrompt,
+            config: {
+              tools: [{ googleSearch: {} }],
+              temperature: 0.2,
+              maxOutputTokens: 2000,
+            },
+          });
+          responseText = response.text || '';
+        } catch {
+          const response = await client.models.generateContent({
+            model: 'gemini-3.7-flash',
+            contents: searchPrompt,
+            config: {
+              systemInstruction: SYSTEM_INSTRUCTION_KERALA_RULES,
+              temperature: 0.2,
+              maxOutputTokens: 2000,
+            },
+          });
+          responseText = response.text || '';
+        }
 
-      return res.json({
-        result: responseText,
-        query,
-        timestamp: Date.now(),
-        grounded: true,
-      });
+        if (responseText) {
+          setToCache(cacheKey, responseText, 45 * 60 * 1000);
+        }
+
+        return res.json({
+          result: responseText,
+          query: cleanQuery,
+          timestamp: Date.now(),
+          grounded: true,
+        });
+      } finally {
+        aiSemaphore.release();
+      }
     } catch (err: any) {
       console.error('[Statutory Search] Error:', err);
       return res.status(500).json({ error: 'Search failed', details: err?.message || String(err) });
@@ -891,10 +1132,21 @@ Ensure accurate Malayalam and English names. Return a brief verification confirm
         });
       }
 
-      const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
-      const mimeType = image.match(/^data:([^;]+);/)?.[1] || 'image/jpeg';
+      const acquired = await aiSemaphore.acquire(8000);
+      if (!acquired) {
+        return res.status(503).json({
+          error: 'Server busy',
+          message: isMl
+            ? 'നിരവധി ഡ്രോയിംഗുകൾ ഒരേ സമയം സ്കാൻ ചെയ്യുന്നതിനാൽ ദയവായി അല്പം കഴിഞ്ഞ് വീണ്ടും ശ്രമിക്കുക.'
+            : 'Server is currently processing other drawings. Please retry in a few seconds.',
+        });
+      }
 
-      const promptText = `
+      try {
+        const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
+        const mimeType = image.match(/^data:([^;]+);/)?.[1] || 'image/jpeg';
+
+        const promptText = `
 Perform a thorough technical architectural and engineering inspection of this submitted Kerala Building Drawing.
 Drawing Name: ${drawingName || 'Uploaded Drawing'}
 Drawing Category: ${category || 'Site Plan / Floor Plan'}
@@ -945,37 +1197,45 @@ At the very end of your response, output a JSON block with extracted numeric val
 Write the textual analysis in ${isMl ? 'fluent Malayalam (മലയാളം) with official engineering terms' : 'clear, professional English'}.
 `;
 
-      const response = await client.models.generateContent({
-        model: 'gemini-3.7-flash',
-        contents: [
-          {
-            role: 'user',
-            parts: [
-              {
-                inlineData: {
-                  data: base64Data,
-                  mimeType,
+        const generatePromise = client.models.generateContent({
+          model: 'gemini-3.7-flash',
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                {
+                  inlineData: {
+                    data: base64Data,
+                    mimeType,
+                  },
                 },
-              },
-              {
-                text: promptText,
-              },
-            ],
+                {
+                  text: promptText,
+                },
+              ],
+            },
+          ],
+          config: {
+            systemInstruction: SYSTEM_INSTRUCTION_KERALA_RULES,
+            temperature: 0.3,
+            maxOutputTokens: 3000,
           },
-        ],
-        config: {
-          systemInstruction: SYSTEM_INSTRUCTION_KERALA_RULES,
-          temperature: 0.3,
-          maxOutputTokens: 3000,
-        },
-      });
+        });
 
-      const analysisMarkdown = response.text || 'Analysis completed.';
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Drawing analysis timed out')), 45000)
+        );
 
-      return res.json({
-        analysisText: analysisMarkdown,
-        timestamp: Date.now(),
-      });
+        const response: any = await Promise.race([generatePromise, timeoutPromise]);
+        const analysisMarkdown = response?.text || 'Analysis completed.';
+
+        return res.json({
+          analysisText: analysisMarkdown,
+          timestamp: Date.now(),
+        });
+      } finally {
+        aiSemaphore.release();
+      }
     } catch (err: any) {
       console.error('[Gemini Server] Drawing analysis error:', err);
       return res.status(500).json({
@@ -983,6 +1243,19 @@ Write the textual analysis in ${isMl ? 'fluent Malayalam (മലയാളം) wi
         details: err?.message || String(err),
       });
     }
+  });
+
+  // Global Error Handler for Express
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error('[Express Global Error]:', err);
+    if (res.headersSent) {
+      return next(err);
+    }
+    return res.status(err.status || 500).json({
+      error: 'Internal Server Error',
+      message: err?.message || 'An unexpected error occurred',
+      timestamp: Date.now(),
+    });
   });
 
   // Vite middleware for development or static serving for production
