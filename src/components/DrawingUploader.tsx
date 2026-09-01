@@ -33,6 +33,7 @@ import {
   Recycle,
   Building2,
   FileSpreadsheet,
+  Wrench,
 } from 'lucide-react';
 import Markdown from 'react-markdown';
 import {
@@ -505,25 +506,37 @@ export const DrawingUploader: React.FC<DrawingUploaderProps> = ({
             </div>
           </div>
 
-          <button
-            type="button"
-            id="run-master-drawing-scrutiny-btn"
-            onClick={handleRunMasterScrutiny}
-            disabled={isMasterScrutinizing || drawings.length === 0}
-            className="w-full md:w-auto px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-xs shrink-0 cursor-pointer disabled:opacity-50"
-          >
-            {isMasterScrutinizing ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
-                <span>{isMl ? 'എല്ലാ പ്ലാനുകളും പരിശോധിക്കുന്നു...' : 'Scrutinizing All Sheets...'}</span>
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4 text-slate-950" />
-                <span>{isMl ? 'പ്ലാനുകൾ മാത്രം വച്ച് സമഗ്ര പരിശോധന നടത്തുക' : 'Run Master Scrutiny on Drawings'}</span>
-              </>
-            )}
-          </button>
+          <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full md:w-auto shrink-0">
+            <button
+              type="button"
+              id="goto-ksmart-repair-btn"
+              onClick={onNext}
+              className="w-full sm:w-auto px-4 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-xs cursor-pointer shadow-[0_0_15px_rgba(6,182,212,0.35)]"
+            >
+              <Wrench className="w-4 h-4 text-slate-950" />
+              <span>{isMl ? 'കെ-സ്മാർട്ട് CAD ഓട്ടോ-കറക്ഷൻ' : 'K-Smart CAD Auto-Repair'}</span>
+            </button>
+
+            <button
+              type="button"
+              id="run-master-drawing-scrutiny-btn"
+              onClick={handleRunMasterScrutiny}
+              disabled={isMasterScrutinizing || drawings.length === 0}
+              className="w-full sm:w-auto px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-xs cursor-pointer disabled:opacity-50"
+            >
+              {isMasterScrutinizing ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
+                  <span>{isMl ? 'എല്ലാ പ്ലാനുകളും പരിശോധിക്കുന്നു...' : 'Scrutinizing All Sheets...'}</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 text-slate-950" />
+                  <span>{isMl ? 'പ്ലാനുകൾ മാത്രം വച്ച് സമഗ്ര പരിശോധന' : 'Run Master Scrutiny'}</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Zero-Storage Privacy & Memory Purge Bar */}

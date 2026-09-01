@@ -1453,8 +1453,11 @@ AT THE VERY END, PROVIDE A CLEAN JSON BLOCK WITH EXTRACTED GEOMETRIC PARAMETERS:
           defects.push({
             id: 'def-fallback-1',
             ruleCitation: jurisdiction === 'KMBR' ? 'KMBR 2019 Rule 25(1)' : 'KPBR 2019 Rule 27(1)',
-            defectText: isMl ? 'മുൻവശത്തെ സെറ്റ്ബാക്ക് കുറവുള്ളതായി ഒബ്ജക്ഷൻ നൽകിയിരിക്കുന്നു.' : 'Front open space shortfall flagged in notice.',
-            rectificationPlan: isMl ? 'മുൻവശത്തെ അകലം 3.00 മീറ്ററായി തിരുത്തി 0_SETBACK_FRONT ലെയറിൽ പുതുക്കി.' : 'Front setback corrected to 3.00m in CAD layer 0_SETBACK_FRONT.',
+            defectText: isMl ? 'മുൻവശത്തെ സെറ്റ്ബാക്ക് കുറവുള്ളതായി നോട്ടീസിൽ രേഖപ്പെടുത്തിയിട്ടുണ്ട്.' : 'Front open space shortfall flagged in scrutiny notice.',
+            legalContext: isMl ? 'കെട്ടിടത്തിന് മുന്നിൽ കുറഞ്ഞത് 3.00 മീറ്റർ അകലം വേണമെന്നാണ് ചട്ടം. എന്നാൽ പ്ലോട്ട് 200 ച.മീറ്ററിൽ താഴെയാണെങ്കിൽ റൂൾ 60 പ്രകാരം 1.80 മീറ്റർ വരെ ഇളവ് അനുവദനീയമാണ്.' : 'Mandatory 3.00m front clearance required under standard rules, reducible to 1.80m for small plots under Rule 60.',
+            defenseStrategy: isMl ? 'പ്ലോട്ട് വിസ്തീർണ്ണവും നിലവിലുള്ള റോഡ് വീതിയും ചൂണ്ടിക്കാട്ടി ചട്ടം 60 പ്രകാരമുള്ള ചെറിയ പ്ലോട്ട് ആനുകൂല്യം ഉന്നയിക്കുക.' : 'Claim statutory small plot concession under Rule 60 with boundary verification sketch.',
+            rectificationPlan: isMl ? 'മുൻവശത്തെ അകലം കൃത്യമായി 3.00 മീറ്ററായി തിരുത്തി (അല്ലെങ്കിൽ റൂൾ 60 പ്രകാരം 1.80m) "0_SETBACK_FRONT" ലെയറിൽ അപ്‌ഡേറ്റ് ചെയ്തു.' : 'Setback aligned to 3.00m (or 1.80m under Rule 60) on CAD layer "0_SETBACK_FRONT".',
+            cadLayer: '0_SETBACK_FRONT',
             severity: 'high',
           });
         }
@@ -1463,8 +1466,11 @@ AT THE VERY END, PROVIDE A CLEAN JSON BLOCK WITH EXTRACTED GEOMETRIC PARAMETERS:
           defects.push({
             id: 'def-fallback-2',
             ruleCitation: jurisdiction === 'KMBR' ? 'KMBR 2019 Rule 91' : 'KPBR 2019 Rule 47',
-            defectText: isMl ? 'കുടിവെള്ള കിണറും സെപ്റ്റിക് ടാങ്കും തമ്മിൽ 7.50 മീറ്റർ ദൂരപരിധിയില്ല.' : 'Well-to-septic clearance violation (< 7.50m mandatory distance).',
-            rectificationPlan: isMl ? 'സെപ്റ്റിക് ടാങ്ക് കിണറിൽ നിന്ന് 7.50 മീറ്റർ മാറ്റി സ്ഥാനം നൽകി സൈറ്റ് പ്ലാൻ തിരുത്തി.' : 'Relocated septic tank to clear 7.50m radial distance from open well.',
+            defectText: isMl ? 'കുടിവെള്ള കിണറും സെപ്റ്റിക് ടാങ്കും തമ്മിൽ 7.50 മീറ്റർ ദൂരപരിധിയില്ലെന്ന് ഒബ്ജക്ഷൻ ഉന്നയിച്ചു.' : 'Well-to-septic clearance violation (< 7.50m mandatory distance).',
+            legalContext: isMl ? 'കുടിവെള്ള കിണറുകളിൽ നിന്ന് സെപ്റ്റിക് ടാങ്ക് / സോക്ക് പിറ്റിലേക്ക് 7.50 മീറ്റർ ദൂരം നിർബന്ധമാണ്. വാട്ടർപ്രൂഫ് RCC ടാങ്ക് ഉപയോഗിച്ച് സർക്കുലർ ദൂരം പാലിക്കണം.' : '7.50m horizontal buffer mandatory between drinking water well and septic tank soak pit.',
+            defenseStrategy: isMl ? 'സെപ്റ്റിക് ടാങ്ക് വാട്ടർ ടൈറ്റ് RCC സ്ട്രക്ചർ ആയി നിർമ്മിച്ച് കിണറ്റിൽ നിന്നും 7.50 മീറ്റർ റേഡിയൽ ദൂരം തെളിയിക്കുന്ന സൈറ്റ് പ്ലാൻ സമർപ്പിക്കുക.' : 'Provide certified radial offset diagram and RCC watertight septic tank undertaking.',
+            rectificationPlan: isMl ? 'സെപ്റ്റിക് ടാങ്കും സോക്ക് പിറ്റും കിണറിൽ നിന്ന് 7.50 മീറ്ററിലധികം മാറ്റിയുള്ള സൈറ്റ് പ്ലാൻ "0_SEPTIC_TANK" ലെയറിൽ രേഖപ്പെടുത്തി.' : 'Relocated septic tank to clear 7.50m radial distance in CAD layer "0_SEPTIC_TANK".',
+            cadLayer: '0_SEPTIC_TANK',
             severity: 'high',
           });
         }
@@ -1473,8 +1479,11 @@ AT THE VERY END, PROVIDE A CLEAN JSON BLOCK WITH EXTRACTED GEOMETRIC PARAMETERS:
           defects.push({
             id: 'def-fallback-3',
             ruleCitation: 'KMBR/KPBR 2019 Rule 34 / Table 3',
-            defectText: isMl ? 'റോഡ് വീതി സംബന്ധിച്ച സർട്ടിഫിക്കറ്റ്/തെളിവ് ആവശ്യപ്പെട്ടു.' : 'Road access width sketch/affidavit required.',
-            rectificationPlan: isMl ? 'വില്ലേജ് ഓഫീസർ നൽകിയ റോഡ് വീതി സർട്ടിഫിക്കറ്റും റഫറൻസ് സൈറ്റ് പ്ലാനും ഒപ്പം സമർപ്പിക്കുന്നു.' : 'Attached authenticated access road sketch and affidavit.',
+            defectText: isMl ? 'വസ്തുവിലേക്കുള്ള വഴിവീതി തെളിയിക്കുന്ന സർട്ടിഫിക്കറ്റ്/രേഖകൾ ആവശ്യപ്പെട്ടു.' : 'Road access width authentication requested.',
+            legalContext: isMl ? 'റസിഡൻഷ്യൽ കെട്ടിടങ്ങൾക്ക് കുറഞ്ഞത് 1.20 മീറ്റർ / 3.00 മീറ്റർ വഴിവീതി നിർബന്ധമാണ്.' : 'Minimum access width verification mandatory per occupancy classification.',
+            defenseStrategy: isMl ? 'വില്ലേജ് ഓഫീസർ / തദ്ദേശ സ്ഥാപനം സാക്ഷ്യപ്പെടുത്തിയ സർവേ സ്കെച്ചും സമർപ്പിച്ചു.' : 'Furnish authenticated Revenue Village road width certificate.',
+            rectificationPlan: isMl ? 'വഴിവീതി അളന്ന് തിട്ടപ്പെടുത്തിയ സ്കെച്ചും സൈറ്റ് പ്ലാനിൽ "0_ROAD_WIDTH" ലെയറും പുതുക്കി സമർപ്പിക്കുന്നു.' : 'Updated access road boundary on CAD layer "0_ROAD_WIDTH".',
+            cadLayer: '0_ROAD_WIDTH',
             severity: 'medium',
           });
         }
@@ -1482,53 +1491,98 @@ AT THE VERY END, PROVIDE A CLEAN JSON BLOCK WITH EXTRACTED GEOMETRIC PARAMETERS:
         if (defects.length === 0) {
           defects.push({
             id: 'def-fallback-gen',
-            ruleCitation: 'KMBR / KPBR 2019 General Compliance',
-            defectText: isMl ? 'നോട്ടീസിലെ ചട്ടപരമായ നിരീക്ഷണങ്ങളും ക്ലയറൻസുകളും.' : 'Statutory defect points identified in notice.',
-            rectificationPlan: isMl ? 'പരിഷ്കരിച്ച ഡ്രോയിംഗ് കെ-സ്മാർട്ട് നിർദ്ദിഷ്ട ഫോർമാറ്റിൽ സമർപ്പിച്ചു.' : 'Updated CAD drawings and re-submitted via K-Smart portal.',
+            ruleCitation: 'KMBR / KPBR 2019 General Scrutiny Compliance',
+            defectText: isMl ? 'നോട്ടീസിലെ ചട്ടപരമായ സാങ്കേതിക നിരീക്ഷണങ്ങൾ.' : 'Statutory defect observations flagged in scrutiny memo.',
+            legalContext: isMl ? 'കേരള കെട്ടിട നിർമ്മാണ ചട്ടങ്ങൾ 2019 പ്രകാരമുള്ള മാനദണ്ഡങ്ങൾ.' : 'Statutory parameters under Kerala Building Rules 2019.',
+            defenseStrategy: isMl ? 'ചട്ടങ്ങളിലെ ഇളവുകളും സർക്കാർ ഉത്തരവുകളും റഫർ ചെയ്ത് തിരുത്തിയ പ്ലാൻ സമർപ്പിക്കുക.' : 'Submit revised drawings backed by Kerala LSGD circulars.',
+            rectificationPlan: isMl ? 'ഡ്രോയിംഗുകൾ കെ-സ്മാർട്ട് നിർദ്ദിഷ്ട ലെയറുകളിൽ പുനഃക്രമീകരിച്ചു.' : 'Re-aligned CAD drawings to meet K-Smart validation schema.',
+            cadLayer: '0_BUILDING_OUTLINE',
             severity: 'medium',
           });
         }
 
-        const replyLetter = isMl
-          ? `സ്വീകർത്താവ്,
-അസിസ്റ്റന്റ് എഞ്ചിനീയർ / സെക്രട്ടറി,
+        const replyLetterMl = `സ്വീകർത്താവ്,
+അസിസ്റ്റന്റ് എക്സിക്യൂട്ടീവ് എഞ്ചിനീയർ / സെക്രട്ടറി,
 ${projectData?.localBodyName || 'തദ്ദേശ സ്വയംഭരണ സ്ഥാപനം'}, ${projectData?.district || 'കേരളം'}.
 
-വിഷയം: നോട്ടീസിലെ ഒബ്ജക്ഷനുകൾക്കുള്ള മറുപടിയും തിരുത്തിയ പ്ലാനും സമർപ്പിക്കുന്നത് സംബന്ധിച്ച്.
-അപേക്ഷകൻ: ${projectData?.applicantName || 'അപേക്ഷകൻ'} | സർവേ നമ്പർ: ${projectData?.surveyNumber || '142/5'}
+വിഷയം: ബിൽഡിംഗ് പെർമിറ്റ് അപേക്ഷയിന്മേലുള്ള ഒബ്ജക്ഷൻ നോട്ടീസിന്മേൽ ചട്ടപരമായ മറുപടിയും തിരുത്തിയ പ്ലാനും സമർപ്പിക്കുന്നത് സംബന്ധിച്ച്.
+റഫറൻസ്: കെ-സ്മാർട്ട് ഫയൽ നമ്പർ: KBR/KL/${new Date().getFullYear()}/${(projectData?.surveyNumber || '142-5').replace(/\//g, '-')}
+അപേക്ഷകൻ: ${projectData?.applicantName || 'അപേക്ഷകൻ'} | സർവേ നമ്പർ: ${projectData?.surveyNumber || '142/5'}, ${projectData?.villageName || 'വില്ലേജ്'} വില്ലേജ്
 
 ബഹുമാനപ്പെട്ട സാർ,
 
-മേൽ വിഷയത്തിലേക്ക് അയച്ച നോട്ടീസിലെ നിരീക്ഷണങ്ങൾ വിശദമായി പരിശോധിച്ചു. നിർദ്ദേശിക്കപ്പെട്ട തിരുത്തലുകൾ താഴെ പറയും പ്രകാരം ഡ്രോയിംഗിൽ വരുത്തിയിട്ടുണ്ട്:
+മേൽ വിഷയത്തിലേക്ക് കെ-സ്മാർട്ട് പോർട്ടൽ വഴി ലഭിച്ച സ്ക്രൂട്ടിനി നോട്ടീസിലെ നിരീക്ഷണങ്ങൾ വിശദമായി പരിശോധിച്ചു. കേരള കെട്ടിട നിർമ്മാണ ചട്ടങ്ങൾ 2019 പ്രകാരമുള്ള കൃത്യമായ വ്യവസ്ഥകൾ പാലിച്ച് തയ്യാറാക്കിയ മറുപടിയും തിരുത്തിയ ഡിജിറ്റൽ CAD പ്ലാനുകളും താഴെ പറയും പ്രകാരം ബോധിപ്പിക്കുന്നു:
 
-${defects.map((d, i) => `${i + 1}. ${d.defectText}\n   -> പരിഹാരം: ${d.rectificationPlan} (${d.ruleCitation})`).join('\n\n')}
+${defects.map((d, i) => `${i + 1}. ആക്ഷേപം: ${d.defectText} (${d.ruleCitation})
+   • നിയമപരമായ പശ്ചാത്തലം: ${d.legalContext || 'ചട്ടപ്രകാരമുള്ള മാനദണ്ഡങ്ങൾ പൂർണ്ണമായി പാലിച്ചിട്ടുണ്ട്.'}
+   • സാങ്കേതിക വിശദീകരണവും പ്രതിരോധവും: ${d.defenseStrategy || 'ആവശ്യമായ വിശദീകരണ രേഖകൾ ഒപ്പം ചേർക്കുന്നു.'}
+   • സ്വീകരിച്ച തിരുത്തൽ നടപടി: ${d.rectificationPlan}`).join('\n\n')}
 
-കേരള കെട്ടിട നിർമ്മാണ ചട്ടങ്ങൾ 2019 പ്രകാരമുള്ള എല്ലാ മാനദണ്ഡങ്ങളും പാലിച്ചിട്ടുള്ളതിനാൽ പ്രസ്തുത പ്ലാൻ പരിശോധിച്ച് ബിൽഡിംഗ് പെർമിറ്റ് അനുവദിച്ച് തരണമെന്ന് വിനീതമായി അപേക്ഷിക്കുന്നു.
+പ്രോജക്റ്റ് വിശദാംശങ്ങൾ:
+• പ്ലോട്ട് വിസ്തീർണ്ണം: ${projectData?.plotAreaCents || 4.5} സെന്റ് (${projectData?.plotAreaSqM || 182.1} ച.മീറ്റർ)
+• ആകെ നിർമ്മിതി വിസ്തീർണ്ണം: ${projectData?.totalBuiltUpAreaSqM || 178.5} ച.മീറ്റർ
+• FAR: ${projectData?.totalFloorAreaSqM && projectData?.plotAreaSqM ? (projectData.totalFloorAreaSqM / projectData.plotAreaSqM).toFixed(2) : '0.98'} | കവറേജ്: ${projectData?.groundCoverageSqM && projectData?.plotAreaSqM ? ((projectData.groundCoverageSqM / projectData.plotAreaSqM) * 100).toFixed(1) : '48'}%
+• മുൻവശത്തെ അകലം: ${projectData?.frontSetbackM || 3.0} മീറ്റർ | പിൻവശം: ${projectData?.rearSetbackM || 1.5} മീറ്റർ
+
+ഉള്ളടക്കം (Enclosures):
+1. കെ-സ്മാർട്ട് ലെയർ സ്പെസിഫിക്കേഷൻ പ്രകാരം തിരുത്തിയ ഡിജിറ്റൽ CAD പ്ലാനുകൾ.
+2. രജിസ്ട്രേഡ് എഞ്ചിനീയറുടെ സാക്ഷ്യപത്രവും സത്യവാങ്മൂലവും.
+3. വില്ലേജ് ഓഫീസർ നൽകിയ സർട്ടിഫിക്കറ്റ് പകർപ്പ്.
+
+ആയതിനാൽ തിരുത്തിയ പ്ലാനുകളും അനുബന്ധ രേഖകളും പരിശോധിച്ച് കെട്ടിട നിർമ്മാണ പെർമിറ്റ് അനുവദിച്ച് തരണമെന്ന് വിനീതമായി അപേക്ഷിക്കുന്നു.
 
 വിശ്വസ്തതയോടെ,
-രജിസ്ട്രേഡ് ആർക്കിടെക്റ്റ് / എഞ്ചിനീയർ`
-          : `To,
-The Assistant Engineer / Secretary,
+
+${projectData?.applicantName || 'അപേക്ഷകൻ'} (അപേക്ഷകൻ)
+രജിസ്ട്രേഡ് ആർക്കിടെക്റ്റ് / ലൈസൻസ്ഡ് എഞ്ചിനീയർ
+ലൈസൻസ് നമ്പർ: __________________`;
+
+        const replyLetterEn = `To,
+The Assistant Executive Engineer / Secretary,
 ${projectData?.localBodyName || 'Local Self Government Institution'}, ${projectData?.district || 'Kerala'}.
 
-Subject: Compliance Reply & Submission of Revised Drawings Against Scrutiny Notice
-Applicant: ${projectData?.applicantName || 'Applicant'} | Survey No: ${projectData?.surveyNumber || '142/5'}
+Subject: Compliance Reply & Submission of Revised Drawings Against Scrutiny Defect Notice
+Ref: K-Smart Application No: KBR/KL/${new Date().getFullYear()}/${(projectData?.surveyNumber || '142-5').replace(/\//g, '-')}
+Applicant: ${projectData?.applicantName || 'Applicant'} | Sy. No: ${projectData?.surveyNumber || '142/5'}, ${projectData?.villageName || 'Village'}
 
 Respected Sir/Madam,
 
-With reference to the scrutiny objection notice received for the proposed building, we have rectified the flagged points as detailed below:
+With reference to the scrutiny objection memo issued via the K-Smart portal for the proposed building, we have thoroughly addressed all flagged points in strict accordance with the Kerala Municipality/Panchayat Building Rules 2019:
 
-${defects.map((d, i) => `${i + 1}. Defect: ${d.defectText}\n   -> Action Taken: ${d.rectificationPlan} (Ref: ${d.ruleCitation})`).join('\n\n')}
+${defects.map((d, i) => `${i + 1}. Defect / Objection: ${d.defectText} (Ref: ${d.ruleCitation})
+   • Statutory Framework: ${d.legalContext || 'Addressed in full compliance with Kerala Building Rules 2019.'}
+   • Strategic Technical Justification: ${d.defenseStrategy || 'Supported by authenticated revenue & engineering records.'}
+   • Rectification Action: ${d.rectificationPlan}`).join('\n\n')}
 
-The revised drawings strictly conform to the statutory provisions of KMBR / KPBR 2019. Kindly verify and grant the building permit.
+KEY PROJECT PARAMETERS:
+• Plot Area: ${projectData?.plotAreaCents || 4.5} Cents (${projectData?.plotAreaSqM || 182.1} sq.m)
+• Proposed Built-up Area: ${projectData?.totalBuiltUpAreaSqM || 178.5} sq.m
+• Setbacks Provided: Front ${projectData?.frontSetbackM || 3.0}m | Rear ${projectData?.rearSetbackM || 1.5}m | Sides: ${projectData?.sideSetback1M || 1.2}m & ${projectData?.sideSetback2M || 1.0}m
+
+ENCLOSURES:
+1. Revised Digital CAD Drawings conforming to K-Smart layer naming conventions.
+2. Registered Engineer / Architect Undertaking & Affidavits.
+3. Relevant Revenue / Village Survey extracts.
+
+The proposed revised layout is 100% compliant with statutory norms. Kindly verify and grant the building permit.
 
 Yours faithfully,
-Licensed Architect / Engineer`;
+
+${projectData?.applicantName || 'Applicant'}
+Licensed Architect / Registered Engineer`;
 
         return res.json({
           defects,
-          replyLetter,
-          extractedSummary: isMl ? 'നോട്ടീസ് പരിശോധന വിജയകരമായി പൂർത്തിയായി' : 'Notice analyzed successfully',
+          replyLetter: isMl ? replyLetterMl : replyLetterEn,
+          replyLetterMl,
+          replyLetterEn,
+          recommendedAnnexures: [
+            'റൂൾ 60 ചെറിയ പ്ലോട്ട് ഇളവ് ഹർജി',
+            'അതിർത്തി സമ്മതപത്രം / സത്യവാങ്മൂലം',
+            'കിണർ-സെപ്റ്റിക് ടാങ്ക് സാനിറ്റേഷൻ സാക്ഷ്യപത്രം',
+            'മഴവെള്ള സംഭരണ സത്യവാങ്മൂലം',
+          ],
+          extractedSummary: isMl ? 'നോട്ടീസ് സമഗ്രമായി വിശകലനം ചെയ്തു' : 'Notice analyzed comprehensively',
         });
       }
 
@@ -1552,42 +1606,64 @@ Licensed Architect / Engineer`;
         }
 
         const promptText = `
-You are the Senior Kerala LSGD & K-Smart Statutory Objection and Defect Notice Analyst.
-A building permit applicant or architect has received a defect notice/objection memo from the Local Self Government Department (LSGD / Panchayat / Municipality / K-Smart).
+You are VINYASA (വിന്യാസ) — Senior Chief Town Planning Consultant & LSGD Municipal Engineering Legal Strategist for Kerala (K-Smart / KMBR / KPBR 2019 / High Court Precedents).
 
-Attached Notice text / document:
-"${noticeText || 'Attached document'}"
+An architect or building permit applicant has received an official Defect Notice, Objection Memo, Stop Notice, or Scrutiny Observation from an LSGD Local Body / K-Smart portal.
+
+Input Notice Content:
+"${noticeText || 'Attached Document/Image'}"
 
 Project Context:
-- Jurisdiction: ${jurisdiction} (KMBR 2019 / KPBR 2019)
-- Applicant: ${projectData?.applicantName || 'Applicant'}
-- Local Body: ${projectData?.localBodyName || 'LSGD Local Body'}
-- Survey No: ${projectData?.surveyNumber || 'N/A'}
-- Setbacks: Front ${projectData?.frontSetbackM || 0}m, Rear ${projectData?.rearSetbackM || 0}m, Side1 ${projectData?.sideSetback1M || 0}m, Side2 ${projectData?.sideSetback2M || 0}m
-- Road Access: ${projectData?.roadAccessWidthM || 0}m
+- Jurisdiction: ${jurisdiction} (${jurisdiction === 'KMBR' ? 'Kerala Municipality Building Rules 2019' : 'Kerala Panchayat Building Rules 2019'})
+- Applicant Name: ${projectData?.applicantName || 'Applicant'}
+- Local Body Name: ${projectData?.localBodyName || 'Grama Panchayat / Municipality'}
+- Survey No: ${projectData?.surveyNumber || 'Sy. No. 142/5'}
+- Village: ${projectData?.villageName || 'Village'}
+- District: ${projectData?.district || 'Kerala'}
+- Plot Area: ${projectData?.plotAreaCents || 4.5} Cents (${projectData?.plotAreaSqM || 182.1} sq.m)
+- Setbacks: Front ${projectData?.frontSetbackM || 3.0}m, Rear ${projectData?.rearSetbackM || 1.5}m, Side1 ${projectData?.sideSetback1M || 1.2}m, Side2 ${projectData?.sideSetback2M || 1.0}m
+- Road Access: ${projectData?.roadAccessWidthM || 3.6}m
 
-Task:
-1. Deeply analyze all objection points, illegible remarks, Malayalam / English handwritten or printed memo notes.
-2. Cross-reference with exact Kerala Building Rules 2019 (KMBR/KPBR, Rule 25/27 Setbacks, Rule 47 Well-to-Septic distance 7.50m, Rule 60/62 Small plot concessions, Rule 48 RWH, NBC Part 4 Fire Safety, KER school norms).
-3. Return a structured JSON response with detected defect items, step-by-step CAD drawing rectification instructions, and a full, formal statutory reply letter addressed to the Assistant Engineer / Secretary.
+TASK:
+1. Deeply analyze all objection points (including Malayalam handwritten notes, K-Smart validation errors, Assistant Engineer queries).
+2. For EVERY defect item, provide:
+   - defectText: Clear statement of what was flagged.
+   - ruleCitation: Exact KMBR/KPBR 2019 rule clause (e.g. KPBR Rule 27(1), KMBR Rule 25, Rule 47, Rule 60/62, Rule 48, NBC 2016 Part 4).
+   - legalContext: The statutory legal background and exemptions available under Kerala law.
+   - defenseStrategy: The senior expert argument/defense to legally resolve or satisfy the objection.
+   - rectificationPlan: Concrete CAD drawing instruction for the draftsman.
+   - cadLayer: Target K-Smart CAD layer (e.g. 0_SETBACK_FRONT, 0_SEPTIC_TANK, 0_ROAD_WIDTH, 0_RWH_TANK).
+   - severity: "high" | "medium" | "low".
+3. Draft TWO complete, high-conviction, professional official reply letters:
+   - replyLetterMl: In formal Government Malayalam (ഔദ്യോഗിക ഭരണഭാഷാ ശൈലി) formatted for Kerala LSGD Secretary/Assistant Engineer.
+   - replyLetterEn: In impeccable formal English legal-engineering style.
+4. List recommendedAnnexures: Array of specific affidavits or petitions needed.
 
-Format your output strictly as a JSON block:
+OUTPUT STRICTLY AS JSON:
 \`\`\`json
 {
   "defects": [
     {
       "id": "def-1",
-      "ruleCitation": "KMBR 2019 Rule 25(1) / KPBR 2019 Rule 27(1)",
+      "ruleCitation": "KPBR 2019 Rule 27(1) / Rule 60",
       "defectText": "...",
+      "legalContext": "...",
+      "defenseStrategy": "...",
       "rectificationPlan": "...",
+      "cadLayer": "0_SETBACK_FRONT",
       "severity": "high"
     }
   ],
-  "replyLetter": "Full official letter in ${isMl ? 'formal Malayalam (മലയാളം)' : 'professional formal English'}...",
+  "replyLetterMl": "Full Malayalam letter...",
+  "replyLetterEn": "Full English letter...",
+  "replyLetter": "Full letter in current language...",
+  "recommendedAnnexures": [
+    "റൂൾ 60 ചെറിയ പ്ലോട്ട് ഇളവ് ഹർജി",
+    "അതിർത്തി സമ്മതപത്രം / സത്യവാങ്മൂലം"
+  ],
   "extractedSummary": "..."
 }
 \`\`\`
-Language: Generate defectText, rectificationPlan, and replyLetter in ${isMl ? 'Malayalam (മലയാളം)' : 'English'}.
 `;
 
         parts.push({ text: promptText });
@@ -1598,7 +1674,7 @@ Language: Generate defectText, rectificationPlan, and replyLetter in ${isMl ? 'M
           config: {
             systemInstruction: SYSTEM_INSTRUCTION_KERALA_RULES,
             temperature: 0.2,
-            maxOutputTokens: 3000,
+            maxOutputTokens: 3500,
           },
         });
 
@@ -1619,15 +1695,26 @@ Language: Generate defectText, rectificationPlan, and replyLetter in ${isMl ? 'M
             defects: [
               {
                 id: 'def-ai-1',
-                ruleCitation: 'KMBR / KPBR 2019',
+                ruleCitation: jurisdiction === 'KMBR' ? 'KMBR 2019' : 'KPBR 2019',
                 defectText: isMl ? 'നോട്ടീസിലെ പ്രധാന ചട്ടപരമായ ഒബ്ജക്ഷനുകൾ' : 'Statutory defect flagged in notice',
+                legalContext: 'Kerala Building Rules 2019 provisions',
+                defenseStrategy: 'Aligned with statutory guidelines and revenue records.',
                 rectificationPlan: isMl ? 'ഡ്രോയിംഗ് ചട്ടപ്രകാരം തിരുത്തി സമർപ്പിച്ചു.' : 'Corrected drawings aligned with statutory rules.',
+                cadLayer: '0_BUILDING_OUTLINE',
                 severity: 'high',
               },
             ],
             replyLetter: rawText,
+            replyLetterMl: rawText,
+            replyLetterEn: rawText,
+            recommendedAnnexures: ['റൂൾ 60 ചെറിയ പ്ലോട്ട് ഇളവ് ഹർജി'],
             extractedSummary: 'Notice processed.',
           };
+        }
+
+        // Ensure replyLetter matches current language
+        if (!parsedJson.replyLetter) {
+          parsedJson.replyLetter = isMl ? (parsedJson.replyLetterMl || rawText) : (parsedJson.replyLetterEn || rawText);
         }
 
         return res.json(parsedJson);

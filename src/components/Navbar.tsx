@@ -18,7 +18,6 @@ import {
   Coins,
   Split,
   FileQuestion,
-  GraduationCap,
 } from 'lucide-react';
 import { TabType, Language, JurisdictionType, ScrutinyReportSummary, User } from '../types';
 import { VinyasaLogo } from './VinyasaLogo';
@@ -309,7 +308,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }`}
             >
               <Split className="w-3.5 h-3.5 text-sky-400" />
-              <span>{isMl ? '3. ഡ്രോയിംഗ് പരിഷ്കരണം' : '3. CAD Redline'}</span>
+              <span>{isMl ? '3. CAD & K-Smart റിപ്പയർ' : '3. CAD & K-Smart Repair'}</span>
             </button>
 
             <button
@@ -348,7 +347,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }`}
             >
               <FileQuestion className="w-3.5 h-3.5 text-emerald-400" />
-              <span>{isMl ? '6. നോട്ടീസ് & RFI' : '6. Notice & RFI'}</span>
+              <span>{isMl ? '6. നോട്ടീസ് & മറുപടികൾ' : '6. Notice & Replies'}</span>
             </button>
 
             <button
@@ -375,19 +374,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <FileText className="w-3.5 h-3.5 text-cyan-400" />
               <span>{isMl ? '8. റിപ്പോർട്ട്' : '8. Permit Report'}</span>
-            </button>
-
-            <button
-              id="nav-tab-rules"
-              onClick={() => setActiveTab('rulebook')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
-                activeTab === 'rulebook'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(0,240,255,0.2)] font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-850/60'
-              }`}
-            >
-              <GraduationCap className="w-3.5 h-3.5 text-cyan-400" />
-              <span>{isMl ? '9. ചട്ടങ്ങൾ & ഭേദഗതികൾ' : '9. Rules & G.O.s'}</span>
             </button>
 
             {/* Super Admin Exclusive Tab */}

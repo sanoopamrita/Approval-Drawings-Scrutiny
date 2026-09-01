@@ -555,7 +555,7 @@ export function App() {
             </div>
 
             <div className="flex items-center gap-3 text-[11px] text-slate-400 font-mono">
-              <span className="text-cyan-400">⚡ 9 Full AEC Workflows</span>
+              <span className="text-cyan-400">⚡ 8 Full AEC Workflows</span>
               <span className="hidden sm:inline text-slate-600">|</span>
               <span className="hidden sm:inline text-emerald-400">🔒 Zero Cloud Retention</span>
             </div>
@@ -596,7 +596,7 @@ export function App() {
               }`}
             >
               <span>🔍</span>
-              <span>{language === 'ml' ? '3. CAD റെഡ്‌ലൈൻ' : '3. CAD Redline'}</span>
+              <span>{language === 'ml' ? '3. CAD & K-Smart റിപ്പയർ' : '3. CAD & K-Smart Repair'}</span>
             </button>
 
             <button
@@ -635,7 +635,7 @@ export function App() {
               }`}
             >
               <span>📑</span>
-              <span>{language === 'ml' ? '6. നോട്ടീസ് & RFI' : '6. Notice & RFI'}</span>
+              <span>{language === 'ml' ? '6. നോട്ടീസ് & മറുപടികൾ' : '6. Notice & Replies'}</span>
             </button>
 
             <button
