@@ -186,6 +186,17 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
+  // ESC key to close chatbot window
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && onClose) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   // Window drag handlers for movable floating window
   const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
     if (mode !== 'floating' || isExpanded) return;
@@ -496,44 +507,37 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
               : undefined
           }
         >
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 min-w-0">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 border border-cyan-300/40 flex items-center justify-center text-slate-950 font-bold shadow-[0_0_15px_rgba(0,240,255,0.4)] shrink-0">
               <Bot className="w-5 h-5 text-slate-950" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-sm text-white flex items-center gap-1.5 font-['Outfit',sans-serif]">
-                  {isMl ? 'വിന്യാസ AI ചട്ട ഉപദേശകൻ' : 'VINYASA AI Rules Advisor'}
-                  <span className="text-[10px] px-1.5 py-0.2 rounded font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold">
-                    KBR 2019-2026 AI
-                  </span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <h3 className="font-bold text-xs sm:text-sm text-white truncate font-['Outfit',sans-serif]">
+                  {isMl ? 'വിന്യാസ AI ഉപദേശകൻ' : 'VINYASA AI Advisor'}
                 </h3>
+                <span className="hidden sm:inline text-[9px] px-1.5 py-0.2 rounded font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold shrink-0">
+                  KBR AI
+                </span>
               </div>
-              <p className="text-[11px] text-cyan-400/80 truncate max-w-[180px] sm:max-w-xs">
+              <p className="text-[10px] sm:text-[11px] text-cyan-400/80 truncate">
                 {isMl
-                  ? `${jurisdiction} ചട്ടങ്ങൾ, സെറ്റ്ബാക്ക്, പ്ലാൻ അപാകതകൾ`
-                  : `${jurisdiction} Rules, Setbacks & Defect Remediation`}
+                  ? `${jurisdiction} ചട്ടങ്ങൾ & പ്ലാൻ പരിശോധന`
+                  : `${jurisdiction} Rules & Plan Scrutiny`}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
             {/* Movable drag handle pill indicator in floating mode */}
             {mode === 'floating' && !isExpanded && (
               <div
-                className="hidden sm:flex items-center gap-1 text-[10px] text-cyan-400/70 bg-cyan-950/60 border border-cyan-500/30 px-2 py-0.5 rounded-md cursor-grab active:cursor-grabbing hover:text-cyan-300 transition-colors"
+                className="hidden md:flex items-center gap-1 text-[10px] text-cyan-400/70 bg-cyan-950/60 border border-cyan-500/30 px-2 py-0.5 rounded-md cursor-grab active:cursor-grabbing hover:text-cyan-300 transition-colors"
                 title={isMl ? 'വിൻഡോ നീക്കാൻ പിടിച്ച് വലിക്കുക' : 'Drag to reposition'}
               >
                 <Move className="w-3 h-3 text-cyan-400" />
                 <span className="text-[9px] font-semibold">{isMl ? 'നീക്കാം' : 'Move'}</span>
               </div>
-            )}
-
-            {projectData && (
-              <span className="hidden sm:inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
-                <Building2 className="w-3 h-3 text-cyan-400" />
-                <span className="truncate max-w-[90px]">{projectData.projectName || 'Project'}</span>
-              </span>
             )}
 
             <button
@@ -564,16 +568,16 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
               {isExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
             </button>
 
-            {/* Prominent Close Control */}
+            {/* Always Prominent Close Button */}
             {onClose && (
               <button
                 id="chat-close-btn"
                 onClick={onClose}
-                className="flex items-center gap-1 bg-rose-500/20 hover:bg-rose-600 text-rose-300 hover:text-white px-2.5 py-1 rounded-lg border border-rose-500/40 text-xs font-bold transition-all ml-1 cursor-pointer shadow-xs"
+                className="flex items-center gap-1 bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-rose-400/60 text-xs font-bold transition-all shadow-[0_0_12px_rgba(244,63,94,0.35)] cursor-pointer shrink-0 ml-0.5 active:scale-95"
                 title={isMl ? 'ചാറ്റ് ക്ലോസ് ചെയ്യുക (Esc)' : 'Close Chat (Esc)'}
               >
-                <X className="w-4 h-4" />
-                <span className="text-[11px]">{isMl ? 'ക്ലോസ്' : 'Close'}</span>
+                <X className="w-4 h-4 stroke-[2.5]" />
+                <span className="text-[11px] font-bold">{isMl ? 'ക്ലോസ്' : 'Close'}</span>
               </button>
             )}
           </div>
