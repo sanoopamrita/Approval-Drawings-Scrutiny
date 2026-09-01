@@ -145,16 +145,8 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
   const [analysisPreset, setAnalysisPreset] = useState<'plan' | 'notice' | 'setback'>('plan');
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     const welcomeText = isMl
-      ? `നമസ്കാരം. ഞാൻ വിന്യാസ. എന്ത് സഹായമാണ് ഞാൻ ചെയ്തു തരേണ്ടത്?
-
-കേരള കെട്ടിട നിർമ്മാണ ചട്ടങ്ങൾ (**KMBR 2019 & KPBR 2019**), ഫയർ & ലൈഫ് സേഫ്റ്റി (**NBC 2016 Part 4**), സ്കൂൾ ചട്ടങ്ങൾ (**KER**), തീരദേശ പരിപാലന നിയമങ്ങൾ (**CRZ 2019**), നെൽവയൽ-തണ്ണീർത്തട തരംമാറ്റൽ, കെ-സ്മാർട്ട് (**K-Smart**) ഓൺലൈൻ പെർമിറ്റ്, തദ്ദേശ സ്ഥാപന ന്യൂനത നോട്ടീസ് തിരുത്തലുകൾ എന്നിവയിലെല്ലാം ഒരു സീനിയർ ഗവൺമെന്റ് ചീഫ് മുനിസിപ്പൽ എൻജിനീയറുടെയും ടൗൺ പ്ലാനിങ് ലീഗൽ കൺസൾട്ടന്റിന്റെയും അനുഭവപരിചയത്തോടെ നിങ്ങളെ സഹായിക്കാം.
-
-📷 **കെട്ടിട പ്ലാനോ തദ്ദേശ സ്ഥാപനത്തിൽ നിന്നുള്ള ന്യൂനത നോട്ടീസോ ഉണ്ടെങ്കിൽ അറ്റാച്ച് ചെയ്ത് നൽകിയാൽ തത്സമയം വിശദമായി പരിശോധിച്ച് റിപ്പോർട്ട് നൽകാം.**`
-      : `Hello! I am VINYASA. How may I help you?
-
-I provide authoritative statutory engineering consultancy strictly grounded in **KMBR 2019 & KPBR 2019**, Fire & Life Safety (**NBC 2016 Part 4**), Kerala Education Rules (**KER Chapter IV**), Coastal Regulation Zone (**CRZ 2019**), Kerala Paddy & Wetland Act, and **K-Smart** online fast-track permitting.
-
-📷 **Upload or capture your building plan or municipal objection notice for instant expert analysis and actionable statutory compliance advice.**`;
+      ? `നമസ്കാരം. ഞാൻ വിന്യാസ. എന്ത് സഹായമാണ് ഞാൻ ചെയ്തു തരേണ്ടത്?`
+      : `Hello! I am VINYASA. How may I help you?`;
 
     return [
       {
@@ -414,8 +406,8 @@ I provide authoritative statutory engineering consultancy strictly grounded in *
         id: `welcome-${Date.now()}`,
         role: 'assistant',
         content: isMl
-          ? `നമസ്കാരം. ഞാൻ വിന്യാസ. എന്ത് സഹായമാണ് ഞാൻ ചെയ്തു തരേണ്ടത്?\n\nകേരള കെട്ടിട നിർമ്മാണ ചട്ടങ്ങൾ (${jurisdiction}), സെറ്റ്ബാക്ക് കണക്കുകൂട്ടലുകൾ, കെ-സ്മാർട്ട് ഓൺലൈൻ പെർമിറ്റ്, പ്ലാൻ സൂക്ഷ്മപരിശോധന എന്നിവയിലെല്ലാം നിങ്ങളുടെ സംശയങ്ങൾ ചോദിക്കാം.`
-          : `Hello! I am VINYASA. How may I help you?\n\nFeel free to ask any question regarding ${jurisdiction} building rules, setback calculations, K-Smart permitting, or plan scrutiny!`,
+          ? `നമസ്കാരം. ഞാൻ വിന്യാസ. എന്ത് സഹായമാണ് ഞാൻ ചെയ്തു തരേണ്ടത്?`
+          : `Hello! I am VINYASA. How may I help you?`,
         timestamp: Date.now(),
       },
     ]);

@@ -100,6 +100,24 @@ export async function sendChatMessage(
 
   // Graceful rule-based Kerala Building Rules knowledge response fallback (guarantees zero UI dead-ends)
   const isMl = language === 'ml';
+  const lastUserMsg = (messages[messages.length - 1]?.content || '').toLowerCase().trim();
+
+  if (
+    lastUserMsg === 'ഹലോ' ||
+    lastUserMsg === 'ഹായ്' ||
+    lastUserMsg === 'നമസ്കാരം' ||
+    lastUserMsg.includes('നമസ്കാരം') ||
+    lastUserMsg === 'hello' ||
+    lastUserMsg === 'hi' ||
+    lastUserMsg === 'hey' ||
+    lastUserMsg.includes('who are you') ||
+    lastUserMsg.includes('ആരാണ്')
+  ) {
+    return isMl
+      ? `നമസ്കാരം. ഞാൻ വിന്യാസ. എന്ത് സഹായമാണ് ഞാൻ ചെയ്തു തരേണ്ടത്?`
+      : `Hello! I am VINYASA. How may I help you?`;
+  }
+
   return isMl
     ? `**വിന്യാസ (VINYASA) - ചീഫ് മുനിസിപ്പൽ എൻജിനീയറിങ് കൺസൾട്ടന്റ്:**\n\nനിങ്ങൾ ഉന്നയിച്ച വിഷയത്തിലെ പ്രധാന കെട്ടിട നിർമ്മാണ ചട്ടങ്ങൾ:\n\n- **സെറ്റ്ബാക്കുകൾ (Rule 27 / 25, Table 4):** 10 മീറ്റർ വരെ ഉയരമുള്ള വീടുകൾക്ക് മുൻവശം 3.00 മീറ്റർ, പിൻവശം 1.50-2.00 മീറ്റർ, വശങ്ങളിൽ 1.20 മീറ്ററും 1.00 മീറ്ററും സെറ്റ്ബാക്ക് വേണം.\n- **കിണർ-സെപ്റ്റിക് ടാങ്ക് അകലം (Rule 47):** കുടിവെള്ള കിണറിൽ നിന്ന് സെപ്റ്റിക് ടാങ്കിലേക്കും ലീച്ച് പിറ്റിലേക്കും കുറഞ്ഞത് 7.50 മീറ്റർ അകലം നിർബന്ധം.\n- **ചെറിയ പ്ലോട്ട് ഇളവുകൾ (Rule 60 / 62):** 125 ച.മീറ്റർ (3 സെന്റ്) വരെയുള്ള പ്ലോട്ടുകൾക്ക് മുൻവശം 1.80 മീറ്ററും പിൻവശം 1.00 മീറ്ററും ഇളവ് ലഭിക്കും.\n- **മഴവെള്ള സംഭരണി (Rule 48):** റൂഫ് പ്ലിന്ത് ഏരിയയുടെ ഓരോ ച.മീറ്ററിനും 25 ലിറ്റർ സംഭരണശേഷി ഉറപ്പാക്കണം.\n\n*നിങ്ങളുടെ പ്ലോട്ടിന്റെ അളവുകളോ കെ-സ്മാർട്ട് സംശയങ്ങളോ ചോദിക്കാവുന്നതാണ്.*`
     : `**VINYASA - Senior Municipal Building Engineering Consultant:**\n\nKey Kerala Building Rule Provisions:\n\n- **Setbacks (Rule 27/25, Table 4):** Front min 3.00m, Rear min 1.50-2.00m, Sides min 1.20m & 1.00m for residential <=10m.\n- **Open Well Distance (Rule 47):** Minimum 7.50m clear distance from drinking water well to septic tank.\n- **Small Plots (Rule 60/62):** Concessional setbacks (Front 1.80m, Rear 1.00m) for plots <=125 sq.m (3 Cents).\n- **Rainwater Harvesting (Rule 48):** 25 Litres per sq.m of roof plinth area.\n\n*Feel free to ask about any specific rule number or K-Smart guidelines.*`;
