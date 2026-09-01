@@ -41,7 +41,27 @@ export function runKeralaBuildingRulesScrutiny(
   }
 
   mandatoryDrawings.forEach((req, idx) => {
-    const uploaded = drawings.filter((d) => d.category === req.category);
+    let uploaded = drawings.filter((d) => d.category === req.category);
+
+    // If checking service_plans, accept both service_plans and any discrete service sub-plans
+    if (req.category === 'service_plans') {
+      uploaded = drawings.filter(
+        (d) =>
+          d.category === 'service_plans' ||
+          d.category.startsWith('service_') ||
+          d.serviceSubType !== undefined
+      );
+    } else if (req.category === 'rwh_solar_plans') {
+      uploaded = drawings.filter(
+        (d) =>
+          d.category === 'rwh_solar_plans' ||
+          d.category === 'service_solar_plan' ||
+          d.category === 'service_rwh_plan' ||
+          d.serviceSubType === 'solar_panel' ||
+          d.serviceSubType === 'rainwater_harvesting'
+      );
+    }
+
     const hasUploaded = uploaded.length > 0;
 
     checks.push({

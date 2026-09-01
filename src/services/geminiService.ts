@@ -369,3 +369,38 @@ export async function analyzeDrawingWithGemini(
   const data = await res.json();
   return data.analysisText || JSON.stringify(data.analysis, null, 2);
 }
+
+export async function scrutinizeAllDrawingsWithAi(
+  drawings: any[],
+  jurisdiction: JurisdictionType,
+  occupancy: string,
+  projectData?: AreaStatementData | null,
+  language: Language = 'ml'
+): Promise<{ scrutinyText: string; timestamp: number }> {
+  const res = await fetchWithRetry(
+    '/api/scrutinize-all-drawings',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        drawings,
+        jurisdiction,
+        occupancy,
+        projectData,
+        language,
+      }),
+    },
+    1,
+    45000
+  );
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || errData.details || `HTTP error ${res.status}`);
+  }
+
+  return await res.json();
+}
+

@@ -140,12 +140,64 @@ export type DrawingCategory =
   | 'elevation_plans'
   | 'section_plans'
   | 'service_plans'
+  | 'service_well_plan'
+  | 'service_solar_plan'
+  | 'service_septic_plan'
+  | 'service_solidwaste_plan'
+  | 'service_biogas_plan'
+  | 'service_rwh_plan'
+  | 'service_fire_plan'
   | 'parking_plans'
   | 'rwh_solar_plans';
+
+export type ServiceSubType = 
+  | 'general_service'
+  | 'open_well'
+  | 'solar_panel'
+  | 'septic_tank'
+  | 'solid_waste'
+  | 'biogas_plant'
+  | 'rainwater_harvesting'
+  | 'fire_safety';
+
+export interface ExtractedDrawingMetrics {
+  plotAreaSqM?: number;
+  plotAreaCents?: number;
+  roadAccessWidthM?: number;
+  frontSetbackM?: number;
+  rearSetbackM?: number;
+  sideSetback1M?: number;
+  sideSetback2M?: number;
+  buildingHeightM?: number;
+  numberOfFloors?: number;
+  groundCoverageSqM?: number;
+  totalBuiltUpAreaSqM?: number;
+  totalFloorAreaSqM?: number;
+  carParkingProvided?: number;
+  openWellInPlot?: boolean;
+  distanceWellToSepticTankM?: number;
+  distanceWellToSoakPitM?: number;
+  distanceSepticTankToBoundaryM?: number;
+  rwhTankCapacityLiters?: number;
+  solarPvCapacityKwp?: number;
+  solidWasteUnitProvided?: boolean;
+  biogasPlantOrCompostProvided?: boolean;
+  mainStaircaseWidthM?: number;
+  staircaseTreadCm?: number;
+  staircaseRiserCm?: number;
+  staircaseHeadroomM?: number;
+  minHabitableRoomAreaSqM?: number;
+  minHabitableRoomWidthM?: number;
+  minKitchenAreaSqM?: number;
+  minKitchenWidthM?: number;
+  ventilationRatioPercent?: number;
+  clearFirePassageWidthM?: number;
+}
 
 export interface UploadedDrawing {
   id: string;
   category: DrawingCategory;
+  serviceSubType?: ServiceSubType;
   name: string;
   size: number;
   dataUrl?: string;
@@ -154,6 +206,8 @@ export interface UploadedDrawing {
   scale: string; // e.g. "1:100", "1:200", "1:400"
   sheetsCount: number;
   extractedLabels: string[];
+  extractedMetrics?: ExtractedDrawingMetrics;
+  expertReviewNotes?: string;
   remarks?: string;
   uploadedAt: number;
 }

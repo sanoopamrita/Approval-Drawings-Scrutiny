@@ -701,6 +701,26 @@ export function App() {
                     : 'Extracted drawing measurements applied to Area Statement!'
                 );
               }}
+              onDirectScrutiny={(synthesizedData) => {
+                if (synthesizedData) {
+                  const updated = { ...formData, ...synthesizedData };
+                  setFormData(updated);
+                  const result = runKeralaBuildingRulesScrutiny(updated, drawings);
+                  setSummary(result.summary);
+                  setChecks(result.checks);
+                } else {
+                  executeScrutiny();
+                }
+                setActiveTab('scrutiny');
+                showToast(
+                  language === 'ml'
+                    ? 'ഡ്രോയിംഗ് അടിസ്ഥാനത്തിൽ സമഗ്ര ചട്ട സ്ക്രൂട്ടിനി റിപ്പോർട്ട് ലഭ്യമാക്കി!'
+                    : 'Comprehensive statutory scrutiny report generated from blueprints!'
+                );
+              }}
+              currentFormData={formData}
+              jurisdiction={formData.jurisdiction}
+              occupancy={formData.occupancyGroup}
               language={language}
               onNext={() => setActiveTab('redline')}
               onPrev={() => setActiveTab('authority')}
